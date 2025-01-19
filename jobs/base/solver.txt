@@ -1,0 +1,6 @@
+# jobs\base\solver.txt
+
+[solver_type]   [solver_name]
+Static          Direct Solver (Dense)
+Dynamic
+Modal
