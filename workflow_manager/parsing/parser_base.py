@@ -1,15 +1,15 @@
-# workflow_manager\parse_settings.py
+# workflow_manager\parsing\parse_base.py
 
 import logging
 import os
 
-# Import your bracket-based parser functions
-from parsing.geometry_parser import parse_geometry
-from parsing.load_parser import parse_load
-from parsing.boundary_condition_parser import parse_boundary_conditions
-from parsing.material_parser import parse_material
-from parsing.mesh_parser import parse_mesh
-from parsing.solver_parser import parse_solver
+# Use relative imports within workflow_manager
+from .geometry_parser import parse_geometry
+from .load_parser import parse_load
+from .boundary_condition_parser import parse_boundary_conditions
+from .material_parser import parse_material
+from .mesh_parser import parse_mesh
+from .solver_parser import parse_solver
 
 class ParserBase:
     """

@@ -61,9 +61,9 @@ def plot_shape_functions():
                 axes[1].plot(xi_values, dN[:, i], label=labels_2[i])
                 axes[2].plot(xi_values, d2N[:, i], label=labels_3[i])
 
-            axes[0].set_ylabel(r"$N_i(\xi)$ Shape Functions")
-            axes[1].set_ylabel(r"$\frac{dN_i(\xi)}{d\xi}$ 1st Derivatives")
-            axes[2].set_ylabel(r"$\frac{d^2N_i(\xi)}{d\xi^2}$ 2nd Derivatives")
+            axes[0].set_ylabel(r"$N_i(\xi)$")
+            axes[1].set_ylabel(r"$\frac{dN_i(\xi)}{d\xi}$")
+            axes[2].set_ylabel(r"$\frac{d^2N_i(\xi)}{d\xi^2}$")
             axes[2].set_xlabel(r"$\xi$")
 
             # Dynamically adjust y-axis limits

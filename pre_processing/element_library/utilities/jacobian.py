@@ -8,7 +8,7 @@ def compute_jacobian_matrix(shape_function_derivatives, node_coordinates):
     and nodal coordinates.
 
     Args:
-        shape_function_derivatives (ndarray): Derivatives of shape functions w.r.t natural coordinates.
+        shape_function_derivatives (ndarray): Derivatives of shape functions w.r.t. natural coordinates.
                                               Shape: (num_nodes, dim).
         node_coordinates (ndarray): Nodal coordinates of the element. Shape: (num_nodes, spatial_dim).
 
@@ -34,7 +34,7 @@ def general_jacobian_and_determinant(shape_function_derivatives, node_coordinate
     Compute both the Jacobian matrix and its determinant in one step.
 
     Args:
-        shape_function_derivatives (ndarray): Derivatives of shape functions w.r.t natural coordinates.
+        shape_function_derivatives (ndarray): Derivatives of shape functions w.r.t. natural coordinates.
         node_coordinates (ndarray): Nodal coordinates of the element.
 
     Returns:

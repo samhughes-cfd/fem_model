@@ -3,11 +3,11 @@
 import ast
 import logging
 import numpy as np
-from .geometry_parser import parse_geometry  # Importing function to get L
+from .geometry_parser import parse_geometry  # Importing function to get beam length L
 
 def parse_mesh(mesh_file_path, geometry_file_path):
     """
-    Parses a bracket-based mesh file and computes element lengths using normalized positions.
+    Parses a bracket-based mesh file and computes element lengths using actual node coordinates.
 
     Args:
         mesh_file_path (str): Path to the mesh file.
@@ -17,7 +17,7 @@ def parse_mesh(mesh_file_path, geometry_file_path):
         dict: {
             'element_types': List of element types,
             'node_ids': List of node IDs,
-            'node_positions': NumPy array of *scaled* node positions,
+            'node_positions': NumPy array of node positions (shape: [num_nodes, 3]),
             'connectivity': List of element connectivity tuples,
             'element_lengths': Dictionary {element_id: length}
         }
@@ -59,44 +59,39 @@ def parse_mesh(mesh_file_path, geometry_file_path):
 
         # Parse content based on the current section
         if current_section == "element_types":
-            # Each line is an element type
             element_types.append(line)
 
         elif current_section == "nodes":
-            # If this is the header line (with bracketed columns), skip
+            # If this is the header line (with bracketed column names), skip
             if "[" in line and "]" in line:
-                logging.info(f"Line {line_number}: Skipping node header line '{raw_line}'")
+                logging.info(f"Line {line_number}: Skipping header line '{raw_line}'")
                 continue
 
-            # Split into exactly 3 parts: node_id, norm_position, connectivity
-            columns = line.split(maxsplit=2)
-            if len(columns) < 3:
+            # Expecting: node_id, x, y, z, connectivity
+            columns = line.split(maxsplit=4)
+            if len(columns) < 5:
                 logging.warning(f"Line {line_number}: Incomplete node data: '{raw_line}'")
                 continue
 
             try:
                 node_id = int(columns[0])
-                norm_position = float(columns[1])  # Normalized in range [0,1]
-                conn_str = columns[2].strip()  # e.g. "(1, 2)" or "-"
+                x, y, z = map(float, columns[1:4])  # Read full 3D coordinates
+                conn_str = columns[4].strip()  # e.g. "(1, 2)" or "-"
 
                 node_ids.append(node_id)
-                node_positions.append(norm_position * beam_length)  # Scale to actual length
+                node_positions.append((x, y, z))  # Store as tuple
 
                 if conn_str != "-":
                     try:
                         c_tuple = ast.literal_eval(conn_str)
-                        if isinstance(c_tuple, tuple):
+                        if isinstance(c_tuple, tuple) and len(c_tuple) == 2 and all(isinstance(i, int) for i in c_tuple):
                             connectivity_list.append(c_tuple)
                         else:
-                            logging.warning(
-                                f"Line {line_number}: Invalid connectivity (not a tuple): {conn_str}"
-                            )
+                            logging.warning(f"Line {line_number}: Invalid connectivity tuple: {conn_str}")
                     except (ValueError, SyntaxError) as e:
-                        logging.warning(
-                            f"Line {line_number}: Error parsing connectivity '{conn_str}': {e}"
-                        )
+                        logging.warning(f"Line {line_number}: Error parsing connectivity '{conn_str}': {e}")
                 else:
-                    # no connectivity
+                    # No connectivity
                     pass
 
             except ValueError as e:
@@ -106,25 +101,26 @@ def parse_mesh(mesh_file_path, geometry_file_path):
     # Convert node positions to a NumPy array
     node_positions = np.array(node_positions)
 
-    # Compute element lengths based on connectivity
-    element_lengths = compute_element_lengths(connectivity_list, node_positions)
+    # Compute element lengths using Euclidean distance
+    element_lengths = compute_element_lengths(connectivity_list, node_positions, node_ids)
 
     return {
         'element_types': element_types,
         'node_ids': node_ids,
-        'node_positions': node_positions,  # Now scaled to actual beam length
+        'node_positions': node_positions,  # Shape: (num_nodes, 3)
         'connectivity': connectivity_list,
         'element_lengths': element_lengths
     }
 
 
-def compute_element_lengths(connectivity_list, node_positions):
+def compute_element_lengths(connectivity_list, node_positions, node_ids):
     """
-    Computes the length of each element based on scaled node positions.
+    Computes the length of each element based on 3D node positions.
 
     Args:
         connectivity_list (list of tuples): List of element connectivity (node1, node2).
-        node_positions (np.array): *Scaled* positions of nodes along the beam.
+        node_positions (np.array): 3D positions of nodes (shape: [num_nodes, 3]).
+        node_ids (list): List of node IDs.
 
     Returns:
         dict: {element_id: length} mapping element indices to their computed lengths.
@@ -133,10 +129,14 @@ def compute_element_lengths(connectivity_list, node_positions):
 
     for element_id, (node1, node2) in enumerate(connectivity_list):
         try:
-            # Compute length as the absolute difference between node positions
-            length = abs(node_positions[node2 - 1] - node_positions[node1 - 1])
+            # Find the actual index in node_positions based on node_id mapping
+            index1 = node_ids.index(node1)
+            index2 = node_ids.index(node2)
+
+            # Compute 3D Euclidean distance
+            length = np.linalg.norm(node_positions[index2] - node_positions[index1])
             element_lengths[element_id] = length
-        except IndexError:
+        except ValueError:
             logging.error(f"Element {element_id} references undefined nodes {node1}, {node2}")
             continue
 
