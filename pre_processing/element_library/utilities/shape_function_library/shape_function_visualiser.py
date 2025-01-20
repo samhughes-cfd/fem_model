@@ -65,10 +65,14 @@ def plot_shape_functions():
             axes[1].set_ylabel(r"$\frac{dN_i(\xi)}{d\xi}$ 1st Derivatives")
             axes[2].set_ylabel(r"$\frac{d^2N_i(\xi)}{d\xi^2}$ 2nd Derivatives")
             axes[2].set_xlabel(r"$\xi$")
-            
-            for ax in axes:
+
+            # Dynamically adjust y-axis limits
+            for ax, data in zip(axes, [N, dN, d2N]):
+                ymin, ymax = np.min(data), np.max(data)
+                margin = 0.1 * (ymax - ymin)  # Add 10% margin for better visibility
+                ax.set_ylim(ymin - margin, ymax + margin)
                 labelLines(ax.get_lines(), zorder=2.5)
-            
+
             plt.show()
 
         # Plot for Euler-Bernoulli
