@@ -1,7 +1,5 @@
 # pre_processing/element_library/euler_bernoulli/euler_bernoulli_beam_element.py
 
-# pre_processing/element_library/euler_bernoulli/euler_bernoulli_beam_element.py
-
 import numpy as np
 from pre_processing.element_library.element_1D_base import Element1DBase
 from pre_processing.element_library.utilities.dof_mapping import expand_dof_mapping
@@ -169,7 +167,7 @@ class EulerBernoulliBeamElement(Element1DBase):
                     self.get_node_coordinates().reshape(-1, 1)   # node_coords reshaped to (2,1)
                 )
             ),
-            dim=6
+            dim=1
         )  # Shape: (6,6)
 
         # Define DOF indices for Fx, Fy, Mz at start and end nodes
