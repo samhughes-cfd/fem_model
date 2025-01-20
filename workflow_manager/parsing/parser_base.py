@@ -59,11 +59,10 @@ class ParserBase:
         self._validate_file(bc_file_path, "Boundary Conditions")
         return parse_boundary_conditions(bc_file_path)
 
-    def mesh_parser(self, mesh_file_path, geometry_file_path):
+    def mesh_parser(self, mesh_file_path):
         """Parses the mesh file and returns a dictionary with element and node data."""
         self._validate_file(mesh_file_path, "Mesh")
-        self._validate_file(geometry_file_path, "Geometry")
-        return parse_mesh(mesh_file_path, geometry_file_path)
+        return parse_mesh(mesh_file_path)
 
     def solver_parser(self, solver_file_path):
         """Parses the solver file and returns a dictionary {solver_type: solver_name}."""

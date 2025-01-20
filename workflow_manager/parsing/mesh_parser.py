@@ -1,17 +1,16 @@
-# re_processing\parsing\mesh_parser.py
+# pre_processing\parsing\mesh_parser.py
 
 import ast
 import logging
 import numpy as np
-from .geometry_parser import parse_geometry  # Importing function to get beam length L
 
-def parse_mesh(mesh_file_path, geometry_file_path):
+
+def parse_mesh(mesh_file_path):
     """
-    Parses a bracket-based mesh file and computes element lengths using actual node coordinates.
+    Parses a new-form mesh file and computes element lengths using node coordinates.
 
     Args:
         mesh_file_path (str): Path to the mesh file.
-        geometry_file_path (str): Path to the geometry file.
 
     Returns:
         dict: {
@@ -22,13 +21,6 @@ def parse_mesh(mesh_file_path, geometry_file_path):
             'element_lengths': Dictionary {element_id: length}
         }
     """
-    # Retrieve beam length from geometry.txt
-    geometry_data = parse_geometry(geometry_file_path)
-    beam_length = geometry_data.get("L", None)
-
-    if beam_length is None:
-        raise ValueError("Beam length `L` not found in geometry file.")
-
     element_types = []
     node_ids = []
     node_positions = []
@@ -44,9 +36,9 @@ def parse_mesh(mesh_file_path, geometry_file_path):
         if not line or line.startswith("#"):
             continue
 
-        # Remove inline comment
-        if '#' in line:
-            line = line.split('#', 1)[0].strip()
+        # Remove inline comments
+        if "#" in line:
+            line = line.split("#", 1)[0].strip()
 
         # Identify sections
         lower_line = line.lower()
@@ -62,7 +54,7 @@ def parse_mesh(mesh_file_path, geometry_file_path):
             element_types.append(line)
 
         elif current_section == "nodes":
-            # If this is the header line (with bracketed column names), skip
+            # Skip header row
             if "[" in line and "]" in line:
                 logging.info(f"Line {line_number}: Skipping header line '{raw_line}'")
                 continue
@@ -76,7 +68,7 @@ def parse_mesh(mesh_file_path, geometry_file_path):
             try:
                 node_id = int(columns[0])
                 x, y, z = map(float, columns[1:4])  # Read full 3D coordinates
-                conn_str = columns[4].strip()  # e.g. "(1, 2)" or "-"
+                conn_str = columns[4].strip()  # e.g., "(1, 2)" or "-"
 
                 node_ids.append(node_id)
                 node_positions.append((x, y, z))  # Store as tuple
@@ -91,7 +83,7 @@ def parse_mesh(mesh_file_path, geometry_file_path):
                     except (ValueError, SyntaxError) as e:
                         logging.warning(f"Line {line_number}: Error parsing connectivity '{conn_str}': {e}")
                 else:
-                    # No connectivity
+                    # No connectivity for this node
                     pass
 
             except ValueError as e:

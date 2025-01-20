@@ -2,7 +2,7 @@
 Tests utilities: Shape functions, Jacobian, Gauss quadrature, and DOF mapping.
 """
 
-import pytest
+import testing
 import os
 import sys
 import logging
