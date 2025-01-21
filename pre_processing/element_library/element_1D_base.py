@@ -68,7 +68,7 @@ class Element1DBase:
         Returns:
             float: Length of the element.
         """
-        return self.mesh_data['element_lengths'][self.element_id]
+        return float(self.mesh_data['element_lengths'][self.element_id])  # Ensures scalar
 
     def get_element_loads(self):
         """

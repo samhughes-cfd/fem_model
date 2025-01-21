@@ -1,0 +1,5 @@
+2025-01-21 14:01:14,933 - pytest_elements - INFO - Successfully loaded element test data.
+2025-01-21 14:01:14,934 - pytest_elements - INFO - EulerBernoulliBeamElement Element 0: Ke computed (shape=(12, 12))
+2025-01-21 14:01:14,935 - pytest_elements - ERROR - Error testing EulerBernoulliBeamElement Element 0: debug_matrix() missing 2 required positional arguments: 'Fe_reduced' and 'element_id'
+2025-01-21 14:01:14,992 - pytest_elements - INFO - EulerBernoulliBeamElement Element 0: Fe computed (shape=(12,))
+2025-01-21 14:01:14,993 - pytest_elements - ERROR - Error testing EulerBernoulliBeamElement Element 0: debug_matrix() missing 2 required positional arguments: 'Fe_reduced' and 'element_id'

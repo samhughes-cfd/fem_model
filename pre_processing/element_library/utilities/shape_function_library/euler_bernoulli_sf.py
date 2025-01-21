@@ -71,11 +71,8 @@ def euler_bernoulli_shape_functions(xi, L, poly_order=3):
     d2N6_dxi2 = 0.375 * L * (6 * xi + 1)
 
     # Assemble Vectors N, dN_dxi, d2N_dxi2
-    N = np.array([N1, N2, N3,
-                   N4, N5, N6])
-    dN_dxi = np.array([dN1_dxi, dN2_dxi, dN3_dxi,
-                        dN4_dxi, dN5_dxi, dN6_dxi])
-    d2N_dxi2 = np.array([d2N1_dxi2, d2N2_dxi2, d2N3_dxi2,
-                          d2N4_dxi2, d2N5_dxi2, d2N6_dxi2])
+    N = np.array([N1, N2, N3, N4, N5, N6])
+    dN_dxi = np.array([dN1_dxi, dN2_dxi, dN3_dxi, dN4_dxi, dN5_dxi, dN6_dxi])
+    d2N_dxi2 = np.array([d2N1_dxi2, d2N2_dxi2, d2N3_dxi2, d2N4_dxi2, d2N5_dxi2, d2N6_dxi2])
 
     return N, dN_dxi, d2N_dxi2
