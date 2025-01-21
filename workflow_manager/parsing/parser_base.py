@@ -50,14 +50,14 @@ class ParserBase:
         return parse_material(material_file_path)
 
     def load_parser(self, load_file_path):
-        """Parses the load file and returns a NumPy array (max_node_id, 6)."""
+        """Parses the load file and returns a NumPy array (n, 6)."""
         self._validate_file(load_file_path, "Load")
         return parse_load(load_file_path)
 
-    def boundary_conditions_parser(self, bc_file_path):
-        """Parses the boundary conditions file and returns a NumPy array (max_node_id, 6)."""
-        self._validate_file(bc_file_path, "Boundary Conditions")
-        return parse_boundary_conditions(bc_file_path)
+    #def boundary_conditions_parser(self, bc_file_path):
+        #"""Parses the boundary conditions file and returns a NumPy array (max_node_id, 6)."""
+        #self._validate_file(bc_file_path, "Boundary Conditions")
+        #return parse_boundary_conditions(bc_file_path)
 
     def mesh_parser(self, mesh_file_path):
         """Parses the mesh file and returns a dictionary with element and node data."""

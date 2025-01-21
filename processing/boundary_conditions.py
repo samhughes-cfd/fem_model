@@ -1,7 +1,7 @@
 """
 processing/boundary_conditions.py
 
-Applies boundary conditions to the global stiffness matrix and force vector.
+Applies a fixed boundary condition to the global stiffness matrix and force vector.
 """
 
 import numpy as np
@@ -9,53 +9,49 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def apply_boundary_conditions(K_global, F_global, constrained_dofs, analysis_type="static"):
+def apply_boundary_conditions(K_global, F_global):
     """
-    Apply boundary conditions to the system matrices.
+    Apply a fixed [1 1 1 1 1 1] boundary condition to the system matrices.
 
-    Uses:
-    - **Penalty Method** for static analysis.
-    - **Mass/Boundary Reduction** for dynamic/modal analysis.
+    The first 6 DOFs (assumed to be at a single fixed node) are constrained 
+    using the Penalty Method, enforcing zero displacements.
 
-    Parameters:
-        K_global (ndarray): Global stiffness matrix.
-        F_global (ndarray): Global force vector.
-        constrained_dofs (list): List of constrained DOFs (1D indices).
-        analysis_type (str): Type of analysis ("static", "dynamic", "modal").
+    Parameters
+    ----------
+    K_global : ndarray
+        Global stiffness matrix (size: n x n).
+    F_global : ndarray
+        Global force vector (size: n x 1).
 
-    Returns:
-        dict: Contains the modified system matrices:
-            - "K_mod": Modified stiffness matrix.
-            - "F_mod": Modified force vector.
+    Returns
+    -------
+    dict
+        Contains the modified system matrices:
+        - "K_mod": Modified stiffness matrix.
+        - "F_mod": Modified force vector.
+
+    Notes
+    -----
+    - Uses a **penalty value** to enforce the constraint.
+    - Constraints are **hardcoded** to apply to the **first 6 DOFs**.
+    - Suitable for **static** and **modal** analyses.
     """
-    logger.info(f"Applying boundary conditions for {analysis_type} analysis.")
 
-    K_mod = K_global.copy()
-    F_mod = F_global.copy()
+    logger.info("Applying fixed [1 1 1 1 1 1] boundary condition.")
 
-    large_penalty = 1e12  # Large stiffness to enforce constraints
+    # Define large penalty value
+    large_penalty = 1e12  
 
-    for dof in constrained_dofs:
-        # Apply penalty method for static analysis
-        K_mod[dof, :] = 0
-        K_mod[:, dof] = 0
-        K_mod[dof, dof] = large_penalty
-        F_mod[dof, 0] = 0  # Zero displacement for static constraints
+    # Apply constraints to first 6 DOFs
+    for dof in range(6):  
+        K_global[dof, :] = 0
+        K_global[:, dof] = 0
+        K_global[dof, dof] = large_penalty
+        F_global[dof, 0] = 0  # Enforce zero displacement
 
-        # Commented out mass and damping modifications for future dynamic/modal tools
-        # if M_mod is not None:
-        #     M_mod[dof, :] = 0
-        #     M_mod[:, dof] = 0
-        #     M_mod[dof, dof] = 1  # Ensures stability of eigenvalue solutions
+    logger.info("Fixed boundary conditions applied.")
 
-        # if C_mod is not None:
-        #     C_mod[dof, :] = 0
-        #     C_mod[:, dof] = 0
-
-    logger.info(f"Boundary conditions applied for {analysis_type} analysis.")
     return {
-        "K_mod": K_mod,
-        # "M_mod": M_mod,
-        # "C_mod": C_mod,
-        "F_mod": F_mod,
+        "K_mod": K_global,
+        "F_mod": F_global,
     }

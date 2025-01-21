@@ -1,44 +1,24 @@
-2025-01-21 14:33:08,975 - pytest_parsing - INFO - Testing parser: parse_geometry with file: C:\Users\s1834431\Code\fem_model\jobs\base\geometry.txt
-2025-01-21 14:33:08,976 - pytest_parsing - INFO - 
+2025-01-21 20:56:26,767 - pytest_parsing - INFO - Testing parser: parse_geometry with file: C:\Users\s1834431\Code\fem_model\jobs\base\geometry.txt
+2025-01-21 20:56:26,768 - pytest_parsing - INFO - 
 --- parse_geometry Output ---
-{'A': 0.05,
- 'Ix': 0.00013,
- 'Iy': 0.00024,
- 'Iz': 0.00035,
- 'J': 5.1e-05,
- 'L': 8.0,
- 'Sx': 0.15,
- 'Sy': 0.25,
- 'Sz': 0.35,
- 'centroid_x': 0.1,
- 'centroid_y': 0.2,
- 'centroid_z': 0.0,
- 'rx': 0.05,
- 'ry': 0.07,
- 'rz': 0.09,
- 'torsional_constant': 4.1e-05}
-2025-01-21 14:33:08,979 - pytest_parsing - INFO - Testing parser: parse_material with file: C:\Users\s1834431\Code\fem_model\jobs\base\material.txt
-2025-01-21 14:33:08,979 - pytest_parsing - INFO - 
+array([[8.0e+00, 5.0e-02, 1.3e-04, 2.4e-04, 3.5e-04, 5.1e-05, 4.1e-05,
+        2.2e-06, 1.0e-01, 2.0e-01, 0.0e+00, 1.5e-01, 2.5e-01, 3.5e-01,
+        5.0e-02, 7.0e-02, 9.0e-02, 1.2e-01, 1.8e-01, 0.0e+00]])
+2025-01-21 20:56:26,771 - pytest_parsing - INFO - Testing parser: parse_material with file: C:\Users\s1834431\Code\fem_model\jobs\base\material.txt
+2025-01-21 20:56:26,771 - pytest_parsing - INFO - 
 --- parse_material Output ---
-{'E': 200000000000.0, 'G': 76923000000.0, 'nu': 0.3, 'rho': 7850.0}
-2025-01-21 14:33:08,981 - pytest_parsing - INFO - Testing parser: parse_solver with file: C:\Users\s1834431\Code\fem_model\jobs\base\solver.txt
-2025-01-21 14:33:08,984 - pytest_parsing - INFO - 
+array([[2.0000e+11, 7.6923e+10, 3.0000e-01, 7.8500e+03]])
+2025-01-21 20:56:26,774 - pytest_parsing - INFO - Testing parser: parse_solver with file: C:\Users\s1834431\Code\fem_model\jobs\base\solver.txt
+2025-01-21 20:56:26,775 - pytest_parsing - INFO - 
 --- parse_solver Output ---
 {'Dynamic': 'Off', 'Modal': 'Off', 'Static': 'Direct Solver (Dense)'}
-2025-01-21 14:33:08,987 - pytest_parsing - INFO - Testing parser: parse_boundary_conditions with file: C:\Users\s1834431\Code\fem_model\jobs\base\geometry.txt
-2025-01-21 14:33:08,987 - pytest_parsing - INFO - 
---- parse_boundary_conditions Output ---
-array([[1, 1, 1, 1, 1, 1]])
-2025-01-21 14:33:08,990 - pytest_parsing - INFO - Testing parser: parse_load with file: C:\Users\s1834431\Code\fem_model\jobs\job_0001\load.txt
-2025-01-21 14:33:08,991 - pytest_parsing - INFO - 
+2025-01-21 20:56:26,778 - pytest_parsing - INFO - Testing parser: parse_load with file: C:\Users\s1834431\Code\fem_model\jobs\job_0001\load.txt
+2025-01-21 20:56:26,779 - pytest_parsing - INFO - 
 --- parse_load Output ---
-array([[   0., 1000.,    0.,    0.,    0.,    0.],
-       [   0., 1000.,    0.,    0., 7000.,    0.],
-       [   0., 1000.,    0.,    0.,    0.,    0.],
-       [   0., 1000.,    0.,    0.,    0.,    0.],
-       [2000., 1000.,    0.,    0.,    0.,    0.]])
-2025-01-21 14:33:08,994 - pytest_parsing - INFO - Testing parser: parse_mesh with file: C:\Users\s1834431\Code\fem_model\jobs\job_0001\mesh.txt
-2025-01-21 14:33:08,998 - pytest_parsing - INFO - 
+array([[    0.,     0.,     0.,     0., -1000.,     0.,     0.,     0.,
+            0.]])
+2025-01-21 20:56:26,782 - pytest_parsing - INFO - Testing parser: parse_mesh with file: C:\Users\s1834431\Code\fem_model\jobs\job_0001\mesh.txt
+2025-01-21 20:56:26,787 - pytest_parsing - INFO - 
 --- parse_mesh Output ---
 {'connectivity': [(1, 2),
                   (2, 3),
@@ -443,76 +423,37 @@ array([[   0., 1000.,    0.,    0.,    0.,    0.],
        [7.987430e+00, 0.000000e+00, 0.000000e+00],
        [7.995164e+00, 0.000000e+00, 0.000000e+00],
        [7.999033e+00, 0.000000e+00, 0.000000e+00]])}
-2025-01-21 14:33:09,015 - pytest_parsing - INFO - Comparing parse_geometry with ParserBase for C:\Users\s1834431\Code\fem_model\jobs\base\geometry.txt
-2025-01-21 14:33:09,017 - pytest_parsing - INFO - 
+2025-01-21 20:56:26,807 - pytest_parsing - INFO - Comparing parse_geometry with ParserBase for C:\Users\s1834431\Code\fem_model\jobs\base\geometry.txt
+2025-01-21 20:56:26,809 - pytest_parsing - INFO - 
 --- ParserBase geometry Output ---
-{'A': 0.05,
- 'Ix': 0.00013,
- 'Iy': 0.00024,
- 'Iz': 0.00035,
- 'J': 5.1e-05,
- 'L': 8.0,
- 'Sx': 0.15,
- 'Sy': 0.25,
- 'Sz': 0.35,
- 'centroid_x': 0.1,
- 'centroid_y': 0.2,
- 'centroid_z': 0.0,
- 'rx': 0.05,
- 'ry': 0.07,
- 'rz': 0.09,
- 'torsional_constant': 4.1e-05}
-2025-01-21 14:33:09,018 - pytest_parsing - INFO - 
+array([[8.0e+00, 5.0e-02, 1.3e-04, 2.4e-04, 3.5e-04, 5.1e-05, 4.1e-05,
+        2.2e-06, 1.0e-01, 2.0e-01, 0.0e+00, 1.5e-01, 2.5e-01, 3.5e-01,
+        5.0e-02, 7.0e-02, 9.0e-02, 1.2e-01, 1.8e-01, 0.0e+00]])
+2025-01-21 20:56:26,810 - pytest_parsing - INFO - 
 --- Direct Function geometry Output ---
-{'A': 0.05,
- 'Ix': 0.00013,
- 'Iy': 0.00024,
- 'Iz': 0.00035,
- 'J': 5.1e-05,
- 'L': 8.0,
- 'Sx': 0.15,
- 'Sy': 0.25,
- 'Sz': 0.35,
- 'centroid_x': 0.1,
- 'centroid_y': 0.2,
- 'centroid_z': 0.0,
- 'rx': 0.05,
- 'ry': 0.07,
- 'rz': 0.09,
- 'torsional_constant': 4.1e-05}
-2025-01-21 14:33:09,021 - pytest_parsing - INFO - Comparing parse_material with ParserBase for C:\Users\s1834431\Code\fem_model\jobs\base\material.txt
-2025-01-21 14:33:09,022 - pytest_parsing - INFO - 
+array([[8.0e+00, 5.0e-02, 1.3e-04, 2.4e-04, 3.5e-04, 5.1e-05, 4.1e-05,
+        2.2e-06, 1.0e-01, 2.0e-01, 0.0e+00, 1.5e-01, 2.5e-01, 3.5e-01,
+        5.0e-02, 7.0e-02, 9.0e-02, 1.2e-01, 1.8e-01, 0.0e+00]])
+2025-01-21 20:56:26,815 - pytest_parsing - INFO - Comparing parse_material with ParserBase for C:\Users\s1834431\Code\fem_model\jobs\base\material.txt
+2025-01-21 20:56:26,816 - pytest_parsing - INFO - 
 --- ParserBase material Output ---
-{'E': 200000000000.0, 'G': 76923000000.0, 'nu': 0.3, 'rho': 7850.0}
-2025-01-21 14:33:09,022 - pytest_parsing - INFO - 
+array([[2.0000e+11, 7.6923e+10, 3.0000e-01, 7.8500e+03]])
+2025-01-21 20:56:26,817 - pytest_parsing - INFO - 
 --- Direct Function material Output ---
-{'E': 200000000000.0, 'G': 76923000000.0, 'nu': 0.3, 'rho': 7850.0}
-2025-01-21 14:33:09,024 - pytest_parsing - INFO - Comparing parse_solver with ParserBase for C:\Users\s1834431\Code\fem_model\jobs\base\solver.txt
-2025-01-21 14:33:09,026 - pytest_parsing - INFO - 
+array([[2.0000e+11, 7.6923e+10, 3.0000e-01, 7.8500e+03]])
+2025-01-21 20:56:26,820 - pytest_parsing - INFO - Comparing parse_solver with ParserBase for C:\Users\s1834431\Code\fem_model\jobs\base\solver.txt
+2025-01-21 20:56:26,822 - pytest_parsing - INFO - 
 --- ParserBase solver Output ---
 {'Dynamic': 'Off', 'Modal': 'Off', 'Static': 'Direct Solver (Dense)'}
-2025-01-21 14:33:09,026 - pytest_parsing - INFO - 
+2025-01-21 20:56:26,822 - pytest_parsing - INFO - 
 --- Direct Function solver Output ---
 {'Dynamic': 'Off', 'Modal': 'Off', 'Static': 'Direct Solver (Dense)'}
-2025-01-21 14:33:09,028 - pytest_parsing - INFO - Comparing parse_load with ParserBase for C:\Users\s1834431\Code\fem_model\jobs\job_0001\load.txt
-2025-01-21 14:33:09,030 - pytest_parsing - INFO - 
+2025-01-21 20:56:26,827 - pytest_parsing - INFO - Comparing parse_load with ParserBase for C:\Users\s1834431\Code\fem_model\jobs\job_0001\load.txt
+2025-01-21 20:56:26,829 - pytest_parsing - INFO - 
 --- ParserBase load Output ---
-array([[   0., 1000.,    0.,    0.,    0.,    0.],
-       [   0., 1000.,    0.,    0., 7000.,    0.],
-       [   0., 1000.,    0.,    0.,    0.,    0.],
-       [   0., 1000.,    0.,    0.,    0.,    0.],
-       [2000., 1000.,    0.,    0.,    0.,    0.]])
-2025-01-21 14:33:09,030 - pytest_parsing - INFO - 
+array([[    0.,     0.,     0.,     0., -1000.,     0.,     0.,     0.,
+            0.]])
+2025-01-21 20:56:26,829 - pytest_parsing - INFO - 
 --- Direct Function load Output ---
-array([[   0., 1000.,    0.,    0.,    0.,    0.],
-       [   0., 1000.,    0.,    0., 7000.,    0.],
-       [   0., 1000.,    0.,    0.,    0.,    0.],
-       [   0., 1000.,    0.,    0.,    0.,    0.],
-       [2000., 1000.,    0.,    0.,    0.,    0.]])
-2025-01-21 14:33:09,033 - pytest_parsing - INFO - Comparing parse_boundary_conditions with ParserBase for C:\Users\s1834431\Code\fem_model\jobs\base\geometry.txt
-2025-01-21 14:33:09,034 - pytest_parsing - INFO - 
---- ParserBase boundary_conditions Output ---
-array([[1, 1, 1, 1, 1, 1]])
-2025-01-21 14:33:09,035 - pytest_parsing - INFO - 
---- Direct Function boundary_conditions Output ---
-array([[1, 1, 1, 1, 1, 1]])
+array([[    0.,     0.,     0.,     0., -1000.,     0.,     0.,     0.,
+            0.]])

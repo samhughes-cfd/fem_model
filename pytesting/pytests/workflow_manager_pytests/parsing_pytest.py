@@ -1,10 +1,10 @@
-# workflow_manager\pytesting\pytests\pytest_parsing.py
+# pytesting\pytests\workflow_manager\parsing_pytest.py
 
 """
 Centralized Tests for FEM Input Parsers using `pytest`.
 
 Run these tests from the **project root directory**:
-    python -m pytest workflow_manager/pytesting/pytests/pytest_parsing.py -v --log-cli-level=INFO
+    python -m pytest pytesting/pytests/workflow_manager/parsing_pytest.py -v --log-cli-level=INFO
 
 All logs will be stored in `workflow_manager/pytesting/logs/pytest_parsing.log`.
 """
