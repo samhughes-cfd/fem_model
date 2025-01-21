@@ -8,8 +8,8 @@ from datetime import datetime
 # Beam length
 L = 8.0
 
-# Given x-coordinates normalized by 0.8 and scaled by beam length L
-x_coords = ((np.array([
+# From hub-centre to blade tip R = 0.8 m, however, R_hub = 0.1 m, therefore L_blade = R - R_hub
+x_coords = np.array([
     0.100084651, 0.100423171, 0.101099885, 0.102114136, 0.103464945, 0.105151005, 0.107170683, 0.109522027,
     0.112202761, 0.115210292, 0.11854171, 0.122193793, 0.126163007, 0.130445513, 0.135037167, 0.139933527,
     0.145129857, 0.150621128, 0.15640203, 0.162466968, 0.168810076, 0.175425217, 0.182305992, 0.189445743,
@@ -23,13 +23,15 @@ x_coords = ((np.array([
     0.737533032, 0.74359797, 0.749378872, 0.754870143, 0.760066473, 0.764962833, 0.769554487, 0.773836993,
     0.777806207, 0.78145829, 0.784789708, 0.787797239, 0.790477973, 0.792829317, 0.794848995, 0.796535055,
     0.797885864, 0.798900115, 0.799576829, 0.799915349
-]) - 0.1 ) / 0.7 ) * L
+])
+
+scaled_x_coords = ( ( x_coords - 0.1 ) / 0.7 ) * L
 
 def generate_mesh():
     """
     Generate mesh using given x-coordinates.
     """
-    node_positions = x_coords
+    node_positions = scaled_x_coords
     elements = [(idx + 1, idx + 2) for idx in range(len(node_positions) - 1)]
     return node_positions, elements
 

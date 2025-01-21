@@ -1,0 +1,25 @@
+2025-01-21 17:40:39,531 - INFO - Load data read from 'pre_processing/load_library/data/tidal_benchmark/Force_distribution_TSR4.dat' with 88 entries.
+2025-01-21 17:40:39,537 - INFO - Load profile file saved to 'pre_processing/load_library/load_profiles/tidal_benchmark\load_profile_e987e90fd1274bf2a8c4cd1e0205fbbb.txt'.
+2025-01-21 17:40:39,537 - INFO - Load generation completed successfully.
+2025-01-21 17:55:46,666 - INFO - Load data read from 'pre_processing/load_library/data/tidal_benchmark/Force_distribution_TSR4.dat' with 88 entries.
+2025-01-21 17:55:46,670 - ERROR - An error occurred during load generation: '[Fy]'
+2025-01-21 18:11:05,619 - INFO - Starting load profile generation process.
+2025-01-21 18:11:05,622 - INFO - Successfully read load data from 'pre_processing/load_library/data/tidal_benchmark/Force_distribution_TSR4.dat'.
+2025-01-21 18:11:05,622 - INFO - Load data contains 88 entries.
+2025-01-21 18:11:05,623 - INFO - Position denormalization completed.
+2025-01-21 18:11:05,623 - INFO - Load components denormalization completed.
+2025-01-21 18:11:05,624 - INFO - Shifting all x positions by 0.100080 meters.
+2025-01-21 18:11:05,624 - INFO - Load profile shifting completed.
+2025-01-21 18:11:05,625 - INFO - Load components mapping completed.
+2025-01-21 18:11:05,634 - INFO - Load profile file successfully saved to 'pre_processing/load_library/load_profiles/tidal_benchmark\load_profile_6a8bf10fc57d4404a5fb0f460863a2c3.txt'.
+2025-01-21 18:11:05,634 - INFO - Load generation process completed successfully.
+2025-01-21 18:11:21,027 - INFO - Starting load profile generation process.
+2025-01-21 18:11:21,029 - INFO - Successfully read load data from 'pre_processing/load_library/data/tidal_benchmark/Force_distribution_TSR4.dat'.
+2025-01-21 18:11:21,029 - INFO - Load data contains 88 entries.
+2025-01-21 18:11:21,030 - INFO - Position denormalization completed.
+2025-01-21 18:11:21,031 - INFO - Load components denormalization completed.
+2025-01-21 18:11:21,031 - INFO - Shifting all x positions by 0.100080 meters.
+2025-01-21 18:11:21,032 - INFO - Load profile shifting completed.
+2025-01-21 18:11:21,032 - INFO - Load components mapping completed.
+2025-01-21 18:11:21,040 - INFO - Load profile file successfully saved to 'pre_processing/load_library/load_profiles/tidal_benchmark\load_profile_30a642ca958840d9955a0c6c8bd4879a.txt'.
+2025-01-21 18:11:21,040 - INFO - Load generation process completed successfully.
