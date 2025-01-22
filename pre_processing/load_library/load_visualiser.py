@@ -55,6 +55,12 @@ def plot_load_profiles():
         axes[i, 1].set_title(moment_titles[i])
         axes[i, 1].set_ylabel(y_labels[i + 3])
         
+        # Add TSR definition in the upper left corner of each subplot
+        axes[i, 0].text(0.05, 0.95, r"$TSR = \Omega R (U_\infty)^{-1}$", transform=axes[i, 0].transAxes, fontsize=10, verticalalignment='top')
+        axes[i, 1].text(0.05, 0.95, r"$TSR = \Omega R (U_\infty)^{-1}$", transform=axes[i, 1].transAxes, fontsize=10, verticalalignment='top')
+        
+        # , \lambda 
+
         labelLines(axes[i, 0].get_lines(), zorder=2.5)
         labelLines(axes[i, 1].get_lines(), zorder=2.5)
     
