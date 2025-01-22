@@ -5,9 +5,9 @@
 
 [section_geometry]
 [A]                                0.05                 # Cross-sectional area (m^2)
-[Ix]                               1.3e-4               # Moment of inertia about x-axis (m^4)
-[Iy]                               2.4e-4               # Moment of inertia about y-axis (m^4)
-[Iz]                               3.5e-4               # Moment of inertia about z-axis (m^4)
+[I_x]                              1.3e-4               # Moment of inertia about x-axis (m^4)
+[I_y]                              2.4e-4               # Moment of inertia about y-axis (m^4)
+[I_z]                              3.5e-4               # Moment of inertia about z-axis (m^4)
 [J]                                5.1e-5               # Polar moment of inertia (m^4)
 [J_t]                              4.1e-5               # Torsional constant (m^4)
 [I_w]                              2.2e-6               # Warping moment of inertia (m^6)

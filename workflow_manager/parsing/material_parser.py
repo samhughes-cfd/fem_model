@@ -2,12 +2,13 @@
 
 import numpy as np
 import logging
+import re
+
+logging.basicConfig(level=logging.WARNING)
 
 def parse_material(file_path):
     """
-    Parses material properties from a structured text file and returns them as a (1,4) NumPy array.
-
-    The function reads material properties from a file, extracting values corresponding to the following indices:
+    Parses material properties from a structured text file and returns them as a NumPy array.
 
     =============================
     Material Properties Mapping
@@ -18,9 +19,10 @@ def parse_material(file_path):
     0       Young’s Modulus                     [E]        [Pa]     
     1       Shear Modulus                       [G]        [Pa]     
     2       Poisson’s Ratio                     [nu]       [-]      
-    3       Density                             [rho]      [kg/m^3]  
+    3       Density                             [rho]      [kg/m³]  
 
-    Only values within the `[Material]` section are processed. The function ignores empty lines and comments (`#`).
+    Only values within the `[Material]` section are processed. The function skips empty lines 
+    and comments (`#`) while parsing. Missing values are replaced with `NaN`.
 
     Parameters
     ----------
@@ -30,59 +32,74 @@ def parse_material(file_path):
     Returns
     -------
     numpy.ndarray
-        A NumPy array of shape `(1,4)`, containing the parsed material properties `[E, G, nu, rho]`.
-        If any property is missing in the input file, its corresponding index is set to `NaN`.
+        A NumPy array of shape `(1, 4)`, containing material properties `[E, G, nu, rho]`. 
+        Missing properties are set to `NaN`.
 
     Raises
     ------
     ValueError
-        If a material property cannot be converted to a float.
+        If a property cannot be converted to a float.
 
     Warnings
     --------
     Logs a warning if an invalid material property is encountered.
 
-    The function can be called as follows:
+    Data Fetching
+    -------------
+    The returned `material_array` supports standard NumPy indexing techniques:
 
+    Technique           Command                   Description
+    -----------------------------------------------------------------
+    Basic Indexing      `material_array[0, 0]`    Fetches Young’s Modulus [E]
+    Slicing             `material_array[0, :3]`   Fetches `[E, G, nu]`
+    Fancy Indexing      `material_array[0, [1,3]]`Fetches `[G, rho]`
+
+    Example
+    -------
     >>> material_data = parse_material("materials.txt")
+    >>> print(material_data)
+    array([[2.1e11, 8.0e10, 0.3, 7850.0]])
 
     Notes
     -----
-    - The function assumes material properties are formatted as `[Key] Value`, with keys enclosed in square brackets.
-    - If a material property is missing, `NaN` is assigned at the corresponding index.
-    - Inline comments (after `#`) are ignored.
+    - Properties must be in `[Key] Value` format with keys enclosed in square brackets.
+    - If a property is missing, its index will contain `NaN`.
+    - Inline comments (text following `#`) are ignored.
     """
 
-    material_values = [np.nan, np.nan, np.nan, np.nan]  # Placeholder for [E, G, nu, rho]
+    # Initialize material array with NaN
+    material_array = np.full((1, 4), np.nan)
+
+    # Define material properties mapping
     material_keys = ["E", "G", "nu", "rho"]
+    material_map = {key: idx for idx, key in enumerate(material_keys)}
+
     current_section = None
+    key_pattern = re.compile(r"\[(.*?)\]\s*(.*)")  # Match `[Key] Value` format
 
     with open(file_path, 'r') as f:
         for line_number, raw_line in enumerate(f, 1):
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue  # Skip empty lines and comments
+            line = raw_line.split("#")[0].strip()  # Remove inline comments
 
-            # Detect the [Material] section
-            if line.lower().startswith("[material]"):
+            if not line:
+                continue  # Skip empty lines
+
+            if line.lower() == "[material]":
                 current_section = "material"
                 continue
 
             if current_section != "material":
                 continue  # Ignore all other sections
 
-            # Expect key-value pairs in bracketed format
-            if line.startswith("[") and "]" in line:
-                try:
-                    key = line[1:line.index("]")].strip()  # Extract key inside brackets
-                    remainder = line[line.index("]") + 1:].strip().split("#")[0].strip()  # Strip inline comments
-                    value = float(remainder)  # Convert value to float
-                    
-                    if key in material_keys:
-                        idx = material_keys.index(key)
-                        material_values[idx] = value  # Assign to correct index
-                except ValueError:
-                    logging.warning(f"Line {line_number}: Invalid material property: '{raw_line}'")
-                    continue
+            match = key_pattern.match(line)
+            if match:
+                key, value = match.groups()
+                key = key.strip()
 
-    return np.array([material_values], dtype=float)  # Return (1,4) array
+                if key in material_map:
+                    try:
+                        material_array[0, material_map[key]] = float(value.strip())
+                    except ValueError:
+                        logging.warning(f"Invalid float value for {key} at line {line_number}: {value.strip()}")
+
+    return material_array

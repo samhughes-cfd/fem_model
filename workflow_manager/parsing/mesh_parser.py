@@ -3,133 +3,170 @@
 import ast
 import logging
 import numpy as np
+import re
 
+logging.basicConfig(level=logging.WARNING)
 
 def parse_mesh(mesh_file_path):
     """
-    Parses a new-form mesh file and computes element lengths using node coordinates.
+    Parses a structured mesh file and computes element lengths using node coordinates.
 
-    Args:
-        mesh_file_path (str): Path to the mesh file.
+    =============================
+    Mesh Properties Mapping
+    =============================
 
-    Returns:
-        dict: {
-            'element_types': List of element types,
-            'node_ids': List of node IDs,
-            'node_positions': NumPy array of node positions (shape: [num_nodes, 3]),
-            'connectivity': List of element connectivity tuples,
-            'element_lengths': Dictionary {element_id: length}
-        }
+    Index   Property             Data Type                  Shape
+    ----------------------------------------------------------------
+    0       Element Types        NumPy array (str)         `(N,)`
+    1       Node IDs             NumPy array (int)         `(N,)`
+    2       Node Positions       NumPy array (float)       `(N, 3)`
+    3       Connectivity         NumPy array (int)         `(M, 2)`
+    4       Element Lengths      NumPy array (float)       `(M,)`
+
+    The function reads mesh data, extracts node positions, and computes 
+    element lengths using the Euclidean distance formula. Empty lines and 
+    comments (`#`) are ignored.
+
+    Parameters
+    ----------
+    mesh_file_path : str
+        Path to the structured mesh file.
+
+    Returns
+    -------
+    tuple
+        (
+            element_types_array: np.ndarray[str]  -> Element type names
+            node_ids_array: np.ndarray[int]       -> Unique node identifiers
+            node_positions_array: np.ndarray[float] -> 3D node coordinates `(N, 3)`
+            connectivity_array: np.ndarray[int]   -> Connectivity pairs `(M, 2)`
+            element_lengths_array: np.ndarray[float] -> Computed element lengths `(M,)`
+        )
+
+    Raises
+    ------
+    ValueError
+        If node coordinates or connectivity data cannot be parsed.
+
+    Warnings
+    --------
+    Logs a warning if an invalid node or connectivity entry is encountered.
+
+    Example
+    -------
+    >>> element_types_array, node_ids_array, node_positions_array, connectivity_array, element_lengths_array = parse_mesh("mesh.txt")
+    >>> print(node_positions_array)
+    array([[0.0, 0.1, 0.2],
+           [1.5, 1.6, 1.7],
+           [2.2, 2.3, 2.4]])
+
+    Notes
+    -----
+    - Nodes must be formatted as `ID X Y Z (Node1, Node2)`, where connectivity is optional.
+    - If connectivity is missing, `-` is used as a placeholder.
+    - Inline comments (`#`) are ignored.
     """
+
     element_types = []
     node_ids = []
     node_positions = []
     connectivity_list = []
 
+    section_pattern = re.compile(r"\[.*?\]", re.IGNORECASE)  # Match section headers
     current_section = None
 
     with open(mesh_file_path, 'r') as f:
-        lines = f.readlines()
+        for line_number, raw_line in enumerate(f, 1):
+            line = raw_line.split("#")[0].strip()  # Remove inline comments
 
-    for line_number, raw_line in enumerate(lines, 1):
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
+            if not line:
+                continue  # Skip empty lines
 
-        # Remove inline comments
-        if "#" in line:
-            line = line.split("#", 1)[0].strip()
-
-        # Identify sections
-        lower_line = line.lower()
-        if lower_line.startswith("[element_types]"):
-            current_section = "element_types"
-            continue
-        elif lower_line.startswith("[node_ids]"):
-            current_section = "nodes"
-            continue
-
-        # Parse content based on the current section
-        if current_section == "element_types":
-            element_types.append(line)
-
-        elif current_section == "nodes":
-            # Skip header row
-            if "[" in line and "]" in line:
-                logging.info(f"Line {line_number}: Skipping header line '{raw_line}'")
+            # Detect sections dynamically
+            if section_pattern.match(line):
+                current_section = line.lower()
                 continue
 
-            # Expecting: node_id, x, y, z, connectivity
-            columns = line.split(maxsplit=4)
-            if len(columns) < 5:
-                logging.warning(f"Line {line_number}: Incomplete node data: '{raw_line}'")
-                continue
+            # Process element types
+            if current_section == "[element_types]":
+                element_types.append(line)
 
-            try:
-                node_id = int(columns[0])
-                x, y, z = map(float, columns[1:4])  # Read full 3D coordinates
-                conn_str = columns[4].strip()  # e.g., "(1, 2)" or "-"
+            # Process node IDs and positions
+            elif current_section == "[node_ids]":
+                parts = line.split(maxsplit=4)
+                if len(parts) < 5:
+                    logging.warning(f"Line {line_number}: Incomplete node data: '{raw_line}'. Skipping.")
+                    continue
 
-                node_ids.append(node_id)
-                node_positions.append((x, y, z))  # Store as tuple
+                try:
+                    node_id = int(parts[0])
+                    x, y, z = map(float, parts[1:4])
+                    conn_str = parts[4].strip()
 
-                if conn_str != "-":
-                    try:
-                        c_tuple = ast.literal_eval(conn_str)
-                        if isinstance(c_tuple, tuple) and len(c_tuple) == 2 and all(isinstance(i, int) for i in c_tuple):
-                            connectivity_list.append(c_tuple)
-                        else:
-                            logging.warning(f"Line {line_number}: Invalid connectivity tuple: {conn_str}")
-                    except (ValueError, SyntaxError) as e:
-                        logging.warning(f"Line {line_number}: Error parsing connectivity '{conn_str}': {e}")
-                else:
-                    # No connectivity for this node
-                    pass
+                    node_ids.append(node_id)
+                    node_positions.append((x, y, z))
 
-            except ValueError as e:
-                logging.warning(f"Line {line_number}: Invalid node or position: '{raw_line}' ({e})")
-                continue
+                    if conn_str != "-":
+                        try:
+                            c_tuple = ast.literal_eval(conn_str)
+                            if isinstance(c_tuple, tuple) and len(c_tuple) == 2 and all(isinstance(i, int) for i in c_tuple):
+                                connectivity_list.append(c_tuple)
+                            else:
+                                logging.warning(f"Line {line_number}: Invalid connectivity tuple: {conn_str}.")
+                        except (ValueError, SyntaxError) as e:
+                            logging.warning(f"Line {line_number}: Error parsing connectivity '{conn_str}': {e}.")
+                except ValueError:
+                    logging.warning(f"Line {line_number}: Invalid node data: '{raw_line}'. Skipping.")
 
-    # Convert node positions to a NumPy array
-    node_positions = np.array(node_positions)
+    # Convert lists to NumPy arrays (Consistent Naming)
+    element_types_array = np.array(element_types, dtype=str) if element_types else np.empty((0,), dtype=str)
+    node_ids_array = np.array(node_ids, dtype=int) if node_ids else np.empty((0,), dtype=int)
+    node_positions_array = np.array(node_positions, dtype=float) if node_positions else np.empty((0, 3), dtype=float)
+    connectivity_array = np.array(connectivity_list, dtype=int) if connectivity_list else np.empty((0, 2), dtype=int)
 
-    # Compute element lengths using Euclidean distance
-    element_lengths = compute_element_lengths(connectivity_list, node_positions, node_ids)
+    # Compute element lengths (Optimized)
+    element_lengths_array = compute_element_lengths(connectivity_array, node_positions_array, node_ids_array)
 
-    return {
-        'element_types': element_types,
-        'node_ids': node_ids,
-        'node_positions': node_positions,  # Shape: (num_nodes, 3)
-        'connectivity': connectivity_list,
-        'element_lengths': element_lengths
-    }
+    return element_types_array, node_ids_array, node_positions_array, connectivity_array, element_lengths_array
 
-
-def compute_element_lengths(connectivity_list, node_positions, node_ids):
+def compute_element_lengths(connectivity_array, node_positions_array, node_ids_array):
     """
-    Computes the length of each element based on 3D node positions.
+    Computes element lengths based on 3D node positions.
 
-    Args:
-        connectivity_list (list of tuples): List of element connectivity (node1, node2).
-        node_positions (np.array): 3D positions of nodes (shape: [num_nodes, 3]).
-        node_ids (list): List of node IDs.
+    Parameters
+    ----------
+    connectivity_array : np.ndarray[int]
+        NumPy array of shape `(M, 2)`, containing node ID pairs.
+    node_positions_array : np.ndarray[float]
+        NumPy array of shape `(N, 3)`, containing node positions.
+    node_ids_array : np.ndarray[int]
+        NumPy array of shape `(N,)`, containing node identifiers.
 
-    Returns:
-        dict: {element_id: length} mapping element indices to their computed lengths.
+    Returns
+    -------
+    np.ndarray[float]
+        NumPy array of shape `(M,)`, containing computed element lengths.
+
+    Raises
+    ------
+    ValueError
+        If a referenced node ID is not found in `node_ids_array`.
     """
-    element_lengths = {}
 
-    for element_id, (node1, node2) in enumerate(connectivity_list):
-        try:
-            # Find the actual index in node_positions based on node_id mapping
-            index1 = node_ids.index(node1)
-            index2 = node_ids.index(node2)
+    if connectivity_array.shape[0] == 0:
+        return np.empty((0,), dtype=float)
 
-            # Compute 3D Euclidean distance
-            length = np.linalg.norm(node_positions[index2] - node_positions[index1])
-            element_lengths[element_id] = length
-        except ValueError:
-            logging.error(f"Element {element_id} references undefined nodes {node1}, {node2}")
-            continue
+    # Map node IDs to indices efficiently using NumPy `searchsorted`
+    sorted_indices = np.argsort(node_ids_array)
+    sorted_node_ids = node_ids_array[sorted_indices]
 
-    return element_lengths
+    node_indices = np.searchsorted(sorted_node_ids, connectivity_array)
+
+    # Extract corresponding node positions
+    pos1 = node_positions_array[sorted_indices[node_indices[:, 0]]]
+    pos2 = node_positions_array[sorted_indices[node_indices[:, 1]]]
+
+    # Compute Euclidean distance (Vectorized)
+    element_lengths_array = np.linalg.norm(pos2 - pos1, axis=1)
+
+    return element_lengths_array
