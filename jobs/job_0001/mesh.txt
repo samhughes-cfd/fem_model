@@ -1,6 +1,7 @@
 [element_types]
 EulerBernoulliBeamElement
 
+[mesh]
 [node_ids]   [x]          [y]        [z]        [connectivity]
 1            0.000967     0.0        0.0        (1, 2)
 2            0.004836     0.0        0.0        (2, 3)

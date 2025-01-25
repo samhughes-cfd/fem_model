@@ -1,4 +1,4 @@
-# pre_processing/pytesting/pytests/pytest_element_parent_class.py
+# pytesting/pytests/pytest_element_parent_class.py
 
 """
 Centralized Tests for the FEM Parent Element Class (`Element1DBase`) using `pytest`.
@@ -31,10 +31,10 @@ logger.info("🔥 LOGGING STARTED: Logs will be written to %s", LOG_FILE)
 
 # === Import Parsers & Element Base(s) ===
 from pre_processing.element_library.element_1D_base import Element1DBase
-from workflow_manager.parsing.material_parser import parse_material
-from workflow_manager.parsing.geometry_parser import parse_geometry
-from workflow_manager.parsing.mesh_parser import parse_mesh
-from workflow_manager.parsing.load_parser import parse_load
+from pre_processing.parsing.material_parser import parse_material
+from pre_processing.parsing.geometry_parser import parse_geometry
+from pre_processing.parsing.mesh_parser import parse_mesh
+from pre_processing.parsing.load_parser import parse_load
 
 # === Load Parsed Data from Files ===
 @pytest.fixture(scope="module")

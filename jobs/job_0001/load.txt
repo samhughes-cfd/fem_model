@@ -1,4 +1,5 @@
 # jobs\job_0001\load.txt
 
+[loads]
 [x]         [y]         [z]         [F_x]       [F_y]       [F_z]       [M_x]       [M_y]       [M_z]
 0           0           0           0           -1000       0           0           0           0

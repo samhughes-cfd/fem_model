@@ -14,7 +14,7 @@ if fem_model_root not in sys.path:
     sys.path.insert(0, fem_model_root)
 
 # Import parsers, solvers, and elements
-from workflow_manager.parsing.parser_base import ParserBase
+from pre_processing.parsing.base_parser import ParserBase
 from processing.solver_registry import get_solver_registry
 from simulation_runner.static_simulation import StaticSimulationRunner
 from pre_processing.element_library.euler_bernoulli import EulerBernoulliBeamElement
