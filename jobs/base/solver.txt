@@ -3,5 +3,5 @@
 [Solver]
 [solver_type]       [solver_name]
 Static              direct_solver_dense
-Dynamic             conjugate_gradient_solver
-Modal               direct_solver_sparse
+Dynamic             #conjugate_gradient_solver
+Modal               #direct_solver_sparse

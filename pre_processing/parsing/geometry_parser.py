@@ -5,7 +5,10 @@ import logging
 import re
 import os
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
+#logging.basicConfig(level=logging.INFO)
+#logging.basicConfig(level=logging.DEBUG)
+
 
 def parse_geometry(file_path):
     """
@@ -148,6 +151,6 @@ if __name__ == "__main__":
     else:
         try:
             output = parse_geometry(test_file)
-            print("\n Parsed Geometry Data:\n", output)
+            print("\n-------------Parsed Geometry Data-------------\n", output)
         except Exception as e:
             logging.error(f"Error parsing geometry file: {e}")

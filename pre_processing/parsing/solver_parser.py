@@ -156,16 +156,14 @@ def parse_solver(file_path):
 # Standalone execution for direct testing
 # ------------------------------------------------
 if __name__ == "__main__":
-    # Instead of auto-generating 'solver_config.txt',
-    # we directly parse the existing file at jobs\base\solver.txt
-    test_file = r"jobs\base\solver.txt"
+    # Directly parse the existing file at jobs\base\solver.txt
+    test_file = r"jobs\base\solver.txt"  # Use raw string for Windows paths
 
-    try:
-        solver_array = parse_solver(test_file)
-        print("\n=== Parsed Solver Data ===")
-        print(f"Static  -> {solver_array[0]}")
-        print(f"Dynamic -> {solver_array[1]}")
-        print(f"Modal   -> {solver_array[2]}")
-        print("==========================")
-    except Exception as e:
-        logging.error(f"Error parsing solver file: {e}")
+    if not os.path.exists(test_file):
+        logging.error(f"Test file '{test_file}' not found. Please ensure it exists before running.")
+    else:
+        try:
+            solver_array = parse_solver(test_file)
+            print("\n-------------Parsed Solver Data-------------\n", solver_array)
+        except Exception as e:
+            logging.error(f"Error parsing solver file: {e}")

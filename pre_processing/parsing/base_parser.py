@@ -1,4 +1,4 @@
-# workflow_manager/parsing/base_parser.py
+# pre_processing/parsing/base_parser.py
 
 import logging
 import os

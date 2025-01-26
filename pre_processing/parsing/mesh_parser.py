@@ -7,6 +7,8 @@ import re
 import os
 
 logging.basicConfig(level=logging.WARNING)
+#logging.basicConfig(level=logging.INFO)
+#logging.basicConfig(level=logging.DEBUG)
 
 def parse_mesh(mesh_file_path):
     """
@@ -267,7 +269,7 @@ def compute_element_lengths(connectivity_array, node_positions_array, node_ids_a
 
     return element_lengths_array
 
-# ✅ Standalone execution for quick testing
+# Standalone execution for quick testing
 if __name__ == "__main__":
     test_file = r"jobs\job_0001\mesh.txt"  # Change to your actual path
     if not os.path.exists(test_file):
@@ -275,11 +277,11 @@ if __name__ == "__main__":
     else:
         try:
             et, ids, pos, conn, lengths = parse_mesh(test_file)
-            print("\n📊 Parsed Mesh Data:")
-            print(f"🔹 Element Types:\n{et}")
-            print(f"🔹 Node IDs:\n{ids}")
-            print(f"🔹 Node Positions:\n{pos}")
-            print(f"🔹 Connectivity:\n{conn}")
-            print(f"🔹 Element Lengths:\n{lengths}")
+            print("\n-------------Parsed Mesh Data-------------")
+            print(f"-----Element Types-----\n{et}")
+            print(f"-----Node IDs-----\n{ids}")
+            print(f"-----Node Positions-----\n{pos}")
+            print(f"-----Connectivity-----\n{conn}")
+            print(f"-----Element Lengths-----\n{lengths}")
         except Exception as e:
             logging.error(f"Error parsing mesh file: {e}")

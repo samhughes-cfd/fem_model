@@ -6,7 +6,9 @@ import re
 import os
 
 # Set up logging for debugging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
+#logging.basicConfig(level=logging.INFO)
+#logging.basicConfig(level=logging.DEBUG)
 
 def parse_load(file_path):
     """
@@ -110,6 +112,6 @@ if __name__ == "__main__":
     else:
         try:
             output = parse_load(test_file)
-            print("\n📊 Parsed Load Data:\n", output)
+            print("\n-------------Parsed Load Data-------------\n", output)
         except Exception as e:
             logging.error(f"Error parsing load file: {e}")

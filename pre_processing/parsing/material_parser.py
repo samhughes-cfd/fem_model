@@ -5,7 +5,10 @@ import logging
 import re
 import os
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
+#logging.basicConfig(level=logging.INFO)
+#logging.basicConfig(level=logging.DEBUG)
+
 
 def parse_material(file_path):
     """
@@ -113,6 +116,6 @@ if __name__ == "__main__":
     else:
         try:
             output = parse_material(test_file)
-            print("\n📊 Parsed Material Data:\n", output)
+            print("\n-------------Parsed Material Data-------------\n", output)
         except Exception as e:
             logging.error(f"Error parsing material file: {e}")
