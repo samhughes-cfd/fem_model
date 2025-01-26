@@ -25,6 +25,7 @@ def parse_mesh(mesh_file_path):
     2       Node Positions       NumPy array (float)       `(N, 3)`
     3       Connectivity         NumPy array (int)         `(M, 2)`
     4       Element Lengths      NumPy array (float)       `(M,)`
+    5       Element IDs          NumPy array (int)         `(M,)`  # Added Property
 
     The function reads mesh data, extracts node positions, and computes 
     element lengths using the Euclidean distance formula. Empty lines and 
@@ -37,23 +38,14 @@ def parse_mesh(mesh_file_path):
 
     Returns
     -------
-    tuple
-        (
-            element_types_array: np.ndarray[str]
-                Element type names
-            
-            node_ids_array: np.ndarray[int]
-                Unique node identifiers
-            
-            node_positions_array: np.ndarray[float]
-                3D node coordinates (N, 3)
-            
-            connectivity_array: np.ndarray[int]
-                Connectivity pairs (M, 2)
-            
-            element_lengths_array: np.ndarray[float]
-                Computed element lengths (M,)
-        )
+    dict
+        Dictionary "mesh_dictionary" with the following keys:
+            - 'element_types': np.ndarray[str]
+            - 'node_ids': np.ndarray[int]
+            - 'node_coordinates': np.ndarray[float]
+            - 'connectivity': np.ndarray[int]
+            - 'element_lengths': np.ndarray[float]
+            - 'element_ids': np.ndarray[int]  # Included in Returns
 
     Raises
     ------
@@ -68,11 +60,9 @@ def parse_mesh(mesh_file_path):
 
     Example
     -------
-    >>> element_types_array, node_ids_array, node_positions_array, connectivity_array, element_lengths_array = parse_mesh("mesh.txt")
-    >>> print(node_positions_array)
-    array([[0.0, 0.1, 0.2],
-           [1.5, 1.6, 1.7],
-           [2.2, 2.3, 2.4]])
+    >>> mesh_dictionary = parse_mesh("mesh.txt")
+    >>> print(mesh_dictionary['element_ids'])
+    array([1, 2, 3, ...])
 
     Notes
     -----
@@ -89,7 +79,7 @@ def parse_mesh(mesh_file_path):
     # 2. Prepare storage and regex
     element_types = []
     node_ids = []
-    node_positions = []
+    node_coordinates = []
     connectivity_list = []
 
     # Regex to strictly match lines with only [Mesh] or [Element_Types]
@@ -134,8 +124,9 @@ def parse_mesh(mesh_file_path):
 
             # --- Mesh section ----------------------------------------------
             if current_section == "mesh":
-                # If line includes 'node_ids' (a column header), skip it
-                if "node_ids" in line.lower():
+                # If line includes 'node_ids', 'x', 'y', 'z' (a column header), skip it
+                headers = ["node_ids", "x", "y", "z"]
+                if all(header in line.lower() for header in headers):
                     logging.debug(f"[Mesh] Skipping column header at line {line_number}.")
                     continue
 
@@ -152,7 +143,7 @@ def parse_mesh(mesh_file_path):
                     conn_str = parts[4].strip()
 
                     node_ids.append(node_id)
-                    node_positions.append((x, y, z))
+                    node_coordinates.append((x, y, z))
                     logging.debug(f"[Mesh] Parsed node {node_id}: ({x}, {y}, {z})")
 
                     # If connectivity is not '-', parse the tuple
@@ -165,7 +156,7 @@ def parse_mesh(mesh_file_path):
                                 connectivity_list.append(c_tuple)
                                 logging.debug(f"[Mesh] Parsed connectivity: {c_tuple}")
                             else:
-                                logging.warning(f"[Mesh] Line {line_number}: Invalid connectivity: {conn_str}")
+                                logging.warning(f"[Mesh] Line {line_number}: Invalid connectivity format: {conn_str}")
                         except (ValueError, SyntaxError) as e:
                             logging.warning(f"[Mesh] Line {line_number}: Connectivity parse error '{conn_str}': {e}")
                 except ValueError:
@@ -179,52 +170,72 @@ def parse_mesh(mesh_file_path):
     # 4. Check if we found the key sections
     if not found_mesh_section:
         logging.warning(f"[Mesh] No [Mesh] section found in '{mesh_file_path}'. Returning empty arrays.")
-        return (
-            np.array(element_types, dtype=str) if element_types else np.empty((0,), dtype=str),
-            np.empty((0,), dtype=int),
-            np.empty((0, 3), dtype=float),
-            np.empty((0, 2), dtype=int),
-            np.empty((0,), dtype=float)
-        )
+        mesh_dictionary = {
+            'element_types': np.empty((0,), dtype=str),
+            'node_ids': np.empty((0,), dtype=int),
+            'node_coordinates': np.empty((0, 3), dtype=float),
+            'connectivity': np.empty((0, 2), dtype=int),
+            'element_lengths': np.empty((0,), dtype=float),
+            'element_ids': np.empty((0,), dtype=int)  # Added Empty Array
+        }
+        return mesh_dictionary
 
     if not found_element_types_section:
         logging.warning(f"[Mesh] No [Element_Types] section found in '{mesh_file_path}'. Returning empty element types array.")
+        element_types_array = np.empty((0,), dtype=str)
+    else:
+        element_types_array = np.array(element_types, dtype=str)
 
     if not node_ids:
         logging.error(f"[Mesh] No valid node data found in '{mesh_file_path}'. Returning empty arrays.")
-        return (
-            np.empty((0,), dtype=str),
-            np.empty((0,), dtype=int),
-            np.empty((0, 3), dtype=float),
-            np.empty((0, 2), dtype=int),
-            np.empty((0,), dtype=float)
-        )
+        mesh_dictionary = {
+            'element_types': element_types_array,
+            'node_ids': np.empty((0,), dtype=int),
+            'node_coordinates': np.empty((0, 3), dtype=float),
+            'connectivity': np.empty((0, 2), dtype=int),
+            'element_lengths': np.empty((0,), dtype=float),
+            'element_ids': np.empty((0,), dtype=int)  # Added Empty Array
+        }
+        return mesh_dictionary
 
     # 5. Convert data to NumPy arrays
-    element_types_array = np.array(element_types, dtype=str) if element_types else np.empty((0,), dtype=str)
     node_ids_array = np.array(node_ids, dtype=int)
-    node_positions_array = np.array(node_positions, dtype=float)
+    node_coordinates_array = np.array(node_coordinates, dtype=float)
     connectivity_array = np.array(connectivity_list, dtype=int) if connectivity_list else np.empty((0, 2), dtype=int)
 
     # 6. Compute element lengths
-    element_lengths_array = compute_element_lengths(connectivity_array, node_positions_array, node_ids_array)
+    element_lengths_array = compute_element_lengths(connectivity_array, node_coordinates_array, node_ids_array)
+
+    # 7. Generate element IDs starting from 1
+    element_ids_array = np.arange(1, connectivity_array.shape[0] + 1, dtype=int)  # Updated Line
+
+    # 8. Construct the mesh_dictionary
+    mesh_dictionary = {
+        'element_types': element_types_array,
+        'node_ids': node_ids_array,
+        'node_coordinates': node_coordinates_array,
+        'connectivity': connectivity_array,
+        'element_lengths': element_lengths_array,
+        'element_ids': element_ids_array  # Added Key-Value Pair
+    }
 
     # Log final stats
     logging.info(
-        f"[Mesh] Parsed {len(element_types_array)} element types, "
+        f"[Mesh] Parsed {len(element_types_array)} element type(s), "
         f"{len(node_ids_array)} nodes, and {len(connectivity_list)} elements from '{mesh_file_path}'."
     )
     logging.debug(
         f"[Mesh] Final parsed data:\n"
         f"  Element Types:\n{element_types_array}\n"
-        f"  Nodes:\n{node_positions_array}\n"
+        f"  Nodes:\n{node_coordinates_array}\n"
         f"  Connectivity:\n{connectivity_array}\n"
-        f"  Element Lengths:\n{element_lengths_array}"
+        f"  Element Lengths:\n{element_lengths_array}\n"
+        f"  Element IDs:\n{element_ids_array}"  # Added Debug Information
     )
 
-    return element_types_array, node_ids_array, node_positions_array, connectivity_array, element_lengths_array
+    return mesh_dictionary
 
-def compute_element_lengths(connectivity_array, node_positions_array, node_ids_array):
+def compute_element_lengths(connectivity_array, node_coordinates_array, node_ids_array):
     """
     Computes element lengths based on 3D node positions.
 
@@ -232,7 +243,7 @@ def compute_element_lengths(connectivity_array, node_positions_array, node_ids_a
     ----------
     connectivity_array : np.ndarray[int]
         NumPy array of shape (M, 2), containing node ID pairs.
-    node_positions_array : np.ndarray[float]
+    node_coordinates_array : np.ndarray[float]
         NumPy array of shape (N, 3), containing node positions.
     node_ids_array : np.ndarray[int]
         NumPy array of shape (N,), containing node identifiers.
@@ -259,12 +270,18 @@ def compute_element_lengths(connectivity_array, node_positions_array, node_ids_a
     # Map the connectivity node IDs to their sorted indices
     node_indices = np.searchsorted(sorted_node_ids, connectivity_array)
 
-    # For each element pair, retrieve the node positions
-    pos1 = node_positions_array[sorted_indices[node_indices[:, 0]]]
-    pos2 = node_positions_array[sorted_indices[node_indices[:, 1]]]
+    # Check for invalid node indices
+    invalid_mask = (node_indices[:, 0] >= len(sorted_node_ids)) | (node_indices[:, 1] >= len(sorted_node_ids))
+    if np.any(invalid_mask):
+        invalid_pairs = connectivity_array[invalid_mask]
+        raise ValueError(f"Referenced node IDs not found: {invalid_pairs}")
+
+    # Retrieve the node coordinates
+    coord1 = node_coordinates_array[sorted_indices[node_indices[:, 0]]]
+    coord2 = node_coordinates_array[sorted_indices[node_indices[:, 1]]]
 
     # Compute Euclidean distances
-    element_lengths_array = np.linalg.norm(pos2 - pos1, axis=1)
+    element_lengths_array = np.linalg.norm(coord2 - coord1, axis=1)
     logging.debug(f"[Mesh] Computed element lengths: {element_lengths_array}")
 
     return element_lengths_array
@@ -276,12 +293,16 @@ if __name__ == "__main__":
         logging.error(f"Test file '{test_file}' not found. Make sure it exists before running.")
     else:
         try:
-            et, ids, pos, conn, lengths = parse_mesh(test_file)
+            mesh_dictionary = parse_mesh(test_file)
             print("\n-------------Parsed Mesh Data-------------")
-            print(f"-----Element Types-----\n{et}")
-            print(f"-----Node IDs-----\n{ids}")
-            print(f"-----Node Positions-----\n{pos}")
-            print(f"-----Connectivity-----\n{conn}")
-            print(f"-----Element Lengths-----\n{lengths}")
+            if mesh_dictionary['node_ids'].size > 0:
+                print(f"-----Element Types-----\n{mesh_dictionary['element_types']}")
+                print(f"-----Node IDs-----\n{mesh_dictionary['node_ids']}")
+                print(f"-----Node Coordinates-----\n{mesh_dictionary['node_coordinates']}")
+                print(f"-----Connectivity-----\n{mesh_dictionary['connectivity']}")
+                print(f"-----Element Lengths-----\n{mesh_dictionary['element_lengths']}")
+                print(f"-----Element IDs-----\n{mesh_dictionary['element_ids']}")  # Added Print Statement
+            else:
+                print("No data parsed.")
         except Exception as e:
             logging.error(f"Error parsing mesh file: {e}")

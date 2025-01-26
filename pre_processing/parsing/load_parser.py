@@ -62,6 +62,7 @@ def parse_load(file_path):
     loads_list = []
     header_pattern = re.compile(r"^\[loads\]$", re.IGNORECASE)  # Matches ONLY [Loads]
     current_section = None
+    first_numeric_line_detected = False  # Track if header is skipped
 
     # Step 2: Read and process file
     with open(file_path, 'r') as f:
@@ -83,14 +84,22 @@ def parse_load(file_path):
 
             # Step 3: Process valid data lines
             parts = line.split()
+
+            # Skip header row if it contains non-numeric values
+            if not first_numeric_line_detected:
+                if not all(re.match(r"^-?\d+(\.\d+)?$", p) for p in parts):
+                    logging.warning(f"[Load] Skipping non-numeric header row at line {line_number}: {parts}")
+                    continue  # Skip header
+                first_numeric_line_detected = True  # Set flag after skipping
+
             if len(parts) != 9:
-                logging.warning(f"[Load] Line {line_number}: Expected 9 values, found {len(parts)}. Skipping.")
+                logging.warning(f"[Load] Line {line_number}: Expected 9 values, found {len(parts)}. Content: {parts}. Skipping.")
                 continue
 
             try:
                 loads_list.append([float(x) for x in parts])
-            except ValueError:
-                logging.warning(f"[Load] Line {line_number}: Invalid numeric data. Skipping.")
+            except ValueError as e:
+                logging.warning(f"[Load] Line {line_number}: Invalid numeric data '{parts}'. Error: {e}. Skipping.")
 
     # Step 4: Handle case where no valid loads were found
     if not loads_list:
