@@ -11,10 +11,7 @@ Role in Pipeline:
 
 """
 
-from scipy.sparse.linalg import cg, gmres, minres, bicg, bicgstab, lsmr, lsqr
-from scipy.linalg import solve, lu_factor, lu_solve
-
-from scipy.sparse.linalg import spsolve, cg, gmres, minres, bicg, bicgstab, lsmr, lsqr
+from scipy.sparse.linalg import cg, gmres, minres, bicg, bicgstab, lsmr, lsqr, spsolve
 from scipy.linalg import solve, lu_factor, lu_solve
 
 def get_solver_registry():
@@ -25,14 +22,14 @@ def get_solver_registry():
         dict: Mapping solver names (str) to functions.
     """
     return {
-        "Direct Solver (Dense)": solve,
-        "LU Decomposition Solver": lambda A, b: lu_solve(lu_factor(A), b),
-        "Sparse Direct Solver": spsolve,
-        "Conjugate Gradient Solver": cg,
-        "Generalized Minimal Residual Solver": gmres,
-        "Minimum Residual Solver": minres,
-        "Bi-Conjugate Gradient Solver": bicg,
-        "Bi-Conjugate Gradient Stabilized Solver": bicgstab,
-        "Least Squares Solver": lsmr,
-        "Sparse Least Squares Solver": lsqr,
+        "direct_solver_dense": solve,
+        "lu_decomposition_solver": lambda A, b: lu_solve(lu_factor(A), b),
+        "direct_solver_sparse": spsolve,
+        "conjugate_gradient_solver": cg,
+        "generalized_minimal_residual_solver": gmres,
+        "minimum_residual_solver": minres,
+        "bi-conjugate_gradient_solver": bicg,
+        "bi-conjugate_gradient_stabilized_solver": bicgstab,
+        "least_squares_solver": lsmr,
+        "sparse_least_squares_solver": lsqr,
     }

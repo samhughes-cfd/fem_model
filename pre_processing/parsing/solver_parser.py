@@ -4,12 +4,32 @@ import os
 import logging
 import numpy as np
 import re
-from processing.solver_registry import get_solver_registry
-
-logging.basicConfig(level=logging.WARNING)
 
 # Define all valid solver types
 VALID_SOLVERS = np.array(["Static", "Dynamic", "Modal"], dtype=str)
+
+def get_solver_registry():
+    """
+    Returns a registry of SciPy solvers available for solving linear systems.
+
+    Returns:
+        dict: Mapping solver names (str) to functions.
+    """
+    from scipy.sparse.linalg import cg, gmres, minres, bicg, bicgstab, lsmr, lsqr, spsolve
+    from scipy.linalg import solve, lu_factor, lu_solve
+
+    return {
+        "direct_solver_dense": solve,
+        "lu_decomposition_solver": lambda A, b: lu_solve(lu_factor(A), b),
+        "direct_solver_sparse": spsolve,
+        "conjugate_gradient_solver": cg,
+        "generalized_minimal_residual_solver": gmres,
+        "minimum_residual_solver": minres,
+        "bi-conjugate_gradient_solver": bicg,
+        "bi-conjugate_gradient_stabilized_solver": bicgstab,
+        "least_squares_solver": lsmr,
+        "sparse_least_squares_solver": lsqr,
+    }
 
 def parse_solver(file_path):
     """
@@ -73,8 +93,8 @@ def parse_solver(file_path):
     # Load available solvers from the registry
     solver_registry = get_solver_registry()
 
-    # Initialize all solver types to "Off" by default
-    solver_array = np.full((3,), "Off", dtype='<U20')
+    # Initialize all solver types to "Off" by default with increased string length
+    solver_array = np.full((3,), "Off", dtype='<U30')  # Increased from '<U20' to '<U30'
 
     # Regex to detect the `[Solver]` section (case-insensitive)
     header_pattern = re.compile(r"\[.*?solver.*?\]", re.IGNORECASE)
@@ -132,25 +152,13 @@ def parse_solver(file_path):
 
     return solver_array
 
-
 # ------------------------------------------------
 # Standalone execution for direct testing
 # ------------------------------------------------
 if __name__ == "__main__":
-    # For demonstration, either set this to an existing file
-    # or create a small solver config file for testing.
-    test_file = "solver_config.txt"
-
-    if not os.path.exists(test_file):
-        # Optional: create a small example file on-the-fly
-        with open(test_file, 'w') as example:
-            example.write("""# Example solver config
-[Solver]
-Static     DirectSolver
-Dynamic    TimeIntegrator
-Modal      EigenSolver
-""")
-        logging.info(f"Created an example solver config file: {test_file}")
+    # Instead of auto-generating 'solver_config.txt',
+    # we directly parse the existing file at jobs\base\solver.txt
+    test_file = r"jobs\base\solver.txt"
 
     try:
         solver_array = parse_solver(test_file)
