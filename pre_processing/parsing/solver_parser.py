@@ -1,4 +1,4 @@
-# workflow_manager\parsing\solver_parser.py
+# pre_processing\parsing\solver_parser.py
 
 import os
 import logging

@@ -1,4 +1,4 @@
-# jobs\base\materials.txt
+# jobs\base\material.txt
 
 [material]
 [E]                                2e11                  # Young's Moudlus (Pa)
