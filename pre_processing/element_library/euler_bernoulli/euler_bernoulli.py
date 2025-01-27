@@ -16,36 +16,43 @@ class EulerBernoulliBeamElement(Element1DBase):
 
     Attributes:
         A (float): Cross-sectional area.
-        I_bending_z (float): Second moment of area about the z-axis.
+        I_z (float): Second moment of area about the z-axis.
+        E (float): Young's Modulus.
     """
 
-    def __init__(self, element_id, material, section_props, mesh_data, node_positions, loads_array):
+    # Define class-level constants for geometry and material array indices
+    GEOMETRY_A_INDEX = 1    # Cross-sectional area (A) in geometry_array
+    GEOMETRY_IZ_INDEX = 3   # Moment of inertia about the z-axis (Iz) in geometry_array
+    MATERIAL_E_INDEX = 0    # Young's Modulus (E) in material_array
+
+    def __init__(self, element_id: int, material_array: np.ndarray, geometry_array: np.ndarray, 
+                 mesh_data: dict, node_positions: np.ndarray, loads_array: np.ndarray):
         """
         Initializes the Euler-Bernoulli beam element.
 
         Args:
             element_id (int): Unique identifier for this element.
-            material (dict): Material properties dictionary.
-            section_props (dict): Section properties dictionary.
-            mesh_data (dict): Mesh data dictionary containing connectivity and element lengths.
-            node_positions (ndarray): Array of node positions. Shape: (num_nodes, 3)
-            loads_array (ndarray): Global loads array. Shape: (num_nodes, 6)
+            material_array (np.ndarray): Material properties array of shape (1, 4).
+            geometry_array (np.ndarray): Geometry properties array of shape (1, 20).
+            mesh_data (dict): Mesh data dictionary containing connectivity, element lengths, and element IDs.
+            node_positions (np.ndarray): Array of node positions. Shape: (num_nodes, 3)
+            loads_array (np.ndarray): Global loads array. Shape: (N, 9)
         """
-        self.A = section_props["A"]
-        self.I_bending_z = section_props["Iz"]  # Moment of inertia about the z-axis
+        # Extract geometry and material properties using predefined indices
+        self.A = geometry_array[0, self.GEOMETRY_A_INDEX]         # Cross-sectional area
+        self.I_z = geometry_array[0, self.GEOMETRY_IZ_INDEX]     # Moment of inertia about the z-axis
+        self.E = material_array[0, self.MATERIAL_E_INDEX]        # Young's Modulus
 
-        # Degrees of freedom per node set to 6 for full 3D modeling
+        # Initialize the base class with unpacked mesh data
         super().__init__(
-            element_id=element_id,
-            material=material,
-            section_props=section_props,
-            mesh_data=mesh_data,
-            node_positions=node_positions,
+            geometry_array=geometry_array,
+            material_array=material_array,
+            mesh_dictionary=mesh_data,
             loads_array=loads_array,
             dof_per_node=6
         )
 
-    def shape_functions(self, xi):
+    def shape_functions(self, xi: float) -> tuple:
         """
         Computes the shape functions and their derivatives for the Euler-Bernoulli beam element.
 
@@ -58,28 +65,30 @@ class EulerBernoulliBeamElement(Element1DBase):
                 dN_dxi (ndarray): First derivatives of shape functions w.r.t. xi (6,)
                 d2N_dxi2 (ndarray): Second derivatives of shape functions w.r.t. xi (6,)
         """
-        return euler_bernoulli_shape_functions(xi, self.get_element_length())
+        element_index = self.get_element_index()               # Retrieves index based on element_id
+        element_length = self.element_lengths_array[element_index]
+        return euler_bernoulli_shape_functions(xi, element_length)
 
-    def material_stiffness_matrix(self):
+    def material_stiffness_matrix(self) -> np.ndarray:
         """
         Constructs the material stiffness (constitutive) matrix D for the Euler-Bernoulli beam element.
 
         Returns:
             ndarray: Constitutive matrix D. Shape: (2,2)
         """
-        E = self.material["E"]
+        E = self.E
         A = self.A
-        Iz = self.I_bending_z
+        I_z = self.I_z
 
         # Constitutive matrix for axial (Fx) and bending (Mz) DOFs
         D = np.diag([
             E * A,      # Axial stiffness (Fx)
-            E * Iz      # Bending stiffness (Mz)
+            E * I_z     # Bending stiffness (Mz)
         ])  # Shape: (2,2)
 
         return D
 
-    def strain_displacement_matrix(self, dN_dxi):
+    def strain_displacement_matrix(self, dN_dxi: np.ndarray) -> np.ndarray:
         """
         Constructs the strain-displacement matrix (B matrix) for the Euler-Bernoulli beam element.
 
@@ -89,13 +98,19 @@ class EulerBernoulliBeamElement(Element1DBase):
         Returns:
             ndarray: Strain-displacement matrix. Shape: (2,6)
         """
-        # Compute the Jacobian determinant
-        node_coords = self.get_node_coordinates()  # Shape: (2, 3)
+        # Retrieve node indices and coordinates for the current element
+        node_indices = self.connectivity_array[self.element_index]  # Node IDs (assuming element_index starts at 0)
+        node_coords = self.node_coordinates_array[node_indices - 1]  # Convert node IDs to zero-based indices
+
+        # Compute the Jacobian matrix
         jacobian_matrix = compute_jacobian_matrix(
             dN_dxi.reshape(-1, 1),      # Shape: (6,1)
             node_coords.reshape(-1, 1)   # Shape: (2,1)
         )  # Shape: (1,1)
         detJ = compute_jacobian_determinant(jacobian_matrix)  # Scalar
+
+        if detJ <= 0:
+            raise ValueError(f"Invalid Jacobian determinant ({detJ}) for Element ID {self.element_id}. Check node ordering.")
 
         # Compute dxi/dx
         dxi_dx = 1.0 / detJ  # Scalar
@@ -121,7 +136,7 @@ class EulerBernoulliBeamElement(Element1DBase):
         Computes the element stiffness matrix and expands it to a 12x12 system.
         Utilizes Gauss quadrature and delegates Jacobian computations to utility functions.
         """
-        def integrand_stiffness_matrix(xi):
+        def integrand_stiffness_matrix(xi: float) -> np.ndarray:
             """
             Integrand function for stiffness matrix computation at a given natural coordinate xi.
 
@@ -131,20 +146,8 @@ class EulerBernoulliBeamElement(Element1DBase):
             Returns:
                 ndarray: Integrand matrix at xi. Shape: (6,6)
             """
-            # Retrieve shape functions and their first and second derivatives
+            # Retrieve shape functions and their first derivatives
             N, dN_dxi, _ = self.shape_functions(xi)  # Shape: (6,), (6,), (6,)
-
-            # Retrieve nodal coordinates
-            node_coords = self.get_node_coordinates()  # Shape: (2,3)
-
-            # Compute Jacobian matrix using utility function
-            jacobian_matrix = compute_jacobian_matrix(
-                dN_dxi.reshape(-1, 1),      # Shape: (6,1)
-                node_coords.reshape(-1, 1)   # Shape: (2,1)
-            )  # Shape: (1,1)
-
-            # Compute Jacobian determinant
-            detJ = compute_jacobian_determinant(jacobian_matrix)  # Scalar
 
             # Compute strain-displacement matrix B
             B = self.strain_displacement_matrix(dN_dxi)  # Shape: (2,6)
@@ -152,8 +155,8 @@ class EulerBernoulliBeamElement(Element1DBase):
             # Get material stiffness matrix D
             D = self.material_stiffness_matrix()  # Shape: (2,2)
 
-            # Integrand for stiffness matrix: B.T * D * B * detJ
-            integrand = B.T @ D @ B * detJ  # Shape: (6,6)
+            # Integrand for stiffness matrix: B.T * D * B
+            integrand = B.T @ D @ B  # Shape: (6,6)
 
             return integrand
 
@@ -164,7 +167,7 @@ class EulerBernoulliBeamElement(Element1DBase):
             jacobian_func=lambda xi: compute_jacobian_determinant(
                 compute_jacobian_matrix(
                     self.shape_functions(xi)[1].reshape(-1, 1),  # dN_dxi reshaped to (6,1)
-                    self.get_node_coordinates().reshape(-1, 1)   # node_coords reshaped to (2,1)
+                    self.node_coordinates_array[self.connectivity_array[self.element_index] - 1].reshape(-1, 1)   # node_coords reshaped to (2,1)
                 )
             ),
             dim=1
@@ -192,7 +195,14 @@ class EulerBernoulliBeamElement(Element1DBase):
         # Initialize a 12x1 zero vector
         Fe_full = np.zeros(12)
 
-        # Retrieve loads on start and end nodes
+        # Retrieve node indices for the current element
+        node_indices = self.connectivity_array[self.element_index]  # Node IDs (e.g., [1, 2])
+        node_coords = self.node_coordinates_array[node_indices - 1]  # Shape: (2,3)
+
+        # Retrieve loads for start and end nodes
+        # Assuming loads_array has relevant load components mapped appropriately
+        # and that self.get_element_loads() returns a (2,6) array with [Fx, Fy, Fz, Mx, My, Mz] per node
+        # This method should be defined in the base class
         loads = self.get_element_loads()  # Shape: (2,6)
 
         # Extract Fx, Fy, Mz for start node (node1)
@@ -213,7 +223,7 @@ class EulerBernoulliBeamElement(Element1DBase):
             full_size=12,
             dof_map=dof_map
         )  # Shape: (12,)
-        
+
         self.Fe = Fe_full  # Shape: (12,)
 
     def validate_matrices(self):

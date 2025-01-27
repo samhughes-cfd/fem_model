@@ -18,14 +18,15 @@ def parse_mesh(mesh_file_path):
     Mesh Properties Mapping
     =============================
 
-    Index   Property             Data Type                  Shape
-    ----------------------------------------------------------------
-    0       Element Types        NumPy array (str)         `(N,)`
-    1       Node IDs             NumPy array (int)         `(N,)`
-    2       Node Positions       NumPy array (float)       `(N, 3)`
-    3       Connectivity         NumPy array (int)         `(M, 2)`
-    4       Element Lengths      NumPy array (float)       `(M,)`
-    5       Element IDs          NumPy array (int)         `(M,)`  # Added Property
+    Index   Property             Key in Dictionary         Data Type             Shape     Units  
+    ------------------------------------------------------------------------------------------------
+    0       Element Types        `element_types`          `np.ndarray[str]`      (N,)       -      
+    1       Node IDs             `node_ids`               `np.ndarray[int]`      (N,)       -      
+    2       Node Positions       `node_coordinates`       `np.ndarray[float]`    (N, 3)     [m] 
+    3       Connectivity         `connectivity`           `np.ndarray[int]`      (M, 2)     -      
+    4       Element Lengths      `element_lengths`        `np.ndarray[float]`    (M,)       [m] 
+    5       Element IDs          `element_ids`            `np.ndarray[int]`      (M,)       -      
+        
 
     The function reads mesh data, extracts node positions, and computes 
     element lengths using the Euclidean distance formula. Empty lines and 
