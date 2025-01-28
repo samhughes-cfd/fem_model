@@ -1,124 +1,163 @@
 import numpy as np
-from pre_processing.element_library.element_1D_base import Element1DBase
-from pre_processing.element_library.utilities.gauss_quadrature import integrate_matrix
+import pre_processing.element_library.element_1D_base
+from pre_processing.element_library.utilities.dof_mapping import expand_dof_mapping
 from pre_processing.element_library.utilities.shape_function_library.timoshenko_sf import timoshenko_shape_functions
+from pre_processing.element_library.utilities.jacobian import compute_jacobian_matrix, compute_jacobian_determinant
+from pre_processing.element_library.utilities.gauss_quadrature import integrate_matrix
 
+class TimoshenkoBeamElement(pre_processing.element_library.element_1D_base.Element1DBase):
+    """
+    Timoshenko beam element (1D) with 6 DOFs per node: 
+    (u_x, u_y, u_z, θ_x, θ_y, θ_z).
+    Expands to a full 12 DOFs per element system (12x12 stiffness matrix and 12x1 force vector).
 
-class TimoshenkoBeamElement(Element1DBase):
-    """Timoshenko beam element (3D) with 3 DOFs per node: (u_x, u_y, θ_z)."""
+    Attributes:
+        A (float): Cross-sectional area.
+        I_z (float): Second moment of area about the z-axis.
+        E (float): Young's Modulus.
+        G (float): Shear Modulus.
+        ks (float): Shear correction factor.
+    """
 
-    def __init__(self, element_id, geometry, material, section_props):
+    # Define class-level constants for geometry and material array indices
+    GEOMETRY_A_INDEX = 1    # Cross-sectional area (A)
+    GEOMETRY_IZ_INDEX = 3   # Moment of inertia about the z-axis (Iz)
+    #GEOMETRY_KS_INDEX = 4   # Shear correction factor (ks)
+    MATERIAL_E_INDEX = 0    # Young's Modulus (E)
+    MATERIAL_G_INDEX = 1    # Shear Modulus (G)
+
+    def __init__(self, element_id: int, material_array: np.ndarray, geometry_array: np.ndarray, 
+                 mesh_data: dict, node_positions: np.ndarray, loads_array: np.ndarray):
         """
-        Initializes a Timoshenko beam element.
+        Initializes the Timoshenko beam element.
 
         Args:
             element_id (int): Unique identifier for this element.
-            geometry: Geometry object (must implement get_element_length).
-            material: Material object with E (Young's modulus) and G (Shear modulus).
-            section_props (dict): 3D section properties including:
-                - 'A': Cross-sectional area
-                - 'Iz': Second moment of area about the z-axis
-                - 'ks': Shear correction factor
+            material_array (np.ndarray): Material properties array of shape (1, 4).
+            geometry_array (np.ndarray): Geometry properties array of shape (1, 20).
+            mesh_data (dict): Mesh data dictionary containing connectivity, element lengths, and element IDs.
+            node_positions (np.ndarray): Array of node positions. Shape: (num_nodes, 3)
+            loads_array (np.ndarray): Global loads array. Shape: (N, 9)
         """
-        self.A = section_props["A"]
-        self.I_bending = section_props["Iz"]
-        self.ks = section_props["ks"]  # Shear correction factor
-        self.G = material["G"]
+        # Extract geometry and material properties using predefined indices
+        self.A = geometry_array[0, self.GEOMETRY_A_INDEX]       # Cross-sectional area
+        self.I_z = geometry_array[0, self.GEOMETRY_IZ_INDEX]   # Moment of inertia
+        self.ks = 0.6 # for rectanguylar section (look into c-section)  #geometry_array[0, self.GEOMETRY_KS_INDEX]    # Shear correction factor
+        self.E = material_array[0, self.MATERIAL_E_INDEX]      # Young's Modulus
+        self.G = material_array[0, self.MATERIAL_G_INDEX]      # Shear Modulus
 
-        super().__init__(element_id, material, section_props, geometry, dof_per_node=3, dof_map=[0, 1, 5])
+        # Initialize the base class
+        super().__init__(
+            geometry_array=geometry_array,
+            material_array=material_array,
+            mesh_dictionary=mesh_data,
+            loads_array=loads_array,
+            dof_per_node=6
+        )
 
-    def element_stiffness_matrix(self):
+    def shape_functions(self, xi: float) -> tuple:
         """
-        Computes the Timoshenko beam stiffness matrix, incorporating shear flexibility.
-        """
-        n_gauss = 3
-        Ke_reduced = integrate_matrix(n_gauss, self.B_transpose_D_B_timoshenko, self.jacobian_func, dim=1)
-
-        self.Ke = np.zeros((12, 12))  # Full 6DOF per node structure
-        dof_map = self.dof_map + [d + 6 for d in self.dof_map]  # Map both nodes
-
-        for i in range(6):
-            for j in range(6):
-                self.Ke[dof_map[i], dof_map[j]] = Ke_reduced[i, j]
-
-    def B_transpose_D_B_timoshenko(self, xi):
-        """
-        Integrand for K_e: (B^T)(D)(B) at a given natural coordinate.
+        Computes the shape functions and their derivatives for the Timoshenko beam element.
 
         Args:
-            xi (np.ndarray): 1D array with a single float in [-1, 1].
+            xi (float): Natural coordinate in [-1, 1].
 
         Returns:
-            np.ndarray: 6×6 matrix representing B^T * D * B at xi.
+            tuple: (N, dN_dxi, d2N_dxi2)
+                N (ndarray): Shape function vector (6,)
+                dN_dxi (ndarray): First derivatives of shape functions w.r.t. xi (6,)
+                d2N_dxi2 (ndarray): Second derivatives of shape functions w.r.t. xi (6,)
         """
-        xi_scalar = xi[0]
-        B = self.strain_displacement_matrix(xi_scalar)
-        D = self.material_stiffness_matrix()
-        return B.T @ D @ B
+        element_index = self.get_element_index()
+        element_length = self.element_lengths_array[element_index]
+        return timoshenko_shape_functions(xi, element_length)
 
-    def strain_displacement_matrix(self, xi):
+    def material_stiffness_matrix(self) -> np.ndarray:
         """
-        Builds the strain-displacement matrix (3×6) for axial, bending, and shear strains.
+        Constructs the material stiffness (constitutive) matrix D for the Timoshenko beam element.
 
         Returns:
-            np.ndarray: A 3×6 matrix with:
-                - **Row 1**: Axial strain (`du/dx`)
-                - **Row 2**: Bending curvature (`d²w/dx²`)
-                - **Row 3**: Shear strain (`dθ/dx`)
+            ndarray: Constitutive matrix D. Shape: (3,3)
         """
-        N, dN_dxi, d2N_dxi2 = self.shape_functions(xi)
-        L = self.geometry.get_element_length(self.element_id)
-        dxi_dx = 2.0 / L
+        E = self.E
+        G = self.G
+        A = self.A
+        I_z = self.I_z
+        ks = self.ks
 
-        # Axial strain row (epsilon = du/dx)
+        # Constitutive matrix for axial (Fx), bending (Mz), and shear
+        D = np.diag([
+            E * A,           # Axial stiffness (Fx)
+            E * I_z,         # Bending stiffness (Mz)
+            G * ks * A       # Shear stiffness
+        ])  # Shape: (3,3)
+
+        return D
+
+    def strain_displacement_matrix(self, dN_dxi: np.ndarray) -> np.ndarray:
+        """
+        Constructs the strain-displacement matrix (B matrix) for the Timoshenko beam element.
+
+        Args:
+            dN_dxi (ndarray): First derivatives of shape functions w.r.t. xi. Shape: (6,)
+
+        Returns:
+            ndarray: Strain-displacement matrix. Shape: (3,6)
+        """
+        element_index = self.get_element_index()
+        node_indices = self.connectivity_array[element_index]
+        node_coords = self.node_coordinates_array[node_indices - 1]
+
+        jacobian_matrix = compute_jacobian_matrix(dN_dxi.reshape(-1, 1), node_coords.reshape(-1, 1))
+        detJ = compute_jacobian_determinant(jacobian_matrix)
+
+        if detJ <= 0:
+            raise ValueError(f"Invalid Jacobian determinant ({detJ}) for Element ID {self.element_id}. Check node ordering.")
+
+        dxi_dx = 1.0 / detJ
+
+        # Initialize strain-displacement matrices
         B_axial = np.zeros(6)
         B_axial[0] = dN_dxi[0] * dxi_dx
         B_axial[3] = dN_dxi[3] * dxi_dx
 
-        # Bending strain row (kappa = d²w/dx²)
-        d2N_dx2 = d2N_dxi2 * (dxi_dx**2)
         B_bending = np.zeros(6)
-        B_bending[1] = d2N_dx2[1]
-        B_bending[2] = d2N_dx2[2]
-        B_bending[4] = d2N_dx2[4]
-        B_bending[5] = d2N_dx2[5]
+        B_bending[1] = dN_dxi[1] * (dxi_dx**2)
+        B_bending[4] = dN_dxi[4] * (dxi_dx**2)
 
-        # Shear strain row (gamma = dθ/dx)
         B_shear = np.zeros(6)
-        B_shear[1] = dN_dxi[1] * dxi_dx
-        B_shear[4] = dN_dxi[4] * dxi_dx
+        B_shear[2] = dN_dxi[2] * dxi_dx
+        B_shear[5] = dN_dxi[5] * dxi_dx
 
-        return np.vstack([B_axial, B_bending, B_shear])
+        return np.vstack([B_axial, B_bending, B_shear])  # Shape: (3,6)
 
-    def material_stiffness_matrix(self):
+    def element_stiffness_matrix(self):
         """
-        Returns the 3×3 material matrix D = diag(EA, EI, G*k*A).
+        Computes the element stiffness matrix and expands it to a 12x12 system.
         """
-        E = self.material["E"]
-        G = self.material["G"]
-        return np.array([
-            [E * self.A, 0.0, 0.0],  
-            [0.0, E * self.I_bending, 0.0],
-            [0.0, 0.0, G * self.ks * self.A]  
-        ])
+        def integrand_stiffness_matrix(xi: float) -> np.ndarray:
+            N, dN_dxi, _ = self.shape_functions(xi)
+            B = self.strain_displacement_matrix(dN_dxi)
+            D = self.material_stiffness_matrix()
+            return B.T @ D @ B  # Shape: (6,6)
 
-    def shape_functions(self, xi):
-        """
-        Retrieves Hermite polynomials (bending) and linear polynomials (axial)
-        for a 2-node Timoshenko beam.
+        Ke_reduced = integrate_matrix(
+            n_gauss=3,
+            integrand_func=integrand_stiffness_matrix,
+            jacobian_func=lambda xi: compute_jacobian_determinant(
+                compute_jacobian_matrix(
+                    self.shape_functions(xi)[1].reshape(-1, 1),
+                    self.node_coordinates_array[self.connectivity_array[self.element_index] - 1].reshape(-1, 1)
+                )
+            ),
+            dim=1
+        )
 
-        Returns:
-            tuple: (N, dN_dxi, d²N_dxi²)
-        """
-        L = self.geometry.get_element_length(self.element_id)
-        return conv_t_shape_functions(xi, L)
+        dof_map = [0, 1, 2, 6, 7, 8]  
+        self.Ke = expand_dof_mapping(Ke_reduced, full_size=12, dof_map=dof_map) 
 
-    def jacobian_func(self, xi):
+    def validate_matrices(self):
         """
-        Computes Jacobian determinant for a linear 1D element: `L/2`.
-
-        Returns:
-            float: (L / 2.0)
+        Validates that Ke and Fe have the correct dimensions.
         """
-        L = self.geometry.get_element_length(self.element_id)
-        return L / 2.0
+        assert self.Ke.shape == (12, 12), f"Ke shape mismatch: Expected (12,12), got {self.Ke.shape}"

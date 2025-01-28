@@ -281,6 +281,10 @@ def compute_element_lengths(connectivity_array, node_coordinates_array, node_ids
     coord1 = node_coordinates_array[sorted_indices[node_indices[:, 0]]]
     coord2 = node_coordinates_array[sorted_indices[node_indices[:, 1]]]
 
+    #np.linalg.norm(
+            #self._node_coordinates[self._connectivity[:, 1]] - self._node_coordinates[self._connectivity[:, 0]],
+            #axis=1
+
     # Compute Euclidean distances
     element_lengths_array = np.linalg.norm(coord2 - coord1, axis=1)
     logging.debug(f"[Mesh] Computed element lengths: {element_lengths_array}")

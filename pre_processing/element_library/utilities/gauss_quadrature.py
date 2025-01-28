@@ -1,7 +1,6 @@
 # pre_processing\element_library\utilities\gauss_quadrature.py
 
 import numpy as np
-from itertools import product
 
 def get_gauss_points(n, dim=1):
     """
@@ -16,21 +15,35 @@ def get_gauss_points(n, dim=1):
             - points (ndarray): Array of shape (num_points, dim) containing Gauss points in each dimension.
             - weights (ndarray): Corresponding weights for each Gauss point.
     """
+    # Compute 1D Gauss points and weights
     xi_points, xi_weights = np.polynomial.legendre.leggauss(n)
 
     if dim == 1:
-        points = xi_points.reshape(-1, 1)
-        weights = xi_weights
+        return xi_points.reshape(-1, 1), xi_weights
+
     elif dim == 2:
-        points = np.array(list(product(xi_points, xi_points)))
-        weights = np.array([w1 * w2 for w1, w2 in product(xi_weights, xi_weights)])
+        # Use NumPy meshgrid instead of itertools.product
+        P1, P2 = np.meshgrid(xi_points, xi_points, indexing='ij')
+        W1, W2 = np.meshgrid(xi_weights, xi_weights, indexing='ij')
+
+        # Reshape into 2D arrays: (num_points**2, 2)
+        points = np.column_stack((P1.ravel(), P2.ravel()))
+        weights = (W1 * W2).ravel()  # Element-wise multiplication for weights
+
     elif dim == 3:
-        points = np.array(list(product(xi_points, xi_points, xi_points)))
-        weights = np.array([w1 * w2 * w3 for w1, w2, w3 in product(xi_weights, xi_weights, xi_weights)])
+        # Use NumPy meshgrid instead of itertools.product
+        P1, P2, P3 = np.meshgrid(xi_points, xi_points, xi_points, indexing='ij')
+        W1, W2, W3 = np.meshgrid(xi_weights, xi_weights, xi_weights, indexing='ij')
+
+        # Reshape into 3D arrays: (num_points**3, 3)
+        points = np.column_stack((P1.ravel(), P2.ravel(), P3.ravel()))
+        weights = (W1 * W2 * W3).ravel()  # Element-wise multiplication for weights
+
     else:
         raise ValueError("Dimension must be 1, 2, or 3.")
 
     return points, weights
+
 
 def integrate_matrix(n_gauss, integrand_func, jacobian_func, dim=1):
     """
@@ -47,19 +60,18 @@ def integrate_matrix(n_gauss, integrand_func, jacobian_func, dim=1):
     Returns:
         ndarray: Integrated matrix over the element.
     """
+    # Get Gauss points and weights
     points, weights = get_gauss_points(n_gauss, dim=dim)
-    integrated_matrix = None
 
-    for xi, wi in zip(points, weights):
-        detJ = jacobian_func(xi)
-        integrand = integrand_func(xi)
+    # Vectorized integration
+    integrands = np.array([integrand_func(xi) for xi in points])
+    detJ_values = np.array([jacobian_func(xi) for xi in points])
 
-        if integrated_matrix is None:
-            integrated_matrix = np.zeros_like(integrand)
-
-        integrated_matrix += integrand * wi * detJ
+    # Weighted summation
+    integrated_matrix = np.tensordot(integrands, weights * detJ_values, axes=(0, 0))
 
     return integrated_matrix
+
 
 def integrate_vector(n_gauss, integrand_func, jacobian_func, dim=1):
     """
@@ -76,16 +88,14 @@ def integrate_vector(n_gauss, integrand_func, jacobian_func, dim=1):
     Returns:
         ndarray: Integrated vector over the element.
     """
+    # Get Gauss points and weights
     points, weights = get_gauss_points(n_gauss, dim=dim)
-    integrated_vector = None
 
-    for xi, wi in zip(points, weights):
-        detJ = jacobian_func(xi)
-        integrand = integrand_func(xi)
+    # Vectorized integration
+    integrands = np.array([integrand_func(xi) for xi in points])
+    detJ_values = np.array([jacobian_func(xi) for xi in points])
 
-        if integrated_vector is None:
-            integrated_vector = np.zeros_like(integrand)
-
-        integrated_vector += integrand * wi * detJ
+    # Weighted summation
+    integrated_vector = np.tensordot(integrands, weights * detJ_values, axes=(0, 0))
 
     return integrated_vector

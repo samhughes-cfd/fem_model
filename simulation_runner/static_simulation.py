@@ -1,11 +1,12 @@
-# simulation_runner\static_simulation.py
-
 import logging
 import numpy as np
 import os
+import datetime
+from scipy.sparse.linalg import spsolve
 from processing.assembly import assemble_global_matrices
-from processing.boundary_conditions import apply_boundary_conditions as apply_bcs
+from processing.boundary_conditions import apply_boundary_conditions
 from processing.solver_registry import get_solver_registry
+
 
 class StaticSimulationRunner:
     """
@@ -13,10 +14,10 @@ class StaticSimulationRunner:
 
     Responsibilities:
         - Assembles global stiffness matrix and force vector.
-        - Applies nodal loads and boundary conditions.
+        - Applies boundary conditions.
         - Solves the FEM system using a specified solver.
         - Computes nodal displacements and reaction forces.
-        - Saves results in an organized manner.
+        - Saves results with time-stamped filenames.
     """
 
     def __init__(self, settings, job_name):
@@ -24,15 +25,14 @@ class StaticSimulationRunner:
         Initializes the Static FEM Solver.
 
         Args:
-            settings (dict): 
+            settings (dict): Simulation settings from `run_job.py`, including:
                 - "elements" (list): Instantiated element objects.
-                - "stiffness_matrices" (dict): {element_id → Ke matrices} (precomputed in run_job.py).
-                - "node_positions" (np.array): Actual node positions.
-                - "material_props" (dict): Material properties (E, G, nu, rho).
-                - "cross_section_props" (dict): Sectional properties (A, Iz, Iy, etc.).
-                - "boundary_conditions" (np.array): Nodal constraints (num_nodes × 6).
-                - "nodal_loads" (np.array): Applied loads (num_nodes × 6).
+                - "mesh_dictionary" (dict): Contains all mesh-related NumPy arrays.
+                - "material_array" (np.array): Material properties array.
+                - "geometry_array" (np.array): Sectional properties array.
                 - "solver_name" (str): Name of solver function.
+                - "element_stiffness_matrices" (scipy.sparse.csr_matrix): Precomputed Ke.
+                - "element_force_vectors" (scipy.sparse.csr_matrix): Precomputed Fe.
             job_name (str): Unique identifier for the simulation job.
         """
         self.settings = settings
@@ -54,12 +54,11 @@ class StaticSimulationRunner:
 
         Steps:
             1. Assemble global stiffness matrix and force vector.
-            2. Apply nodal loads.
-            3. Apply boundary conditions.
-            4. Solve the system using the assigned solver.
-            5. Compute reaction forces.
-            6. Store results.
-        
+            2. Apply boundary conditions.
+            3. Solve the system using the assigned solver.
+            4. Compute reaction forces.
+            5. Store results.
+
         Args:
             solver_func (function): Solver function from the registry.
 
@@ -69,45 +68,72 @@ class StaticSimulationRunner:
         logging.info(f"Running static simulation for job: {self.job_name}...")
 
         try:
-            # ✅ Extract required FEM settings
-            elements = self.settings["elements"]
-            stiffness_matrices = self.settings["stiffness_matrices"]
-            num_nodes = len(self.settings["node_positions"])
-            total_dof = num_nodes * 6  # 6 DOFs per node
-            
+            # ✅ Extract Mesh Data
+            mesh_dictionary = self.settings["mesh_dictionary"]
+            num_nodes = len(mesh_dictionary["node_ids"])
+            total_dof = num_nodes * 12  # ✅ 12 DOFs per node
+
+            # ✅ Assemble Global Matrices Using Precomputed Ke and Fe
             logging.info("Assembling global stiffness matrix and force vector...")
+            K_global, F_global = assemble_global_matrices(
+                elements=self.settings["elements"],
+                stiffness_matrices=self.settings["element_stiffness_matrices"],
+                force_vectors=self.settings["element_force_vectors"],
+                total_dof=total_dof
+            )
 
-            # ✅ Assemble Global Matrices
-            global_matrices = assemble_global_matrices(elements, stiffness_matrices, total_dof)
-            K_global, F_global = global_matrices["K_global"], global_matrices["F_global"]
-
-            # ✅ Apply Nodal Loads
-            logging.info("Applying nodal loads...")
-            F_global = self._apply_loads(F_global)
+            # ✅ Log Matrix Dimensions
+            logging.info(f"K_global shape: {K_global.shape}, F_global shape: {F_global.shape}")
 
             # ✅ Apply Boundary Conditions
             logging.info("Applying boundary conditions...")
-            constrained_dofs = self._generate_constrained_dofs(num_nodes)
-            K_mod, F_mod = apply_bcs(K_global, F_global, constrained_dofs)
+            K_mod, F_mod = apply_boundary_conditions(K_global, F_global)
 
-            # ✅ Solve the System
+            # ✅ Perform Solver Diagnostics
+            try:
+                cond_number = np.linalg.cond(K_mod.toarray())  # Convert sparse matrix for diagnostics
+                if cond_number > 1e12:  # High condition number means nearly singular
+                    logging.warning(f"⚠️  Warning: K_mod is nearly singular (Condition Number: {cond_number:.2e}).")
+
+                rank = np.linalg.matrix_rank(K_mod.toarray())
+                logging.info(f"Matrix rank: {rank}/{K_mod.shape[0]}")
+            except Exception as diag_error:
+                logging.error(f"Error computing condition number or rank: {diag_error}", exc_info=True)
+
+            # ✅ Solve the System Using Efficient Sparse Solver
             logging.info(f"Solving system using `{self.settings['solver_name']}` solver...")
             try:
-                displacements = solver_func(K_mod, F_mod)
-            except Exception as e:
-                raise RuntimeError(f"Solver `{self.settings['solver_name']}` encountered an error: {e}")
+                if isinstance(K_mod, np.ndarray):
+                    displacements = solver_func(K_mod, F_mod)
+                else:
+                    displacements = spsolve(K_mod, F_mod)  # ✅ Use sparse solver if available
+                logging.info("Solver completed successfully.")
+            except np.linalg.LinAlgError as e:
+                logging.error(f"Linear algebra error in solver `{self.settings['solver_name']}`: {e}", exc_info=True)
+                raise RuntimeError(f"Solver `{self.settings['solver_name']}` failed due to a singular matrix.")
 
             # ✅ Compute Reaction Forces
-            reaction_forces = K_global @ displacements
+            reaction_forces = K_global @ displacements  # ✅ Efficient sparse matrix multiplication
+
+            # ✅ Vectorized Calculation of Element Displacement Vectors
+            num_elements = len(self.settings["elements"])
+            expected_size = num_elements * 12
+            if len(displacements) != expected_size:
+                raise ValueError(f"Displacement vector size mismatch: Expected {expected_size}, got {len(displacements)}")
+
+            element_displacement_vectors = np.split(displacements, num_elements)
+            logging.info("Element displacement vectors processed successfully.")
 
             # ✅ Store Results
             self.results = {
-                "nodal_displacements": displacements,
-                "nodal_forces": F_global,
-                "reaction_forces": reaction_forces,
-                "reaction_forces_at_constraints": reaction_forces[constrained_dofs],
-                "elemental_stiffness_matrices": stiffness_matrices,
-                "constrained_dofs": constrained_dofs,
+                "global_stiffness_matrix": K_global,
+                "global_force_vector": F_global,
+                "global_displacement_vector": displacements,
+                "global_reaction_force_vector": reaction_forces,
+                "element_stiffness_matrices": self.settings["element_stiffness_matrices"],
+                "element_force_vectors": self.settings["element_force_vectors"],
+                "element_displacement_vectors": element_displacement_vectors,
+                "reaction_force_vectors": reaction_forces[:12],  # First 12 DOFs constrained
             }
 
             logging.info("Static simulation completed successfully.")
@@ -116,56 +142,34 @@ class StaticSimulationRunner:
             logging.error(f"Error during static analysis of {self.job_name}: {e}", exc_info=True)
             raise
 
-    def _apply_loads(self, F_global):
-        """
-        Applies nodal loads to the global force vector.
-
-        Args:
-            F_global (np.array): Initial global force vector.
-
-        Returns:
-            np.array: Updated force vector including applied loads.
-        """
-        loads_array = self.settings.get("nodal_loads", np.zeros_like(F_global))
-        F_global += loads_array.flatten()  # Convert to 1D for summation
-        return F_global
-
-    def _generate_constrained_dofs(self, num_nodes):
-        """
-        Identifies constrained degrees of freedom based on boundary conditions.
-
-        Args:
-            num_nodes (int): Number of nodes in the system.
-
-        Returns:
-            list: Indices of constrained DOFs.
-        """
-        bc_array = self.settings.get("boundary_conditions", np.zeros((num_nodes, 6)))
-        constrained_dofs = np.where(bc_array.flatten() == 1)[0]  # Convert to 1D indices
-
-        logging.info(f"Identified constrained DOFs: {constrained_dofs.tolist()}")
-        return constrained_dofs
-
     def save_primary_results(self):
         """
-        Saves primary simulation results as text files in `post_processing/`.
+        Saves primary simulation results as text files with timestamped filenames in `post_processing/`.
         """
         if not self.results:
             logging.warning(f"No results to save for job: {self.job_name}.")
             return
 
+        logging.info("Saving primary results...")
+
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # ✅ Add date-time tag
+
         for key_name, matrix in self.results.items():
-            if isinstance(matrix, np.ndarray) and matrix.size > 0:
-                filename = f"{key_name}.txt"
-                file_path = os.path.join(self.primary_results_dir, filename)
+            try:
+                if isinstance(matrix, np.ndarray):
+                    filename = f"{self.job_name}_{key_name}_{timestamp}.txt"  # ✅ Append timestamp
+                    file_path = os.path.join(self.primary_results_dir, filename)
 
-                with open(file_path, 'w') as f:
-                    f.write("# Static Analysis Results\n")
-                    f.write(f"# Job: {self.job_name}\n")
-                    f.write(f"# Data Key: {key_name}\n")
-                    f.write("# Data:\n")
-                    np.savetxt(f, matrix, fmt="%.6f", delimiter=",")
+                    with open(file_path, 'w') as f:
+                        f.write("# Static Analysis Results\n")
+                        f.write(f"# Job: {self.job_name}\n")
+                        f.write(f"# Data Key: {key_name}\n")
+                        f.write("# Data:\n")
+                        np.savetxt(f, matrix, fmt="%.6f", delimiter=",")
 
-                logging.info(f"Saved {key_name} -> {file_path}")
-            else:
-                logging.info(f"Skipping {key_name} (empty or non-array).")
+                    logging.info(f"Saved {key_name} -> {file_path}")
+
+            except Exception as e:
+                logging.error(f"Error saving {key_name}: {e}", exc_info=True)
+
+        logging.info("Primary results successfully saved.")

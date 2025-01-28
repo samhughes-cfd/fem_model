@@ -1,0 +1,190 @@
+🔹 Overview
+The run_job_iterator.py script integrates:
+
+First-pass FEM analysis (Ke, Fe Computation)
+Uses analytical methods to compute element stiffness matrices (Ke) and force vectors (Fe).
+Assembles the global system (K_global, F_global).
+Runs an initial static FEM simulation to obtain displacement results (U_initial).
+Iterative FEM Updates (K Numerical Adjustments)
+Uses iterative numerical methods (via central_iterator.py) to refine K_global.
+Runs multiple FEM solves using the updated K_global.
+Stops when convergence criteria (displacement error) is met.
+🔹 Code Logic & Execution Flow
+📌 Phase 1: First Pass (Analytical FEM Solve)
+Load input data (geometry, mesh, material properties, solver settings).
+Instantiate element objects and compute:
+Elemental stiffness matrices (Ke)
+Elemental force vectors (Fe)
+Assemble K_global and F_global using assemble_global_matrices().
+Run FEM Solver (StaticSimulationRunner) to obtain initial displacements (U_initial).
+📌 Phase 2: Iterative FEM Updates (Numerical Refinement)
+Initialize K_iter = K_global for iterative modification.
+Loop until convergence:
+Update K_iter using numerical techniques in central_iterator.py.
+Solve FEM again using updated K_iter.
+Check if displacement error < tolerance; exit if converged.
+Save and log results.
+
+import os
+import sys
+import glob
+import logging
+import time
+import numpy as np
+from pre_processing.parsing.geometry_parser import parse_geometry
+from pre_processing.parsing.mesh_parser import parse_mesh
+from pre_processing.parsing.materials_parser import parse_material
+from pre_processing.parsing.solver_parser import parse_solver
+from processing.assembly import assemble_global_matrices
+from processing.solver_registry import get_solver_registry
+from simulation_runner.static_simulation import StaticSimulationRunner
+from central_iterator import run_iterative_scheme
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+# 📌 Element Mapping for Selection
+ELEMENT_CLASS_MAP = {
+    "EulerBernoulliBeamElement": EulerBernoulliBeamElement,
+    "TimoshenkoBeamElement": TimoshenkoBeamElement,
+}
+
+def main():
+    """Main workflow handler for FEM job execution with iterative stiffness updates."""
+
+    jobs_dir = os.path.join("jobs")
+    results_dir = os.path.join("post_processing", "results")
+    os.makedirs(results_dir, exist_ok=True)
+
+    # ✅ Load FEM solver registry
+    solver_registry = get_solver_registry()
+
+    # 📌 Locate available FEM jobs
+    job_dirs = [d for d in glob.glob(os.path.join(jobs_dir, 'job_*')) if os.path.isdir(d)]
+    if not job_dirs:
+        logging.warning("No job directories found. Ensure job_* directories are present.")
+        return
+
+    for job_dir in job_dirs:
+        case_name = os.path.basename(job_dir)
+        logging.info(f"Starting simulation for job: {case_name}")
+
+        start_time = time.time()
+
+        try:
+            # ✅ Load Input Data
+            geometry_array = parse_geometry(os.path.join(job_dir, "geometry.txt"))
+            mesh_dictionary = parse_mesh(os.path.join(job_dir, "mesh.txt"))
+            material_array = parse_material(os.path.join(job_dir, "material.txt"))
+            solver_array = parse_solver(os.path.join(job_dir, "solver.txt"))
+
+            # ✅ Retrieve active solver
+            solver_name = solver_array[0]  # Assuming "Static" is always first
+            if solver_name not in solver_registry:
+                logging.error(f"No valid solver found for {case_name}. Skipping.")
+                continue
+            solver_func = solver_registry[solver_name]
+
+            # ✅ Instantiate Elements & Compute Initial `Ke`, `Fe`
+            elements_instances = []
+            element_stiffness_matrices = {}
+            element_force_vectors = {}
+
+            for element_id, connectivity in enumerate(mesh_dictionary["connectivity"]):
+                element_class = ELEMENT_CLASS_MAP["EulerBernoulliBeamElement"]
+                element = element_class(
+                    element_id=element_id,
+                    material_properties=material_array,
+                    section_properties=geometry_array,
+                    mesh_data=mesh_dictionary,
+                    dof_per_node=6,
+                    dof_map=[0, 1, 5]
+                )
+
+                # Compute Ke and Fe
+                element_stiffness_matrices[element_id] = element.compute_stiffness_matrix()
+                element_force_vectors[element_id] = element.compute_force_vector()
+                elements_instances.append(element)
+
+            # ✅ Assemble Global Matrices
+            global_matrices = assemble_global_matrices(
+                elements=elements_instances,
+                stiffness_matrices=element_stiffness_matrices,
+                total_dof=len(mesh_dictionary["node_ids"]) * 6
+            )
+            K_global, F_global = global_matrices["K_global"], global_matrices["F_global"]
+
+            # ✅ First-Pass FEM Solve
+            runner = StaticSimulationRunner(
+                settings={
+                    "elements": elements_instances,
+                    "mesh_dictionary": mesh_dictionary,
+                    "element_stiffness_matrices": element_stiffness_matrices,
+                    "element_force_vectors": element_force_vectors,
+                    "solver_name": solver_name
+                },
+                job_name=case_name
+            )
+
+            runner.setup_simulation()
+            runner.run(solver_func)
+            runner.save_primary_results()
+
+            # ✅ Retrieve Initial Displacement Solution
+            U_initial = runner.results["nodal_displacements"]
+            U_target = U_initial  # Placeholder for actual target displacements
+
+            # ✅ Initialize K for Iterative Updates
+            updated_K = K_global.copy()
+
+            # 📌 Start Iterative FEM Updates
+            for iteration in range(10):
+                logging.info(f"Iteration {iteration+1}: Running FEM solve with updated K")
+
+                # Run FEM solver with updated K
+                runner = StaticSimulationRunner(
+                    settings={
+                        "elements": elements_instances,
+                        "mesh_dictionary": mesh_dictionary,
+                        "element_stiffness_matrices": updated_K,
+                        "element_force_vectors": element_force_vectors,
+                        "solver_name": solver_name
+                    },
+                    job_name=case_name
+                )
+
+                runner.setup_simulation()
+                runner.run(solver_func)
+                runner.save_primary_results()
+
+                # Retrieve Current Displacement Solution
+                U_current = runner.results["nodal_displacements"]
+
+                # ✅ Update K using Iterative Scheme
+                updated_K, U_final, metrics = run_iterative_scheme(
+                    K_init=updated_K,
+                    F=F_global,
+                    U_target=U_target,
+                    method="hybrid",
+                    block_sizes=[2, 2, 2],
+                    switch_iter=5,
+                    max_iter=10,
+                    alpha=0.8,
+                    tol=1e-8
+                )
+
+                # ✅ Convergence Check
+                disp_error = np.linalg.norm(U_current - U_target)
+                if disp_error < 1e-8:
+                    logging.info("Converged!")
+                    break
+
+            logging.info(f"Job {case_name} completed in {time.time() - start_time:.2f} seconds.")
+
+        except Exception as e:
+            logging.error(f"Unexpected error in job {case_name}: {e}", exc_info=True)
+            continue
+
+if __name_
+
+

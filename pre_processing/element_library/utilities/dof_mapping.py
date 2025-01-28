@@ -20,20 +20,23 @@ def expand_dof_mapping(reduced_array, full_size=12, dof_map=None):
         ndarray: Expanded array (shape: (full_size, full_size) for matrices or (full_size,) for vectors).
     """
     if dof_map is None:
-        dof_map = list(range(full_size))
+        dof_map = np.arange(full_size)  # Default to all DOFs
 
-    if any(dof >= full_size for dof in dof_map):
+    dof_map = np.array(dof_map, dtype=int)  # Convert list to NumPy array
+
+    if np.any(dof_map >= full_size):
         raise ValueError("DOF map contains indices out of bounds.")
 
+    # Vectorized Expansion for Stiffness Matrix (2D)
     if reduced_array.ndim == 2:
         expanded_array = np.zeros((full_size, full_size))
-        for i, dof_i in enumerate(dof_map):
-            for j, dof_j in enumerate(dof_map):
-                expanded_array[dof_i, dof_j] = reduced_array[i, j]
+        expanded_array[np.ix_(dof_map, dof_map)] = reduced_array  # Vectorized indexing
+
+    # Vectorized Expansion for Force Vector (1D)
     elif reduced_array.ndim == 1:
         expanded_array = np.zeros(full_size)
-        for i, dof_i in enumerate(dof_map):
-            expanded_array[dof_i] = reduced_array[i]
+        expanded_array[dof_map] = reduced_array  # Vectorized assignment
+
     else:
         raise ValueError("Reduced array must be either 1D or 2D.")
 
