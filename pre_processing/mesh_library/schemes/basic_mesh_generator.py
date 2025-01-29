@@ -7,8 +7,8 @@ from datetime import datetime
 
 # Configuration Parameters (User-defined)
 L = 8.0  # Beam length [m]
-growth_factor = 2  # Exponential distribution parameter (set to 0 for uniform mesh)
-max_num_nodes = 101  # Maximum number of nodes allowed if using growth factor
+growth_factor = 3  # Exponential distribution parameter (set to 0 for uniform mesh)
+max_num_nodes = 10  # Maximum number of nodes allowed if using growth factor
 num_uniform_nodes = 1000  # Exact number of nodes if using a uniform mesh (growth_factor = 0)
 
 def generate_mesh(growth_factor, max_num_nodes, num_uniform_nodes, tolerance=1e-6):
@@ -54,7 +54,7 @@ def generate_mesh(growth_factor, max_num_nodes, num_uniform_nodes, tolerance=1e-
 
     return node_positions, elements
 
-def save_mesh_to_file(node_positions, elements, element_type='EulerBernoulliBeamElement', save_directory=r'pre_processing\mesh_library\meshes'):
+def save_mesh_to_file(node_positions, elements, element_type='EulerBernoulliBeamElement3DOF', save_directory=r'pre_processing\mesh_library\meshes'):
     """
     Save the mesh nodes and elements to a text file with an additional element type column.
 
@@ -74,7 +74,7 @@ def save_mesh_to_file(node_positions, elements, element_type='EulerBernoulliBeam
 
     with open(filepath, 'w') as f:
         # Write the [mesh] section header
-        f.write("[mesh]\n")
+        f.write("[Mesh]\n")
         
         # Define column headers with fixed-width formatting
         headers = [
@@ -97,7 +97,7 @@ def save_mesh_to_file(node_positions, elements, element_type='EulerBernoulliBeam
         for idx, x_pos in enumerate(node_positions):
             node_id = idx + 1
             if idx < len(node_positions) - 1:
-                connectivity = f"({node_id}, {node_id + 1})"
+                connectivity = f"({node_id},{node_id + 1})"
                 current_element_type = element_type
             else:
                 connectivity = "-"
