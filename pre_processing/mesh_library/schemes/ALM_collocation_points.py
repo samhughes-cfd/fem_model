@@ -25,50 +25,101 @@ x_coords = np.array([
     0.797885864, 0.798900115, 0.799576829, 0.799915349
 ])
 
-scaled_x_coords = ( ( x_coords - 0.1 ) / 0.7 ) * L
+# Scale the x-coordinates
+scaled_x_coords = ((x_coords - 0.1) / 0.7) * L
 
 def generate_mesh():
     """
     Generate mesh using given x-coordinates.
+    Returns:
+        node_positions (np.ndarray): Scaled x-coordinates of nodes.
+        elements (list of tuples): Connectivity of elements as (start_node, end_node).
     """
     node_positions = scaled_x_coords
     elements = [(idx + 1, idx + 2) for idx in range(len(node_positions) - 1)]
     return node_positions, elements
 
-def save_mesh_to_file(node_positions, elements, save_directory='mesh_library/meshes'):
+def save_mesh_to_file(node_positions, elements, element_type='EulerBernoulliBeamElement3DOF', save_directory=r'pre_processing\mesh_library\meshes'):
     """
-    Save the mesh nodes and elements to a text file.
+    Save the mesh nodes and elements to a text file with an additional element type column.
+    
+    Parameters:
+        node_positions (np.ndarray): Scaled x-coordinates of nodes.
+        elements (list of tuples): Connectivity of elements as (start_node, end_node).
+        element_type (str): Type of the elements to be listed. Default is 'EulerBernoulliBeamElement'.
+        save_directory (str): Directory where the mesh file will be saved.
     """
+    # Ensure the save directory exists
     os.makedirs(save_directory, exist_ok=True)
+    
+    # Generate a timestamp for the filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"mesh_{timestamp}.txt"
     filepath = os.path.join(save_directory, filename)
-    spacing_adjustment = 1
-
+    
     with open(filepath, 'w') as f:
-        f.write("[element_types]\n")
-        f.write("EulerBernoulliBeamElement\n\n")
-        f.write("[node_ids]   [x]          [y]        [z]        [connectivity]\n")
-
+        # Write the [mesh] section header
+        f.write("[mesh]\n")
+        
+        # Define column headers with fixed-width formatting
+        headers = [
+            "[node_ids]", "[x]", "[y]", "[z]", "[connectivity]", "[element_type]"
+        ]
+        
+        # Define corresponding field widths for alignment
+        field_widths = [15, 15, 12, 12, 20, 25]
+        
+        # Create the header line using fixed-width formatting
+        header_line = ""
+        for header, width in zip(headers, field_widths):
+            header_line += f"{header:<{width}}"
+        header_line += "\n"
+        
+        f.write(header_line)
+        
+        # Iterate over nodes to write their data
         for idx, x_pos in enumerate(node_positions):
             node_id = idx + 1
-            connectivity = "-" if idx == len(node_positions) - 1 else f"({node_id}, {node_id + 1})"
-            f.write(f"{node_id:<{12+spacing_adjustment}}{x_pos:<{12+spacing_adjustment}.6f}{0.0:<{10+spacing_adjustment}.1f}{0.0:<{10+spacing_adjustment}.1f}{connectivity}\n")
-
+            if idx < len(node_positions) - 1:
+                connectivity = f"({node_id},{node_id + 1})"
+                current_element_type = element_type
+            else:
+                connectivity = "-"
+                current_element_type = "-"
+            # Create the data line using fixed-width formatting
+            data_line = (
+                f"{node_id:<15}"
+                f"{x_pos:<15.6f}"
+                f"{0.0:<12.1f}"
+                f"{0.0:<12.1f}"
+                f"{connectivity:<20}"
+                f"{current_element_type:<25}"
+                "\n"
+            )
+            f.write(data_line)
+    
     logging.info(f"Mesh file saved to '{filepath}'.")
 
 def main():
     """
     Main function to generate and save the mesh.
     """
+    # Configure logging
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    
     try:
+        # Generate mesh data
         nodes, elems = generate_mesh()
+        
+        # Display the number of nodes and elements
         print(f"Number of nodes: {len(nodes)}")
         print(f"Number of elements: {len(elems)}")
+        
+        # Save the mesh to file
         save_mesh_to_file(nodes, elems)
+        
     except Exception as e:
         logging.error(f"An error occurred during mesh generation: {e}")
-        
+
 if __name__ == "__main__":
     main()

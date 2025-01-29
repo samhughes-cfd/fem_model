@@ -1,6 +1,6 @@
 # jobs\base\material.txt
 
-[material]
+[Material]
 [E]                                2e11                  # Young's Moudlus (Pa)
 [G]                                7.6923e10             # Shear Modulus (Pa)
 [nu]                               0.3                   # Poisson's Ratio (-)

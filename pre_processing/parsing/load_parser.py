@@ -88,7 +88,6 @@ def parse_load(file_path):
             # Skip header row if it contains non-numeric values
             if not first_numeric_line_detected:
                 if not all(re.match(r"^-?\d+(\.\d+)?$", p) for p in parts):
-                    logging.warning(f"[Load] Skipping non-numeric header row at line {line_number}: {parts}")
                     continue  # Skip header
                 first_numeric_line_detected = True  # Set flag after skipping
 

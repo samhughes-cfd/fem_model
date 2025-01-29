@@ -1,9 +1,9 @@
 # jobs\base\geometry.txt
 
-[geometry]
+[Geometry]
 [L]                                8.0                  # Beam length, aligned with the +ve x-axis direction where x = [0, L] (m)         
 
-[section_geometry]
+[Section]
 [A]                                0.05                 # Cross-sectional area (m^2)
 [I_x]                              1.3e-4               # Moment of inertia about x-axis (m^4)
 [I_y]                              2.4e-4               # Moment of inertia about y-axis (m^4)

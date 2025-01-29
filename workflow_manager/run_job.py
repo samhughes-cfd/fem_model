@@ -19,8 +19,7 @@ from pre_processing.parsing.solver_parser import parse_solver
 from pre_processing.parsing.load_parser import parse_load  
 from processing.solver_registry import get_solver_registry
 from simulation_runner.static_simulation import StaticSimulationRunner
-from pre_processing.element_library.element_registry import get_euler_bernoulli, get_timoshenko 
-from pre_processing.element_library.element_1D_base import Element1DBase  # ✅ Import Base Class
+from pre_processing.element_library.element_1D_base import Element1DBase  # Updated usage of Element1DBase
 
 # Configure logging
 logging.basicConfig(
@@ -28,12 +27,6 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.StreamHandler(), logging.FileHandler("run_job.log", mode="a")]
 )
-
-# Element Type Mapping
-ELEMENT_CLASS_MAP = {
-    "EulerBernoulliBeamElement": get_euler_bernoulli,
-    "TimoshenkoBeamElement": get_timoshenko,
-}
 
 def main():
     """
@@ -70,7 +63,7 @@ def main():
             mesh_dictionary = parse_mesh(os.path.join(job_dir, "mesh.txt"))
             material_array = parse_material(os.path.join(jobs_dir, 'base', "material.txt"))
             solver_array = parse_solver(os.path.join(jobs_dir, 'base', "solver.txt"))
-            load_array = parse_load(os.path.join(job_dir, "load.txt")) 
+            load_array = parse_load(os.path.join(job_dir, "load.txt"))
 
             # --- 4. Select Solver ---
             solver_name = next((solver for solver in solver_array if solver.lower() != "off"), None)
@@ -86,8 +79,7 @@ def main():
                 geometry_array=geometry_array,
                 material_array=material_array,
                 mesh_dictionary=mesh_dictionary,
-                load_array=load_array,
-                dof_per_node=12
+                load_array=load_array
             )
 
             # --- 6. Access Precomputed Ke and Fe ---
@@ -97,7 +89,7 @@ def main():
             # --- 7. Run the Simulation ---
             runner = StaticSimulationRunner(
                 settings={
-                    "elements": elements_base.elements_instances,
+                    "elements": elements_base.elements_instances,  # Use instantiated elements
                     "mesh_dictionary": mesh_dictionary,
                     "material_array": material_array,
                     "geometry_array": geometry_array,
