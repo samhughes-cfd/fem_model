@@ -55,6 +55,18 @@ class EulerBernoulliBeamElement3DOF(Element1DBase):
         # Compute the Jacobian at initialization
         self.jacobian_matrix, self.detJ = self._compute_jacobian_matrix()
 
+        self.dof_map = self.get_dof_mapping()  # Get the DOF mapping for this element
+
+    def get_dof_mapping(self):
+        """
+        Returns DOF mapping for this element, (u_x, u_y, 0, 0, 0, θ_z).
+        
+        Node 1: u_x (0), u_y (1), 0, 0, 0, θ_z (5)
+        Node 2: u_x (6), u_y (7), 0, 0, 0, θ_z (11)
+        
+        """
+        return [0, 1, 5, 6, 7, 11]  
+
     def get_element_index(self):
         """Finds the index of the element based on its ID."""
         return np.where(self.mesh_dictionary["element_ids"] == self.element_id)[0][0]
@@ -159,130 +171,134 @@ class EulerBernoulliBeamElement3DOF(Element1DBase):
     
     def element_stiffness_matrix(self):
         """Computes the element stiffness matrix using vectorized Gauss quadrature integration."""
+    
         gauss_points, weights = get_gauss_points(n=3, dim=1)
         shape_data = {xi[0]: self.shape_functions(xi[0]) for xi in gauss_points}
         D = self.material_stiffness_matrix()
 
-        logger.debug("===== Material Stiffness Matrix =====")
-        logger.debug("D =\n%s", D)
-        logger.debug("D.shape = %s (Expected: (2,2) or material-specific)", D.shape)
-        logger.debug("=====================================")
+        #logger.debug("===== Material Stiffness Matrix =====")
+        #logger.debug("D =\n%s", D)
+        #logger.debug("D.shape = %s (Expected: (2,2) or material-specific)", D.shape)
+        #logger.debug("=====================================")
 
-        def integrand_stiffness_matrix(xi: float) -> np.ndarray:
-            """Computes the stiffness integrand at a Gauss point."""
-            _, dN_dxi, _ = shape_data[xi]
-            B = self.strain_displacement_matrix(dN_dxi)
+        # **Vectorized computation of B matrices**
+        B_matrices = np.array([
+            self.strain_displacement_matrix(shape_data[xi[0]][1]) for xi in gauss_points
+        ])  # Shape: (num_gauss_points, 2, 6)
 
-            logger.debug("===== Strain-Displacement Matrix (B) =====")
-            logger.debug("B =\n%s", B)
-            logger.debug("B.shape = %s (Expected: (2,6))", B.shape)
-            logger.debug("==========================================")
+        B_matrices_T = B_matrices.transpose(0, 2, 1) # Shape: (num_gauss_points, 6, 2)
 
-            return B.T @ D @ B  
+        # Einsum constituent tensor shapes
+        logging.debug(f"weights.shape: {weights.shape}")
+        assert weights.shape == (3,), f"❌ Unexpected shape for weights: {weights.shape}"
 
-        # **Vectorized integration using einsum** (performs Σ Wi * B.T * D * B)
-        Ke_reduced = np.einsum(
-            "i,ijk->jk", weights, np.array([integrand_stiffness_matrix(xi[0]) for xi in gauss_points])
-        ) * self.detJ
+        logging.debug(f"B_matrices.shape: {B_matrices.shape}")
+        assert B_matrices.shape == (3, 6, 2), f"❌ Unexpected shape for B_matrices: {B_matrices.shape}"
+
+        logging.debug(f"D.shape: {D.shape}")
+        assert D.shape == (2, 2), f"❌ Unexpected shape for D matrix: {D.shape}"
+
+        B_matrices_T = B_matrices.transpose(0, 2, 1)
+        logging.debug(f"B_matrices_T.shape (should be transposed B_matrices): {B_matrices_T.shape}")
+        assert B_matrices_T.shape == (3, 2, 6), f"❌ Unexpected transposed shape for B_matrices_T: {B_matrices_T.shape}"
+
+        # **Vectorized integration using einsum (Σ Wi * B.T * D * B)**
+        try:
+            Ke_reduced = np.einsum("i,imk,mn,inj->kj", weights, B_matrices_T, D, B_matrices) * self.detJ
+            logging.info(f"✅ Stiffness matrix computed successfully. Shape: {Ke_reduced.shape}")
+        except ValueError as e:
+            logging.error(f"❌ Einsum operation failed: {e}")
+            logging.error(f"weights.shape: {weights.shape}")
+            logging.error(f"B_matrices_T.shape: {B_matrices_T.shape}")
+            logging.error(f"D.shape: {D.shape}")
+            logging.error(f"B_matrices.shape: {B_matrices.shape}")
+            raise  # Re-raise the error for traceback
+
 
         logger.debug("===== Reduced Stiffness Matrix (After Integration) =====")
         logger.debug("Ke_reduced =\n%s", Ke_reduced)
         logger.debug("Ke_reduced.shape = %s (Expected: (6,6))", Ke_reduced.shape)
         logger.debug("=======================================================")
 
+        # Expand to full DOF size (12x12)
         self.Ke = expand_stiffness_matrix(Ke_reduced, full_size=12, dof_map=self.dof_map)
 
-        logger.debug("===== Final Element Stiffness Matrix (Mapped to 12 DOFs) =====")
-        logger.debug("self.Ke =\n%s", self.Ke)
-        logger.debug("self.Ke.shape = %s (Expected: (12,12))", self.Ke.shape)
-        logger.debug("=============================================================")
+        #logger.debug("===== Final Element Stiffness Matrix (Mapped to 12 DOFs) =====")
+        #logger.debug("self.Ke =\n%s", self.Ke)
+        #logger.debug("self.Ke.shape = %s (Expected: (12,12))", self.Ke.shape)
+        #logger.debug("=============================================================")
+
 
     def element_force_vector(self):
         """
         Computes the element force vector using vectorized numerical integration (Gauss quadrature).
-        Detailed debug logs are added to verify tensor shapes before operations.
 
         Returns:
         - np.ndarray: The force vector (12x1) in the global coordinate system.
         """
-        # Get Gauss points & weights (3-point Gauss quadrature)
+        # Step 1: Get Gauss points & weights (3-point Gauss quadrature)
         gauss_points, weights = get_gauss_points(n=3, dim=1)
         xi_array = np.array([xi[0] for xi in gauss_points]).reshape(-1, 1)  # Shape: (3,1)
         element_index = self.get_element_index()
 
-        # Compute physical coordinates for Gauss points
+        # Step 2: Compute physical coordinates for Gauss points
         x_phys_array = (
             self.jacobian_matrix[0, 0] * xi_array 
             + self.mesh_dictionary["node_coordinates"][self.mesh_dictionary["connectivity"][element_index]].mean(axis=0)
         )[:, 0]  # Extract only x-coordinates, shape (3,)
 
-        # Compute shape function matrices for each Gauss point and stack them into a tensor
-        shape_matrices = np.stack(
-            [self.shape_functions(xi[0])[0] for xi in gauss_points], axis=0
-        )[:, np.newaxis, :]  # Shape: (3, 1, 6)
+        # Step 3: Compute shape function matrices for each Gauss point
+        shape_matrices = np.array([
+            self.shape_functions(xi[0])[0].reshape(6, 1)  # Ensure (6,1) shape per Gauss point
+            for xi in gauss_points
+        ])  # Shape: (3,6,1)
 
         # Log shape function matrix
-        logger.debug("===== Shape Function Matrix (Before Integration) =====")
-        logger.debug("shape_matrices =\n%s", shape_matrices)
-        logger.debug("shape_matrices.shape = %s (Expected: (3,1,6))", shape_matrices.shape)
-        logger.debug("=======================================================")
+        #logger.debug("===== Shape Function Matrix (Before Integration) =====")
+        #logger.debug("shape_matrices =\n%s", shape_matrices)
+        #logger.debug("shape_matrices.shape = %s (Expected: (3,1,6))", shape_matrices.shape)
+        #logger.debug("=======================================================")
 
-        # Vectorized interpolation of loads at Gauss points (Ensuring shape (3, 6))
+
+        # Step 4: Interpolate loads at Gauss points
         q_xi_array = interpolate_loads(x_phys_array, self.load_array)  # Expected shape: (3,6)
 
-        # Ensure q_xi_array has the right shape, even if x_phys_array is a single value
+        # Ensure q_xi_array has the correct shape, even if x_phys_array is a single value
         if q_xi_array.ndim == 1:
             q_xi_array = q_xi_array.reshape(1, -1)  # Convert (6,) → (1,6)
 
         assert q_xi_array.shape == (3, 6), f"q_xi_array shape mismatch: expected (3,6), got {q_xi_array.shape}"
 
         # Log interpolated load tensor
-        logger.debug("===== Interpolated Load Vector (Before Integration) =====")
-        logger.debug("q_xi_array =\n%s", q_xi_array)
-        logger.debug("q_xi_array.shape = %s (Expected: (3,6))", q_xi_array.shape)
-        logger.debug("===========================================================")
+        #logger.debug("===== Interpolated Load Vector (Before Integration) =====")
+        #logger.debug("q_xi_array =\n%s", q_xi_array)
+        #logger.debug("q_xi_array.shape = %s (Expected: (3,6))", q_xi_array.shape)
+        #logger.debug("===========================================================")
 
         # Log einsum constituent tensor shapes
-        logger.debug("===== Einsum Constituent Tensor Shapes (Before Integration) =====")
-        logger.debug("weights.shape = %s", weights.shape)
-        logger.debug("shape_matrices.shape = %s", shape_matrices.shape)
-        logger.debug("q_xi_array.shape = %s", q_xi_array.shape)
-        logger.debug("=====================================================================")
+        #logger.debug("===== Einsum Constituent Tensor Shapes (Before Integration) =====")
+        #logger.debug("weights.shape = %s", weights.shape)
+        #logger.debug("shape_matrices.shape = %s", shape_matrices.shape)
+        #logger.debug("q_xi_array.shape = %s", q_xi_array.shape)
+        #logger.debug("=====================================================================")
 
-        def integrand_force_vector(xi_idx: int) -> np.ndarray:
-            """
-            Computes the force integrand at a given Gauss point index.
-
-            Parameters:
-            - xi_idx (int): Index of the Gauss point.
-
-            Returns:
-            - np.ndarray: Force contribution at xi_idx.
-            """
-            N = self.shape_functions(gauss_points[xi_idx][0])[0]
-            return N.T @ q_xi_array[xi_idx]  # Shape: (6,)
-
-        # **Fully vectorized integration step** using einsum (performs Σ Wi * N.T * q_xi)
-        Fe_reduced = np.einsum(
-            "i,ik->k", weights, np.array([integrand_force_vector(i) for i in range(len(weights))])
-        ) * self.detJ  # Shape: (6,)
+        # Step 5: Fully vectorized integration using einsum
+        Fe_reduced = np.einsum("i,ijk,ik->j", weights, shape_matrices, q_xi_array) * self.detJ  # Shape: (6,)
 
         # Log reduced force vector (before mapping)
-        logger.debug("===== Reduced Force Vector (After Integration) =====")
-        logger.debug("Fe_reduced = %s", Fe_reduced)
-        logger.debug("Fe_reduced.shape = %s (Expected: (6,))", Fe_reduced.shape)
-        logger.debug("=====================================================")
+        #logger.debug("===== Reduced Force Vector (After Integration) =====")
+        #logger.debug("Fe_reduced = %s", Fe_reduced)
+        #logger.debug("Fe_reduced.shape = %s (Expected: (6,))", Fe_reduced.shape)
+        #logger.debug("=====================================================")
 
-        assert Fe_reduced.shape == (6,), f"Fe_reduced shape mismatch: expected (6,), got {Fe_reduced.shape}"
-
-        # Map to 12 DOFs using provided mapping
+        # Step 6: Map to 12 DOFs using provided mapping
         self.Fe = expand_force_vector(Fe_reduced, full_size=12, dof_map=self.dof_map)
 
-    # Log final mapped force vector
-    logger.debug("===== Final Element Force Vector (Mapped to 12 DOFs) =====")
-    logger.debug("self.Fe =\n%s", self.Fe)
-    logger.debug("self.Fe.shape = %s (Expected: (12,))", self.Fe.shape)
-    logger.debug("==========================================================")
+        # Log final mapped force vector
+        #logger.debug("===== Final Element Force Vector (Mapped to 12 DOFs) =====")
+        #logger.debug("self.Fe =\n%s", self.Fe)
+        #logger.debug("self.Fe.shape = %s (Expected: (12,))", self.Fe.shape)
+        #logger.debug("==========================================================")
 
     def validate_matrices(self):
         """Validates that the stiffness and force matrices have the correct dimensions."""
