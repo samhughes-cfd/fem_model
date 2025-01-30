@@ -22,12 +22,17 @@ from simulation_runner.static_simulation import StaticSimulationRunner
 from pre_processing.element_library.element_1D_base import Element1DBase  # Updated usage of Element1DBase
 
 # Configure logging
+
+log_file_path = os.path.join(script_dir, "run_job.log")
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(), logging.FileHandler("run_job.log", mode="a")]
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(log_file_path, mode="a")
+    ]
 )
-
 def main():
     """
     Main workflow for executing FEM simulations.
@@ -89,7 +94,7 @@ def main():
             # --- 7. Run the Simulation ---
             runner = StaticSimulationRunner(
                 settings={
-                    "elements": elements_base.elements_instances,  # Use instantiated elements
+                    "elements": np.array(elements_base.elements_instances),  # ✅ Ensure it's a NumPy array
                     "mesh_dictionary": mesh_dictionary,
                     "material_array": material_array,
                     "geometry_array": geometry_array,
@@ -101,10 +106,11 @@ def main():
             )
 
             runner.setup_simulation()
-            runner.run(solver_func)
+            runner.run(solver_func)  # ✅ Pass solver function explicitly
             runner.save_primary_results()
 
-            logging.info(f"Simulation completed for {case_name} in {time.time() - start_time:.2f} sec.")
+            logging.info(f"✅ Simulation completed for {case_name} in {time.time() - start_time:.2f} sec.")
+
 
         except Exception as e:
             logging.error(f"Unexpected error in job {case_name}: {e}", exc_info=True)

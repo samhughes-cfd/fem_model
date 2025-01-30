@@ -23,7 +23,7 @@ def interpolate_loads(x_phys: np.ndarray, loads_array: np.ndarray) -> np.ndarray
 
     # Perform vectorized interpolation for all six force components at once
     interpolated_forces = np.vstack([
-        np.interp(x_phys, x_loads, force_components[:, i], left=0, right=0)
+        np.interp(x_phys, x_loads, force_components[:, i], left=0, right=0) # NumPy linear interpolation
         for i in range(6)  # Iterate over force/moment components
     ]).T  # Transpose to get shape (N, 6)
 
