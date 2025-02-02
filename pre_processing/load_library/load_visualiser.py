@@ -36,7 +36,7 @@ sorted_tsrs = sorted(data_dict.keys())
 
 # Function to plot forces and moments in a 2-column format
 def plot_load_profiles():
-    fig, axes = plt.subplots(3, 2, figsize=(12, 12), sharex=True)
+    fig, axes = plt.subplots(3, 2, figsize=(14, 12), sharex=True)
     
     force_components = ['F_x', 'F_y', 'F_z']
     moment_components = ['M_x', 'M_y', 'M_z']
