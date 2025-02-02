@@ -5,53 +5,12 @@ import logging
 import re
 import os
 
-# Set up logging for debugging
-logging.basicConfig(level=logging.WARNING)
-#logging.basicConfig(level=logging.INFO)
-#logging.basicConfig(level=logging.DEBUG)
+# Set up detailed logging
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 def parse_load(file_path):
     """
     Parses point load vectors from a structured text file and returns a 2D NumPy array.
-
-    =============================
-    Load Properties Mapping
-    =============================
-
-    Index   Property    Symbol     Units
-    --------------------------------------
-    0       X-Position  [x]        [m]
-    1       Y-Position  [y]        [m]
-    2       Z-Position  [z]        [m]
-    3       Force X     [F_x]      [N]
-    4       Force Y     [F_y]      [N]
-    5       Force Z     [F_z]      [N]
-    6       Moment X    [M_x]      [N·m]
-    7       Moment Y    [M_y]      [N·m]
-    8       Moment Z    [M_z]      [N·m]
-
-    Only numerical values within the `[Loads]` section are processed. Empty lines 
-    and comments (`#`) are ignored. Malformed rows are skipped with a warning.
-
-    Parameters
-    ----------
-    file_path : str
-        Path to the load input file.
-
-    Returns
-    -------
-    numpy.ndarray
-        A NumPy array of shape `(N, 9)`, where `N` is the number of valid point loads.
-        Each row represents a point load with `[x, y, z, F_x, F_y, F_z, M_x, M_y, M_z]`.
-
-    Raises
-    ------
-    ValueError
-        If a load property cannot be converted to a float.
-
-    Warnings
-    --------
-    Logs a warning if an invalid load property is encountered.
     """
 
     # Step 1: Check if the file exists
@@ -59,17 +18,22 @@ def parse_load(file_path):
         logging.error(f"[Load] File not found: {file_path}")
         raise FileNotFoundError(f"{file_path} not found")
 
+    logging.info(f"[Load] Reading file: {file_path}")
+
     loads_list = []
-    header_pattern = re.compile(r"^\[loads\]$", re.IGNORECASE)  # Matches ONLY [Loads]
+    header_pattern = re.compile(r"^\[loads\]$", re.IGNORECASE)  # Matches [Loads]
     current_section = None
     first_numeric_line_detected = False  # Track if header is skipped
 
     # Step 2: Read and process file
     with open(file_path, 'r') as f:
         for line_number, raw_line in enumerate(f, 1):
+            logging.debug(f"Processing line {line_number}: {raw_line.strip()}")
+
             line = raw_line.split("#")[0].strip()  # Remove inline comments
 
             if not line:
+                logging.debug(f"Skipping empty line {line_number}")
                 continue  # Skip empty lines
 
             # Detect the `[Loads]` section
@@ -80,35 +44,45 @@ def parse_load(file_path):
 
             # Skip any data before [Loads] section
             if current_section != "loads":
+                logging.debug(f"Skipping line {line_number}: Outside [Loads] section")
                 continue  
 
             # Step 3: Process valid data lines
             parts = line.split()
 
-            # Skip header row if it contains non-numeric values
+            # Log the parsed split parts
+            logging.debug(f"Line {line_number} split into: {parts}")
+
+            # If the first row contains any non-numeric characters, treat it as a header and skip
             if not first_numeric_line_detected:
-                if not all(re.match(r"^-?\d+(\.\d+)?$", p) for p in parts):
-                    logging.warning(f"[Load] Skipping non-numeric header row at line {line_number}: {parts}")
-                    continue  # Skip header
-                first_numeric_line_detected = True  # Set flag after skipping
+                if any(re.search(r"[^\d\.\-+eE]", p) for p in parts):  
+                    continue  # Skip this row if it contains anything non-numeric
+                first_numeric_line_detected = True  # Set flag after processing first data row
 
             if len(parts) != 9:
                 logging.warning(f"[Load] Line {line_number}: Expected 9 values, found {len(parts)}. Content: {parts}. Skipping.")
                 continue
 
             try:
-                loads_list.append([float(x) for x in parts])
+                numeric_values = [float(x) for x in parts]
+                loads_list.append(numeric_values)
+                logging.debug(f"Successfully parsed line {line_number}: {numeric_values}")
             except ValueError as e:
                 logging.warning(f"[Load] Line {line_number}: Invalid numeric data '{parts}'. Error: {e}. Skipping.")
 
-    # Step 4: Handle case where no valid loads were found
+    # Step 4: Handle case where no `[Loads]` section was found
+    if current_section is None:
+        logging.warning("[Load] WARNING: No [Loads] section detected! Parsing from first valid numeric row.")
+        current_section = "loads"  # Set manually to allow parsing
+
+    # Step 5: Handle case where no valid loads were found
     if not loads_list:
         logging.error(f"[Load] No valid load data found in '{file_path}'. Returning empty array.")
         return np.empty((0, 9), dtype=float)
 
-    # Step 5: Convert to NumPy array and log results
+    # Step 6: Convert to NumPy array and log results
     loads_array = np.array(loads_list, dtype=float)
-    logging.info(f"[Load] Parsed {loads_array.shape[0]} load entries from '{file_path}'.")
+    logging.info(f"[Load] Successfully parsed {loads_array.shape[0]} load entries from '{file_path}'.")
     logging.debug(f"[Load] Final parsed array:\n{loads_array}")
 
     return loads_array

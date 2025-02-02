@@ -102,7 +102,7 @@ def parse_geometry(file_path):
     ]
     geometry_map = {key: i for i, key in enumerate(geometry_keys)}
 
-    relevant_sections = re.compile(r"^\[(geometry|section_geometry)\]$", re.IGNORECASE)
+    relevant_sections = re.compile(r"^\[(geometry|section)\]$", re.IGNORECASE)
     key_pattern = re.compile(r"^\s*\[(\w+)]\s*(.*)")  # Allow extra spaces
 
     current_section = None

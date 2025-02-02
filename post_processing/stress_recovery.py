@@ -1,8 +1,8 @@
 # post_processing/stress_recovery.py
 
 import numpy as np
-from pre_processing.element_library.euler_bernoulli.euler_bernoulli import EulerBernoulliBeamElement
-from pre_processing.element_library.timoshenko.timoshenko import TimoshenkoBeamElement
+from pre_processing.element_library.euler_bernoulli.euler_bernoulli3DOF import EulerBernoulliBeamElement
+from pre_processing.element_library.timoshenko.timoshenko3DOF import TimoshenkoBeamElement
 
 def compute_stresses(elements_list, displacements):
     """

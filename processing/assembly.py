@@ -5,73 +5,87 @@ Assembles the global stiffness matrix and force vector for static FEM problems.
 """
 
 import numpy as np
-import logging
+from scipy.sparse import coo_matrix, csr_matrix
 
-logger = logging.getLogger(__name__)
-
-def assemble_global_matrices(elements, stiffness_matrices, total_dof, analysis_type="static"):
+def assemble_global_matrices(elements, element_mass_matrices=None, element_damping_matrices=None, 
+                             element_stiffness_matrices=None, element_force_vectors=None, total_dof=None):
     """
-    Assembles the global system matrices (stiffness, mass, damping, force) based on the analysis type.
+    Generalized function for assembling global mass (M), damping (C), stiffness (K) matrices, 
+    and force vector (F) from element-wise contributions.
+
+    Supports:
+    - **Static FEM** (`K_global`, `F_global`)
+    - **Dynamic FEM** (`M_global`, `C_global`, `K_global`, `F_global`)
+    - **Modal Analysis** (`M_global`, `K_global` for eigenvalue problems)
+
+    **Input Requirements:**
+    - Element matrices (`element_mass_matrices`, `element_damping_matrices`, `element_stiffness_matrices`)
+      **must be provided in `coo_matrix` format** for efficient assembly.
+    - Force vectors (`element_force_vectors`) should be **dense NumPy arrays** (`np.ndarray`).
+
+    **Output Format:**
+    - Global matrices (`M_global`, `C_global`, `K_global`) are **returned in `csr_matrix` format**
+      for efficient numerical operations (solving, matrix-vector multiplication).
+    - `F_global` remains a **dense NumPy array** (`np.ndarray`).
 
     Parameters:
-        elements (list): List of instantiated element objects.
-        stiffness_matrices (dict): Precomputed element stiffness matrices from `run_job.py`.
-        total_dof (int): Total degrees of freedom.
-        analysis_type (str): Type of analysis ("static", "dynamic", "modal").
+    - elements: List of element objects containing DOF mapping.
+    - element_mass_matrices: (Optional) List of element mass matrices (`coo_matrix` form).
+    - element_damping_matrices: (Optional) List of element damping matrices (`coo_matrix` form).
+    - element_stiffness_matrices: (Optional) List of element stiffness matrices (`coo_matrix` form).
+    - element_force_vectors: (Optional) List of element force vectors (`numpy.ndarray` form).
+    - total_dof: Total degrees of freedom.
 
     Returns:
-        dict: Containing the assembled global matrices:
-            - "K_global": Stiffness matrix
-            - "F_global": Force vector (for static analysis)
-            - "M_global": Mass matrix (if dynamic/modal, else None)
-            - "C_global": Damping matrix (if dynamic, else None)
-            - "element_stiffness_matrices": Dict of element stiffness matrices
+    - M_global: Sparse global mass matrix (`csr_matrix`, None if not provided).
+    - C_global: Sparse global damping matrix (`csr_matrix`, None if not provided).
+    - K_global: Sparse global stiffness matrix (`csr_matrix`).
+    - F_global: Global force vector (`numpy.ndarray`, None if not provided).
     """
-    logger.info(f"Assembling global system for {analysis_type} analysis.")
 
-    # ✅ Initialize Global Matrices
-    K_global = np.zeros((total_dof, total_dof))  # Stiffness matrix
-    F_global = np.zeros(total_dof)  # Force vector (only used in static)
+    # Convert elements' DOF mappings to a NumPy array for efficient indexing
+    dof_mappings = np.array([element.dof_mapping for element in elements])
 
-    # Commented out until dynamic/modal tools are available
-    M_global = np.zeros((total_dof, total_dof)) if analysis_type in ["dynamic", "modal"] else None  # Mass matrix
-    C_global = np.zeros((total_dof, total_dof)) if analysis_type == "dynamic" else None  # Damping matrix
+    # Convert input matrices and vectors to NumPy arrays where applicable
+    Fe = np.array(element_force_vectors) if element_force_vectors is not None else None
+    Me = np.array(element_mass_matrices) if element_mass_matrices is not None else None
+    Ce = np.array(element_damping_matrices) if element_damping_matrices is not None else None
 
-    element_stiffness_matrices = {}
+    # Initialize sparse matrix storage (using COO for efficient assembly)
+    M_row, M_col, M_data = ([], [], []) if Me is not None else (None, None, None)
+    C_row, C_col, C_data = ([], [], []) if Ce is not None else (None, None, None)
+    K_row, K_col, K_data = [], [], []
 
-    # ✅ Loop through elements and assemble the global system
-    for element in elements:
-        try:
-            Ke = stiffness_matrices[element.element_id]  # Retrieve precomputed Ke
-            global_dof_indices = element.get_global_dof_indices()
+    # Efficiently populate sparse matrix indices & values
+    for i, dofs in enumerate(dof_mappings):
+        row_indices, col_indices = np.meshgrid(dofs, dofs, indexing='ij')
 
-            # Assemble stiffness matrix into global K
-            K_global[np.ix_(global_dof_indices, global_dof_indices)] += Ke
-            element_stiffness_matrices[element.element_id] = Ke
+        # Assemble mass matrix if provided
+        if Me is not None:
+            M_row.extend(row_indices.ravel())
+            M_col.extend(col_indices.ravel())
+            M_data.extend(Me[i].data)  # Ensure it’s extracted from `coo_matrix`
 
-            # Assemble force vector (for static analysis)
-            if analysis_type == "static":
-                F_global[global_dof_indices] += element.Fe  # Accumulate element forces
+        # Assemble damping matrix if provided
+        if Ce is not None:
+            C_row.extend(row_indices.ravel())
+            C_col.extend(col_indices.ravel())
+            C_data.extend(Ce[i].data)  # Ensure it’s extracted from `coo_matrix`
 
-            # Future expansion: Mass matrix assembly (disabled for now)
-            # if M_global is not None and hasattr(element, "Me"):
-            #     M_global[np.ix_(global_dof_indices, global_dof_indices)] += element.Me
+        # Assemble stiffness matrix (Ke is already `coo_matrix`)
+        if element_stiffness_matrices is not None:
+            K_row.extend(element_stiffness_matrices[i].row)
+            K_col.extend(element_stiffness_matrices[i].col)
+            K_data.extend(element_stiffness_matrices[i].data)
 
-            # Future expansion: Damping matrix assembly (disabled for now)
-            # if C_global is not None and hasattr(element, "Ce"):
-            #     C_global[np.ix_(global_dof_indices, global_dof_indices)] += element.Ce
+    # Convert lists into sparse matrices (`coo_matrix` → `csr_matrix`)
+    M_global = coo_matrix((M_data, (M_row, M_col)), shape=(total_dof, total_dof)).tocsr() if Me is not None else None
+    C_global = coo_matrix((C_data, (C_row, C_col)), shape=(total_dof, total_dof)).tocsr() if Ce is not None else None
+    K_global = coo_matrix((K_data, (K_row, K_col)), shape=(total_dof, total_dof)).tocsr() if K_data else None
 
-            logger.info(f"  ✅ Element {element.element_id}: Added to K_global.")
+    # Assemble force vector if available
+    F_global = np.zeros(total_dof) if Fe is not None else None
+    if Fe is not None:
+        np.add.at(F_global, dof_mappings, Fe)
 
-        except Exception as e:
-            logger.error(f"❌ Error assembling element {element.element_id}: {e}")
-
-    logger.info(f"Global system assembly complete for {analysis_type} analysis.")
-
-    return {
-        "K_global": K_global,
-        "F_global": F_global if analysis_type == "static" else None,
-        "M_global": M_global,
-        "C_global": C_global,
-        "element_stiffness_matrices": element_stiffness_matrices,
-    }
+    return M_global, C_global, K_global, F_global

@@ -1,40 +1,101 @@
 # pre_processing\element_library\utilities\dof_mapping.py
 
 import numpy as np
+import logging
 
-def expand_dof_mapping(reduced_array, full_size=12, dof_map=None):
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+
+def expand_stiffness_matrix(reduced_Ke, full_size=12, dof_map=None):
     """
-    Expands a reduced array to fit a full DOF system.
+    Expands a reduced stiffness matrix (Ke) to fit a full DOF system using efficient vectorized indexing.
+    Includes logging to help debug zero entries.
 
     Args:
-        reduced_array (ndarray): Reduced array (size depends on dof_map).
-            - If `reduced_array` is 2D (e.g., stiffness matrix), its shape should be (num_active_dofs, num_active_dofs).
-            - If `reduced_array` is 1D (e.g., force vector), its shape should be (num_active_dofs,).
+        reduced_Ke (ndarray): Reduced stiffness matrix (shape: (num_active_dofs, num_active_dofs)).
         full_size (int): Full DOF system size (default 12).
-        dof_map (list, optional): Indices where values should be mapped.
-            - For stiffness matrix: list of DOF indices to map rows and columns.
-            - For force vector: list of DOF indices to map the vector.
-            Defaults to mapping all if dof_map is None.
+        dof_map (list or ndarray, optional): Indices where values should be mapped.
 
     Returns:
-        ndarray: Expanded array (shape: (full_size, full_size) for matrices or (full_size,) for vectors).
+        ndarray: Expanded stiffness matrix of shape (full_size, full_size).
     """
-    if dof_map is None:
-        dof_map = list(range(full_size))
+    if dof_map is None or len(dof_map) == 0:
+        logging.error("DOF mapping must be provided and non-empty.")
+        raise ValueError("DOF mapping must be provided and non-empty.")
 
-    if any(dof >= full_size for dof in dof_map):
+    dof_map = np.asarray(dof_map, dtype=int)  # Ensure it's a NumPy array
+
+    if np.any(dof_map >= full_size):
+        logging.error("DOF map contains indices out of bounds.")
         raise ValueError("DOF map contains indices out of bounds.")
 
-    if reduced_array.ndim == 2:
-        expanded_array = np.zeros((full_size, full_size))
-        for i, dof_i in enumerate(dof_map):
-            for j, dof_j in enumerate(dof_map):
-                expanded_array[dof_i, dof_j] = reduced_array[i, j]
-    elif reduced_array.ndim == 1:
-        expanded_array = np.zeros(full_size)
-        for i, dof_i in enumerate(dof_map):
-            expanded_array[dof_i] = reduced_array[i]
-    else:
-        raise ValueError("Reduced array must be either 1D or 2D.")
+    if reduced_Ke.shape != (len(dof_map), len(dof_map)):
+        logging.error("Reduced stiffness matrix size must match DOF map length.")
+        raise ValueError("Reduced stiffness matrix size must match DOF map length.")
 
-    return expanded_array
+    # Initialize full-size stiffness matrix to zero
+    expanded_Ke = np.zeros((full_size, full_size))
+
+    logging.debug(f"Initializing full stiffness matrix of size {full_size}x{full_size} with zeros.")
+
+    # Directly insert values using advanced NumPy indexing (vectorized)
+    expanded_Ke[np.ix_(dof_map, dof_map)] = reduced_Ke  
+
+    logging.info(f"Expanded stiffness matrix updated for DOF indices {dof_map}.")
+
+    # **Vectorized Check for Unexpected Zero Entries**
+    mask = np.ix_(dof_map, dof_map)  # Get the relevant submatrix
+    zero_mask = expanded_Ke[mask] == 0  # Check for unexpected zeros
+
+    if np.any(zero_mask):
+        zero_positions = np.array(np.where(zero_mask)).T
+        logging.warning(f"Unexpected zero stiffness found at mapped DOFs: {zero_positions}")
+
+    return expanded_Ke
+
+
+def expand_force_vector(reduced_Fe, full_size=12, dof_map=None):
+    """
+    Expands a reduced force vector (Fe) to fit a full DOF system using vectorized mapping.
+    Includes logging to help debug zero entries.
+
+    Args:
+        reduced_Fe (ndarray): Reduced force vector (size: (num_active_dofs,)).
+        full_size (int): Full DOF system size (default 12).
+        dof_map (list or ndarray, optional): Indices where values should be mapped.
+
+    Returns:
+        ndarray: Expanded force vector of shape (full_size,).
+    """
+    if dof_map is None or len(dof_map) == 0:
+        logging.error("DOF mapping must be provided and non-empty.")
+        raise ValueError("DOF mapping must be provided and non-empty.")
+
+    dof_map = np.asarray(dof_map, dtype=int)  # Convert to NumPy array
+
+    if np.any(dof_map >= full_size):
+        logging.error("DOF map contains indices out of bounds.")
+        raise ValueError("DOF map contains indices out of bounds.")
+
+    if reduced_Fe.shape != (len(dof_map),):
+        logging.error("Reduced force vector size must match DOF map length.")
+        raise ValueError("Reduced force vector size must match DOF map length.")
+
+    # Initialize full-size force vector to zero
+    expanded_Fe = np.zeros(full_size)
+
+    logging.debug(f"Initializing full force vector of size {full_size} with zeros.")
+
+    # Assign reduced values directly using vectorized NumPy indexing
+    expanded_Fe[dof_map] = reduced_Fe  
+
+    logging.info(f"Expanded force vector updated for DOF indices {dof_map}.")
+
+    # **Vectorized Check for Unexpected Zero Entries**
+    zero_mask = (expanded_Fe[dof_map] == 0)
+
+    if np.any(zero_mask):
+        zero_positions = np.array(dof_map)[zero_mask]
+        logging.warning(f"Unexpected zero force values found at mapped DOFs: {zero_positions}")
+
+    return expanded_Fe

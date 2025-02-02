@@ -1,0 +1,283 @@
+"""
+processing/assembly.py
+
+Assembles the global stiffness matrix and force vector for static FEM problems.
+"""
+
+import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
+
+def assemble_global_matrices(elements, stiffness_matrices, total_dof, analysis_type="static"):
+    """
+    Assembles the global system matrices (stiffness, mass, damping, force) based on the analysis type.
+
+    Parameters:
+        elements (list): List of instantiated element objects.
+        stiffness_matrices (dict): Precomputed element stiffness matrices from `run_job.py`.
+        total_dof (int): Total degrees of freedom.
+        analysis_type (str): Type of analysis ("static", "dynamic", "modal").
+
+    Returns:
+        dict: Containing the assembled global matrices:
+            - "K_global": Stiffness matrix
+            - "F_global": Force vector (for static analysis)
+            - "M_global": Mass matrix (if dynamic/modal, else None)
+            - "C_global": Damping matrix (if dynamic, else None)
+            - "element_stiffness_matrices": Dict of element stiffness matrices
+    """
+    logger.info(f"Assembling global system for {analysis_type} analysis.")
+
+    # ✅ Initialize Global Matrices
+    K_global = np.zeros((total_dof, total_dof))  # Stiffness matrix
+    F_global = np.zeros(total_dof)  # Force vector (only used in static)
+
+    # Commented out until dynamic/modal tools are available
+    M_global = np.zeros((total_dof, total_dof)) if analysis_type in ["dynamic", "modal"] else None  # Mass matrix
+    C_global = np.zeros((total_dof, total_dof)) if analysis_type == "dynamic" else None  # Damping matrix
+
+    element_stiffness_matrices = {}
+
+    # ✅ Loop through elements and assemble the global system
+    for element in elements:
+        try:
+            Ke = stiffness_matrices[element.element_id]  # Retrieve precomputed Ke
+            global_dof_indices = element.get_global_dof_indices()
+
+            # Assemble stiffness matrix into global K
+            K_global[np.ix_(global_dof_indices, global_dof_indices)] += Ke
+            element_stiffness_matrices[element.element_id] = Ke
+
+            # Assemble force vector (for static analysis)
+            if analysis_type == "static":
+                F_global[global_dof_indices] += element.Fe  # Accumulate element forces
+
+            # Future expansion: Mass matrix assembly (disabled for now)
+            # if M_global is not None and hasattr(element, "Me"):
+            #     M_global[np.ix_(global_dof_indices, global_dof_indices)] += element.Me
+
+            # Future expansion: Damping matrix assembly (disabled for now)
+            # if C_global is not None and hasattr(element, "Ce"):
+            #     C_global[np.ix_(global_dof_indices, global_dof_indices)] += element.Ce
+
+            logger.info(f"  ✅ Element {element.element_id}: Added to K_global.")
+
+        except Exception as e:
+            logger.error(f"❌ Error assembling element {element.element_id}: {e}")
+
+    logger.info(f"Global system assembly complete for {analysis_type} analysis.")
+
+    return {
+        "K_global": K_global,
+        "F_global": F_global if analysis_type == "static" else None,
+        "M_global": M_global,
+        "C_global": C_global,
+        "element_stiffness_matrices": element_stiffness_matrices,
+    }
+
+"""
+processing/boundary_conditions.py
+
+Applies a fixed boundary condition to the global stiffness matrix and force vector.
+"""
+
+import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
+
+def apply_boundary_conditions(K_global, F_global):
+    """
+    Apply a fixed [1 1 1 1 1 1] boundary condition to the system matrices.
+
+    The first 6 DOFs (assumed to be at a single fixed node) are constrained 
+    using the Penalty Method, enforcing zero displacements.
+
+    Parameters
+    ----------
+    K_global : ndarray
+        Global stiffness matrix (size: n x n).
+    F_global : ndarray
+        Global force vector (size: n x 1).
+
+    Returns
+    -------
+    dict
+        Contains the modified system matrices:
+        - "K_mod": Modified stiffness matrix.
+        - "F_mod": Modified force vector.
+
+    Notes
+    -----
+    - Uses a **penalty value** to enforce the constraint.
+    - Constraints are **hardcoded** to apply to the **first 6 DOFs**.
+    - Suitable for **static** and **modal** analyses.
+    """
+
+    logger.info("Applying fixed [1 1 1 1 1 1] boundary condition.")
+
+    # Define large penalty value
+    large_penalty = 1e12  
+
+    # Apply constraints to first 6 DOFs
+    for dof in range(6):  
+        K_global[dof, :] = 0
+        K_global[:, dof] = 0
+        K_global[dof, dof] = large_penalty
+        F_global[dof, 0] = 0  # Enforce zero displacement
+
+    logger.info("Fixed boundary conditions applied.")
+
+    return {
+        "K_mod": K_global,
+        "F_mod": F_global,
+    }
+
+"""
+processing\solver_registry.py
+
+This module provides a registry of linear solvers for finite element analysis (FEM). 
+It includes direct, iterative, and specialized solvers from SciPy, offering flexibility 
+for solving dense, sparse, or ill-conditioned systems.
+
+Role in Pipeline:
+- Enables flexible solver selection for FEM problems.
+- Centralizes solver definitions to simplify integration with other components.
+
+"""
+
+from scipy.sparse.linalg import cg, gmres, minres, bicg, bicgstab, lsmr, lsqr, spsolve
+from scipy.linalg import solve, lu_factor, lu_solve
+
+def get_solver_registry():
+    """
+    Returns a registry of SciPy solvers available for solving linear systems.
+
+    Returns:
+        dict: Mapping solver names (str) to functions.
+    """
+    return {
+        "direct_solver_dense": solve,
+        "lu_decomposition_solver": lambda A, b: lu_solve(lu_factor(A), b),
+        "direct_solver_sparse": spsolve,
+        "conjugate_gradient_solver": cg,
+        "generalized_minimal_residual_solver": gmres,
+        "minimum_residual_solver": minres,
+        "bi-conjugate_gradient_solver": bicg,
+        "bi-conjugate_gradient_stabilized_solver": bicgstab,
+        "least_squares_solver": lsmr,
+        "sparse_least_squares_solver": lsqr,
+    }
+
+import numpy as np
+import os
+import logging
+from processing.assembly import assemble_global_system
+from processing.boundary_conditions import apply_boundary_conditions
+from processing.solver_registry import get_solver_registry
+
+logger = logging.getLogger(__name__)
+
+def run_static_fem_solver(settings, job_name, results_dir):
+    """
+    Executes a static FEM simulation and saves results.
+
+    Args:
+        settings (dict): Simulation settings (mesh, elements, loads, boundary conditions, solver).
+        job_name (str): Name of the job directory for storing results.
+        results_dir (str): Base directory for storing results.
+
+    Returns:
+        dict: Contains primary FEM results including:
+            - "element_stiffness_matrices": Element stiffness matrices
+            - "nodal_displacements": Computed nodal displacements
+            - "nodal_forces": Global force vector
+            - "reaction_forces": Reaction forces at constrained DOFs
+    """
+    primary_results_dir = os.path.join(results_dir, job_name, "primary_results")
+    os.makedirs(primary_results_dir, exist_ok=True)
+
+    logger.info(f"Running static FEM analysis for {job_name}.")
+
+    # ✅ Compute total degrees of freedom (always 6 DOFs per node)
+    total_dof = len(settings["node_positions"]) * 6  
+
+    # ✅ Assemble global stiffness matrix and force vector
+    logger.info("Assembling global stiffness matrix and force vector.")
+    K_global, F_global, element_stiffness_matrices = assemble_global_system(settings["elements"], total_dof)
+
+    # ✅ Apply nodal loads
+    if "nodal_loads" in settings:
+        F_global += settings["nodal_loads"].flatten()  # Ensuring 1D format for vector summation
+
+    # ✅ Apply boundary conditions (fixing incorrect key)
+    constrained_dofs = np.where(settings["boundary_conditions"].flatten() == 1)[0]  # Extract 1D constrained DOFs
+    K_mod, F_mod = apply_boundary_conditions(K_global, F_global, constrained_dofs)
+
+    # ✅ Solve for nodal displacements
+    logger.info(f"Solving system using {settings['solver_name']}.")
+    displacements = solve_fem_system(K_mod, F_mod, settings["solver_name"])
+
+    # ✅ Compute reaction forces
+    reaction_forces = compute_reaction_forces(K_global, displacements, constrained_dofs)
+
+    # ✅ Save results
+    results = {
+        "element_stiffness_matrices": element_stiffness_matrices,
+        "nodal_displacements": displacements,
+        "nodal_forces": F_global,
+        "reaction_forces": reaction_forces,
+    }
+    save_results(results, settings, primary_results_dir)
+
+    return results
+
+def solve_fem_system(K_mod, F_mod, solver_name):
+    """Solves the FEM system for nodal displacements using the selected solver."""
+    logger.info(f"Solving FEM system using {solver_name}.")
+
+    solver_registry = get_solver_registry()
+    if solver_name not in solver_registry:
+        raise ValueError(f"Solver '{solver_name}' is not available in the registry.")
+
+    solver_func = solver_registry[solver_name]
+
+    try:
+        return solver_func(K_mod, F_mod)
+    except Exception as e:
+        raise RuntimeError(f"Solver '{solver_name}' encountered an error: {str(e)}")
+
+def compute_reaction_forces(K_global, displacements, constrained_dofs):
+    """Computes reaction forces at constrained DOFs."""
+    reaction_forces = K_global @ displacements
+    return reaction_forces[constrained_dofs]
+
+def save_results(results, settings, results_dir):
+    """Saves primary results as text files with metadata."""
+    logger.info("Saving primary results.")
+
+    metadata = [
+        f"Simulation Type: Static",
+        f"Solver Used: {settings['solver_name']}",
+        f"Element Types: {', '.join(settings['element_types'])}",
+        f"Number of Nodes: {len(settings['node_positions'])}",
+        f"Number of Elements: {len(settings['elements'])}",
+    ]
+
+    _save_array("nodal_displacements.txt", metadata, results["nodal_displacements"], results_dir)
+    _save_array("nodal_forces.txt", metadata, results["nodal_forces"], results_dir)
+    _save_array("reaction_forces.txt", metadata, results["reaction_forces"], results_dir)
+
+    for element_id, Ke in results["element_stiffness_matrices"].items():
+        _save_array(f"element_stiffness_{element_id}.txt", metadata, Ke, results_dir)
+
+def _save_array(filename, metadata, array, results_dir):
+    """Helper function to save arrays as text files with metadata."""
+    filepath = os.path.join(results_dir, filename)
+    with open(filepath, "w") as f:
+        for line in metadata:
+            f.write(f"# {line}\n")
+        np.savetxt(f, array, delimiter=",", fmt="%.6f")
+
+    logger.info(f"Saved: {filepath}")

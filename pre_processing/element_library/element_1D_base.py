@@ -1,132 +1,201 @@
-# pre_processing/element_library/element_1D_base.py
-
+import logging
 import numpy as np
+from scipy.sparse import coo_matrix
+from pre_processing.element_library.element_factory import create_elements_batch
+
+logger = logging.getLogger(__name__)
+
 
 class Element1DBase:
     """
     Base class for 1D finite elements.
 
-    Attributes:
-        element_id (int): Unique identifier for the element.
-        material (dict): Material properties dictionary.
-        section_props (dict): Section properties dictionary.
-        mesh_data (dict): Mesh data dictionary containing connectivity and element lengths.
-        node_positions (ndarray): Array of node positions. Shape: (num_nodes,)
-        loads_array (ndarray): Global loads array. Shape: (num_nodes, 6)
-        dof_per_node (int): Degrees of freedom per node.
-        Ke (ndarray): Element stiffness matrix.
-        Fe (ndarray): Element force vector.
+    Responsibilities:
+    - Stores geometry, material, and mesh data.
+    - Requests element instantiation from `element_factory.py`.
+    - Computes element stiffness and force matrices.
+    - Precomputes Jacobians to optimize matrix calculations.
     """
 
-    def __init__(self, element_id, material, section_props, mesh_data, node_positions, loads_array, dof_per_node=3):
+    def __init__(self, geometry_array, material_array, mesh_dictionary, load_array, dof_per_node=6):
         """
-        Initializes the base 1D finite element.
+        Initializes the base 1D finite element system.
 
         Args:
-            element_id (int): Unique identifier for the element.
-            material (dict): Material properties dictionary.
-            section_props (dict): Section properties dictionary.
-            mesh_data (dict): Mesh data dictionary containing connectivity and element lengths.
-            node_positions (ndarray): Array of node positions. Shape: (num_nodes,)
-            loads_array (ndarray): Global loads array. Shape: (num_nodes, 6)
-            dof_per_node (int, optional): Degrees of freedom per node. Defaults to 3.
+            geometry_array (np.ndarray): Geometry properties.
+            material_array (np.ndarray): Material properties.
+            mesh_dictionary (dict): Mesh data including connectivity, element types, and node coordinates.
+            load_array (np.ndarray): External loads applied to the system.
+            dof_per_node (int, optional): Degrees of freedom per node (default: 6).
         """
-        self.element_id = element_id
-        self.material = material
-        self.section_props = section_props
-        self.mesh_data = mesh_data
-        self.node_coordinates = node_positions
-        self.loads_array = loads_array
-        self.dof_per_node = dof_per_node
-        self.Ke = None  # Element stiffness matrix (to be computed)
-        self.Fe = None  # Element force vector (to be computed)
+        logger.info("Initializing Element1DBase...")
 
-    def get_element_connectivity(self):
+        self.geometry_array = geometry_array
+        self.material_array = material_array
+        self.mesh_dictionary = mesh_dictionary
+        self.load_array = load_array
+        self.dof_per_node = dof_per_node  # Default max DOFs per node = 6
+
+        # Request elements from `element_factory.py`
+        logger.info("Instantiating elements from factory...")
+        self.elements_instances = self._instantiate_elements()
+        logger.info(f"✅ Successfully instantiated {len(self.elements_instances)} elements.")
+
+        # Compute element stiffness and force matrices
+        logger.info("Computing element stiffness matrices...")
+        self.element_stiffness_matrices = self._compute_stiffness_matrices_vectorized()
+        logger.info(f"✅ Computed {len(self.element_stiffness_matrices)} stiffness matrices.")
+
+        logger.info("Computing element force vectors...")
+        self.element_force_vectors = self._compute_force_vectors_vectorized()
+        logger.info(f"✅ Computed {len(self.element_force_vectors)} force vectors.")
+
+        # Convert Ke to sparse format
+        #logger.info("Converting stiffness matrices to sparse COO format...")
+        #self.element_stiffness_matrices = self._convert_to_sparse(self.element_stiffness_matrices)
+        #logger.info("✅ Stiffness matrices successfully converted to sparse format.")
+
+    def _instantiate_elements(self):
         """
-        Retrieves the node IDs connected to this element.
+        Requests batch element instantiation from `element_factory.py`.
 
         Returns:
-            tuple: (start_node_id, end_node_id)
+            np.ndarray: Array of instantiated element objects.
         """
-        return self.mesh_data['connectivity'][self.element_id]
+        params_list = np.array([
+            {
+                "geometry_array": self.geometry_array,
+                "material_array": self.material_array,
+                "mesh_dictionary": self.mesh_dictionary,
+                "load_array": self.load_array,
+            }
+            for _ in self.mesh_dictionary["element_ids"]
+        ], dtype=object)
 
-    def get_node_coordinates(self):
+        elements = create_elements_batch(self.mesh_dictionary, params_list)
+
+        # Check for missing elements
+        if any(el is None for el in elements):
+            missing_indices = [i for i, el in enumerate(elements) if el is None]
+            logger.warning(f"⚠️ Warning: Missing elements at indices {missing_indices}!")
+
+        return elements
+
+    def _compute_stiffness_matrices_vectorized(self):
         """
-        Retrieves the coordinates of the nodes connected to this element.
+        Computes the element stiffness matrices (Ke) using NumPy broadcasting.
 
         Returns:
-            ndarray: Array of node positions. Shape: (2,)
+            np.ndarray: An array of element stiffness matrices.
         """
-        node_ids = self.get_element_connectivity()
-        # Adjusting for zero-based indexing: node_id 1 corresponds to index 0
-        return np.array([self.node_positions[node_id - 1] for node_id in node_ids])
+        stiffness_matrices = []
+        for idx, element in enumerate(self.elements_instances):
+            if element is None:
+                logger.error(f"❌ Error: Element {idx} is None. Skipping stiffness matrix computation.")
+                stiffness_matrices.append(None)
+                continue
+            try:
+                Ke = element.element_stiffness_matrix()
+                stiffness_matrices.append(Ke)
+            except Exception as e:
+                logger.error(f"❌ Error computing stiffness matrix for element {idx}: {e}")
+                stiffness_matrices.append(None)
+        
+        return np.array(stiffness_matrices, dtype=object)
 
-    def get_element_length(self):
+    def _compute_force_vectors_vectorized(self):
         """
-        Retrieves the length of this element.
+        Computes the element force vectors (Fe) using NumPy broadcasting.
 
         Returns:
-            float: Length of the element.
+            np.ndarray: An array of element force vectors.
         """
-        return float(self.mesh_data['element_lengths'][self.element_id])  # Ensures scalar
+        force_vectors = []
+        for idx, element in enumerate(self.elements_instances):
+            if element is None:
+                logger.error(f"❌ Error: Element {idx} is None. Skipping force vector computation.")
+                force_vectors.append(None)
+                continue
+            try:
+                Fe = element.element_force_vector()
+                force_vectors.append(Fe)
+            except Exception as e:
+                logger.error(f"❌ Error computing force vector for element {idx}: {e}")
+                force_vectors.append(None)
+        
+        return np.array(force_vectors, dtype=object)
 
-    def get_element_loads(self):
+    def _convert_to_sparse(self, matrix_array):
         """
-        Retrieves the loads applied to this element's nodes.
+        Converts an array of dense matrices or vectors to sparse COO format.
+
+        Args:
+            matrix_array (np.ndarray): Array of dense matrices or vectors.
 
         Returns:
-            ndarray: Loads for start and end nodes. Shape: (2, 6)
+            list: A list of sparse matrices in COO format or dense vectors.
         """
-        node_ids = self.get_element_connectivity()
-        # Adjusting for zero-based indexing
-        return self.loads_array[[node_ids[0] - 1, node_ids[1] - 1], :]  # Shape: (2,6)
-    
-# Standalone execution for testing
-if __name__ == "__main__":
-    """
-    Standalone test for the Element1DBase class.
-    This will execute only if the script is run directly.
-    """
+        if matrix_array is None:
+            logger.warning("⚠️ Warning: Attempting to convert NoneType matrix array to sparse format.")
+            return []
 
-    # Mock data for a simple 1D finite element
-    element_id = 0
-    material_array =   # Young's modulus (Pa), Density (kg/m^3)
-    geometry_array =  # Cross-sectional area (m^2)
+        return [
+            coo_matrix(matrix.reshape(1, -1) if matrix is not None and matrix.ndim == 1 else matrix)
+            if matrix is not None else None
+            for matrix in np.asarray(matrix_array, dtype=object)
+        ]
 
-    # Mesh data
-    node_ids_array = np.array([1, 2])
-    node_coordinates_array = np.array([0.0, 1.0])  # 1D element with nodes at x = 0 and x = 1
-    connectivity_array = {0: (1, 2)}  # Element 0 connects Node 1 and Node 2
-    element_lengths_array = {0: 1.0}  # Element length = 1m
+    def assemble_global_dof_indices(self, element_id):
+        """
+        Constructs the global DOF indices for an element.
 
-    mesh_dictionary = {
-        'node_ids': node_ids_array,
-        'node_coordinates': node_coordinates_array,
-        'connectivity': connectivity_array,
-        'element_lengths': element_lengths_array
-    }
+        Args:
+            element_id (int): The ID of the element.
 
-    # Loads applied at nodes (6 DOF per node: Fx, Fy, Fz, Mx, My, Mz)
-    loads_array = np.zeros((2, 6))  # No loads applied
+        Returns:
+            list: A list of global DOF indices associated with the element.
+        """
+        element_index = np.where(self.mesh_dictionary["element_ids"] == element_id)[0][0]
+        node_ids = self.mesh_dictionary["connectivity"][element_index]
 
-    # Degrees of freedom per node
-    dof_per_node = 3  # Translational DOFs in 1D case
+        global_dof_indices = []
+        for node_id in node_ids:
+            start_dof = (node_id - 1) * self.dof_per_node
+            dof_indices = list(range(start_dof, start_dof + self.dof_per_node))
+            global_dof_indices.extend(dof_indices)
 
-    # Initialize the base element
-    element = Element1DBase(
-        element_id=element_id,
-        material=material,
-        section_props=section_props,
-        mesh_data=mesh_dictionary,
-        node_positions=node_coordinates_array,
-        loads_array=loads_array,
-        dof_per_node=dof_per_node
-    )
+        return global_dof_indices
 
-    # Print test results
-    print("=== Element1DBase Standalone Test ===")
-    print("Element ID:", element.element_id)
-    print("Connectivity:", element.get_element_connectivity())
-    print("Node Coordinates:", element.get_node_coordinates())
-    print("Element Length:", element.get_element_length())
-    print("Element Loads:", element.get_element_loads())
+    def validate_matrices(self):
+        """
+        Ensures all element stiffness matrices (Ke) and force vectors (Fe) have the correct dimensions.
+
+        Raises:
+            AssertionError: If any Ke or Fe matrix has incorrect dimensions.
+        """
+        expected_Ke_shape = (self.dof_per_node * 2, self.dof_per_node * 2)
+        expected_Fe_shape = (self.dof_per_node * 2,)
+
+        for idx, element in enumerate(self.elements_instances):
+            if element is None:
+                logger.warning(f"⚠️ Warning: Skipping validation for missing element {idx}.")
+                continue
+
+            if element.Ke is None:
+                logger.error(f"❌ Error: Stiffness matrix (Ke) is None for element {idx}.")
+                continue
+
+            if element.Fe is None:
+                logger.error(f"❌ Error: Force vector (Fe) is None for element {idx}.")
+                continue
+
+            assert element.Ke.shape == expected_Ke_shape, (
+                f"Element {self.mesh_dictionary['element_ids'][idx]}: Ke shape mismatch. "
+                f"Expected {expected_Ke_shape}, got {element.Ke.shape}"
+            )
+            assert element.Fe.shape == expected_Fe_shape, (
+                f"Element {self.mesh_dictionary['element_ids'][idx]}: Fe shape mismatch. "
+                f"Expected {expected_Fe_shape}, got {element.Fe.shape}"
+            )
+
+        logger.info("✅ Element stiffness matrices and force vectors successfully validated.")
