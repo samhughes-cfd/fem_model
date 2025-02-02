@@ -163,10 +163,10 @@ def parse_mesh(mesh_file_path):
     element_ids_array = np.arange(connectivity_array.shape[0], dtype=int)
 
     mesh_dictionary = {
-        'node_ids': node_ids_array,
+        'node_ids': node_ids_array, # 0-based
         'node_coordinates': node_coordinates_array,
         'connectivity': connectivity_array,
-        'element_ids': element_ids_array,  # Now 0-based
+        'element_ids': element_ids_array,  # 0-based
         'element_lengths': element_lengths_array,
         'element_types': element_types_array
     }

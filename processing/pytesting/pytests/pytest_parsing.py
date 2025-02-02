@@ -44,13 +44,13 @@ logger.addHandler(console_handler)
 logger.info(f"🔥 LOGGING STARTED: Logs will be written to {LOG_FILE}")
 
 # === Import Parsers ===
-from workflow_manager.parsing.base_parser import ParserBase
-from workflow_manager.parsing.geometry_parser import parse_geometry
-from workflow_manager.parsing.material_parser import parse_material
-from workflow_manager.parsing.mesh_parser import parse_mesh
-from workflow_manager.parsing.load_parser import parse_load
-from workflow_manager.parsing.solver_parser import parse_solver
-from workflow_manager.parsing.boundary_condition_parser import parse_boundary_conditions
+from workflow_orchestrator.parsing.base_parser import ParserBase
+from workflow_orchestrator.parsing.geometry_parser import parse_geometry
+from workflow_orchestrator.parsing.material_parser import parse_material
+from workflow_orchestrator.parsing.mesh_parser import parse_mesh
+from workflow_orchestrator.parsing.load_parser import parse_load
+from workflow_orchestrator.parsing.solver_parser import parse_solver
+from workflow_orchestrator.parsing.boundary_condition_parser import parse_boundary_conditions
 
 # === Helper Function ===
 def debug_print(data, name="Data"):

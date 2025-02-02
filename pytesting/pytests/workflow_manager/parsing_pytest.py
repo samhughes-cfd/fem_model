@@ -69,12 +69,12 @@ logger.info(f"🔥 LOGGING STARTED: Logs will be written to {LOG_FILE}")
 
 # === Import Parsers ===
 try:
-    from workflow_manager.parsing.parser_base import ParserBase
-    from workflow_manager.parsing.geometry_parser import parse_geometry
-    from workflow_manager.parsing.material_parser import parse_material
-    from workflow_manager.parsing.mesh_parser import parse_mesh
-    from workflow_manager.parsing.load_parser import parse_load
-    from workflow_manager.parsing.solver_parser import parse_solver
+    from workflow_orchestrator.parsing.parser_base import ParserBase
+    from workflow_orchestrator.parsing.geometry_parser import parse_geometry
+    from workflow_orchestrator.parsing.material_parser import parse_material
+    from workflow_orchestrator.parsing.mesh_parser import parse_mesh
+    from workflow_orchestrator.parsing.load_parser import parse_load
+    from workflow_orchestrator.parsing.solver_parser import parse_solver
 except ImportError as e:
     logger.error("❌ Failed to import parsers. Ensure workflow_manager is in PYTHONPATH.")
     raise e
