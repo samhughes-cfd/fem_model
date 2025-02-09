@@ -174,62 +174,85 @@ class EulerBernoulliBeamElement3DOF(Element1DBase):
     def element_stiffness_matrix(self):
         """Computes the element stiffness matrix using vectorized Gauss quadrature integration."""
     
+        # Get Gauss points and weights (here, 3 Gauss points are assumed)
         gauss_points, weights = get_gauss_points(n=3, dim=1)
+    
+        # Evaluate shape functions at each Gauss point; we use the natural coordinate as key.
         shape_data = {xi[0]: self.shape_functions(xi[0]) for xi in gauss_points}
+    
+        # Get the material stiffness matrix D (should be (2,2))
         D = self.material_stiffness_matrix()
 
-        #logger.debug("===== Material Stiffness Matrix =====")
-        #logger.debug("D =\n%s", D)
-        #logger.debug("D.shape = %s (Expected: (2,2) or material-specific)", D.shape)
-        #logger.debug("=====================================")
-
         # **Vectorized computation of B matrices**
+        # Since strain_displacement_matrix returns B of shape (2,6),
+        # stacking without further transposition produces an array of shape (3,2,6)
         B_matrices = np.array([
-            self.strain_displacement_matrix(shape_data[xi[0]][1]) for xi in gauss_points
-        ])  # Shape: (num_gauss_points, 2, 6)
+            self.strain_displacement_matrix(shape_data[xi[0]][1])
+            for xi in gauss_points
+        ])  # Expected shape: (num_gauss_points, 2, 6) e.g., (3, 2, 6)
 
-        B_matrices_T = B_matrices.transpose(0, 2, 1) # Shape: (num_gauss_points, 6, 2)
+        # Log each B matrix for every Gauss point (printed horizontally)
+        for idx, (xi, B_matrix) in enumerate(zip(gauss_points, B_matrices)):
+            logger.debug("===== B Matrix for Gauss Point %d =====", idx)
+            logger.debug("Gauss Point: %s", xi)
+            logger.debug("B matrix (horizontal):\n%s", np.array2string(B_matrix, separator=', '))
+            logger.debug("B matrix shape: %s", B_matrix.shape)
+            logger.debug("=====================================")
 
-        # Einsum constituent tensor shapes
-        logging.debug(f"weights.shape: {weights.shape}")
+        # Compute the transposed version for use in the einsum.
+        # Transpose the last two axes so that B_matrices_T becomes (3,6,2)
+        B_matrices_T = B_matrices.transpose(0, 2, 1)  # Expected shape: (num_gauss_points, 6, 2)
+
+        # Log each transposed B matrix for every Gauss point (printed horizontally)
+        for idx, (xi, B_matrix_T) in enumerate(zip(gauss_points, B_matrices_T)):
+            logger.debug("===== Transposed B Matrix for Gauss Point %d =====", idx)
+            logger.debug("Gauss Point: %s", xi)
+            logger.debug("B matrix (transposed, horizontal):\n%s", np.array2string(B_matrix_T, separator=', '))
+            logger.debug("B matrix (transposed) shape: %s", B_matrix_T.shape)
+            logger.debug("=====================================")
+
+        # Log and check the shapes of the tensors.
+        logger.debug(f"weights.shape: {weights.shape}")
         assert weights.shape == (3,), f"❌ Unexpected shape for weights: {weights.shape}"
 
-        logging.debug(f"B_matrices.shape: {B_matrices.shape}")
-        assert B_matrices.shape == (3, 6, 2), f"❌ Unexpected shape for B_matrices: {B_matrices.shape}"
+        logger.debug(f"B_matrices.shape: {B_matrices.shape}")
+        # Since each B matrix is (2,6), B_matrices should have shape (3,2,6)
+        assert B_matrices.shape == (3, 2, 6), f"❌ Unexpected shape for B_matrices: {B_matrices.shape}"
 
-        logging.debug(f"D.shape: {D.shape}")
+        logger.debug(f"D.shape: {D.shape}")
         assert D.shape == (2, 2), f"❌ Unexpected shape for D matrix: {D.shape}"
 
-        B_matrices_T = B_matrices.transpose(0, 2, 1)
-        logging.debug(f"B_matrices_T.shape (should be transposed B_matrices): {B_matrices_T.shape}")
-        assert B_matrices_T.shape == (3, 2, 6), f"❌ Unexpected transposed shape for B_matrices_T: {B_matrices_T.shape}"
+        logger.debug(f"B_matrices_T.shape: {B_matrices_T.shape}")
+        # The transposed array should have shape (3,6,2)
+        assert B_matrices_T.shape == (3, 6, 2), f"❌ Unexpected transposed shape for B_matrices_T: {B_matrices_T.shape}"
 
         # **Vectorized integration using einsum (Σ Wi * B.T * D * B)**
         try:
-            Ke_reduced = np.einsum("i,imk,mn,inj->kj", weights, B_matrices_T, D, B_matrices) * self.detJ
-            logging.info(f"✅ Stiffness matrix computed successfully. Shape: {Ke_reduced.shape}")
+            Ke_reduced = (
+                np.einsum("i,imk,mn,inj->kj", weights, B_matrices_T, D, B_matrices)
+                * self.detJ
+            )
+            logging.info("✅ Stiffness matrix computed successfully. Shape: %s", Ke_reduced.shape)
         except ValueError as e:
-            logging.error(f"❌ Einsum operation failed: {e}")
-            logging.error(f"weights.shape: {weights.shape}")
-            logging.error(f"B_matrices_T.shape: {B_matrices_T.shape}")
-            logging.error(f"D.shape: {D.shape}")
-            logging.error(f"B_matrices.shape: {B_matrices.shape}")
+            logging.error("❌ Einsum operation failed: %s", e)
+            logging.error("weights.shape: %s", weights.shape)
+            logging.error("B_matrices_T.shape: %s", B_matrices_T.shape)
+            logging.error("D.shape: %s", D.shape)
+            logging.error("B_matrices.shape: %s", B_matrices.shape)
             raise  # Re-raise the error for traceback
 
-
         logger.debug("===== Reduced Stiffness Matrix (After Integration) =====")
-        logger.debug("Ke_reduced =\n%s", Ke_reduced)
+        logger.debug("Ke_reduced =\n%s", np.array2string(Ke_reduced, separator=', '))
         logger.debug("Ke_reduced.shape = %s (Expected: (6,6))", Ke_reduced.shape)
         logger.debug("=======================================================")
 
-        # Expand to full DOF size (12x12)
+        # Expand the reduced stiffness matrix to full DOF size (12x12)
         self.Ke = expand_stiffness_matrix(Ke_reduced, full_size=12, dof_map=self.dof_map)
 
-        #logger.debug("===== Final Element Stiffness Matrix (Mapped to 12 DOFs) =====")
-        #logger.debug("self.Ke =\n%s", self.Ke)
-        #logger.debug("self.Ke.shape = %s (Expected: (12,12))", self.Ke.shape)
-        #logger.debug("=============================================================")
-
+        logger.debug("===== Final Element Stiffness Matrix (Mapped to 12 DOFs) =====")
+        logger.debug("self.Ke =\n%s", np.array2string(self.Ke, separator=', '))
+        logger.debug("self.Ke.shape = %s (Expected: (12,12))", self.Ke.shape)
+        logger.debug("=============================================================")
 
     def element_force_vector(self):
         """

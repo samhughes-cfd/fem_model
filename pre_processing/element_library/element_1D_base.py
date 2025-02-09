@@ -41,21 +41,21 @@ class Element1DBase:
         # Request elements from `element_factory.py`
         logger.info("Instantiating elements from factory...")
         self.elements_instances = self._instantiate_elements()
-        logger.info(f"✅ Successfully instantiated {len(self.elements_instances)} elements.")
+        logger.info(f"Successfully instantiated {len(self.elements_instances)} elements.")
 
         # Compute element stiffness and force matrices
         logger.info("Computing element stiffness matrices...")
         self.element_stiffness_matrices = self._compute_stiffness_matrices_vectorized()
-        logger.info(f"✅ Computed {len(self.element_stiffness_matrices)} stiffness matrices.")
+        logger.info(f"Computed {len(self.element_stiffness_matrices)} stiffness matrices.")
 
         logger.info("Computing element force vectors...")
         self.element_force_vectors = self._compute_force_vectors_vectorized()
-        logger.info(f"✅ Computed {len(self.element_force_vectors)} force vectors.")
+        logger.info(f"Computed {len(self.element_force_vectors)} force vectors.")
 
         # Convert Ke to sparse format
         #logger.info("Converting stiffness matrices to sparse COO format...")
         #self.element_stiffness_matrices = self._convert_to_sparse(self.element_stiffness_matrices)
-        #logger.info("✅ Stiffness matrices successfully converted to sparse format.")
+        #logger.info("Stiffness matrices successfully converted to sparse format.")
 
     def _instantiate_elements(self):
         """
@@ -79,7 +79,7 @@ class Element1DBase:
         # Check for missing elements
         if any(el is None for el in elements):
             missing_indices = [i for i, el in enumerate(elements) if el is None]
-            logger.warning(f"⚠️ Warning: Missing elements at indices {missing_indices}!")
+            logger.warning(f"Warning: Missing elements at indices {missing_indices}!")
 
         return elements
 
@@ -93,14 +93,14 @@ class Element1DBase:
         stiffness_matrices = []
         for idx, element in enumerate(self.elements_instances):
             if element is None:
-                logger.error(f"❌ Error: Element {idx} is None. Skipping stiffness matrix computation.")
+                logger.error(f"Error: Element {idx} is None. Skipping stiffness matrix computation.")
                 stiffness_matrices.append(None)
                 continue
             try:
                 Ke = element.element_stiffness_matrix()
                 stiffness_matrices.append(Ke)
             except Exception as e:
-                logger.error(f"❌ Error computing stiffness matrix for element {idx}: {e}")
+                logger.error(f"Error computing stiffness matrix for element {idx}: {e}")
                 stiffness_matrices.append(None)
         
         return np.array(stiffness_matrices, dtype=object)
@@ -115,14 +115,14 @@ class Element1DBase:
         force_vectors = []
         for idx, element in enumerate(self.elements_instances):
             if element is None:
-                logger.error(f"❌ Error: Element {idx} is None. Skipping force vector computation.")
+                logger.error(f"Error: Element {idx} is None. Skipping force vector computation.")
                 force_vectors.append(None)
                 continue
             try:
                 Fe = element.element_force_vector()
                 force_vectors.append(Fe)
             except Exception as e:
-                logger.error(f"❌ Error computing force vector for element {idx}: {e}")
+                logger.error(f"Error computing force vector for element {idx}: {e}")
                 force_vectors.append(None)
         
         return np.array(force_vectors, dtype=object)
@@ -138,7 +138,7 @@ class Element1DBase:
             list: A list of sparse matrices in COO format or dense vectors.
         """
         if matrix_array is None:
-            logger.warning("⚠️ Warning: Attempting to convert NoneType matrix array to sparse format.")
+            logger.warning("Warning: Attempting to convert NoneType matrix array to sparse format.")
             return []
 
         return [
@@ -180,15 +180,15 @@ class Element1DBase:
 
         for idx, element in enumerate(self.elements_instances):
             if element is None:
-                logger.warning(f"⚠️ Warning: Skipping validation for missing element {idx}.")
+                logger.warning(f"Warning: Skipping validation for missing element {idx}.")
                 continue
 
             if element.Ke is None:
-                logger.error(f"❌ Error: Stiffness matrix (Ke) is None for element {idx}.")
+                logger.error(f"Error: Stiffness matrix (Ke) is None for element {idx}.")
                 continue
 
             if element.Fe is None:
-                logger.error(f"❌ Error: Force vector (Fe) is None for element {idx}.")
+                logger.error(f"Error: Force vector (Fe) is None for element {idx}.")
                 continue
 
             assert element.Ke.shape == expected_Ke_shape, (
@@ -200,4 +200,4 @@ class Element1DBase:
                 f"Expected {expected_Fe_shape}, got {element.Fe.shape}"
             )
 
-        logger.info("✅ Element stiffness matrices and force vectors successfully validated.")
+        logger.info("Element stiffness matrices and force vectors successfully validated.")
