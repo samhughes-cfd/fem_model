@@ -7,7 +7,7 @@ def euler_bernoulli_shape_functions(xi, L, poly_order=3):
     Compute the shape functions for an Euler-Bernoulli beam element.
 
     Parameters:
-        xi (float): Natural coordinate in [-1, 1].
+        xi (float or ndarray): Natural coordinate(s) in [-1, 1]. Can be a scalar or a 1D array of values.
         L (float): Element length
         poly_order (int): Polynomial order of the shape functions (default = 3 for Euler-Bernoulli)
 
@@ -29,6 +29,9 @@ def euler_bernoulli_shape_functions(xi, L, poly_order=3):
     """
     if poly_order != 3:
         raise ValueError("Euler-Bernoulli elements require cubic (3rd order) shape functions.")
+    
+    # Ensure xi is a NumPy array, even if a scalar was passed
+    xi = np.atleast_1d(xi)  # xi becomes an array of shape (n,)
 
     # Axial Shape Functions (Linear Lagrange)
     N1 = 0.5 * (1 - xi)  # Axial displacement at Node 1
