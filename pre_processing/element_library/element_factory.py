@@ -5,7 +5,7 @@ import numpy as np
 
 # Registry mapping element names to module paths
 ELEMENT_CLASS_MAP = {
-    "EulerBernoulliBeamElement3DOF": "pre_processing.element_library.euler_bernoulli.euler_bernoulli3DOF"
+    "EulerBernoulliBeamElement3DOF": "pre_processing.element_library.euler_bernoulli.euler_bernoulli_3DOF"
 }
 
 def create_elements_batch(mesh_dictionary, params_list):

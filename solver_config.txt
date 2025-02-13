@@ -1,5 +1,0 @@
-# Example solver config
-[Solver]
-Static     DirectSolver
-Dynamic    TimeIntegrator
-Modal      EigenSolver
