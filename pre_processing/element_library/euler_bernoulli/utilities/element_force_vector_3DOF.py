@@ -125,12 +125,13 @@ def compute_force_vector(element, n_gauss=3):
         node_coords = element.mesh_dictionary["node_coordinates"]
         connectivity = element.mesh_dictionary["connectivity"][element_index]
         x_mid = node_coords[connectivity].mean(axis=0)
-        logger.debug("Element midpoint (x_mid): %s", x_mid)
+        logger.debug("Midpoint coordinates (x_mid): %s", x_mid)
     
         # Map natural coordinates (xi) to physical coordinates (x_phys) using the Jacobian.
         jacobian_val = element.jacobian_matrix[0, 0]
         x_phys_array = (jacobian_val * xi_values) + x_mid[0]
-        logger.debug("Physical coordinates (x_phys_array): %s", x_phys_array)
+        logger.debug("Natural coordinates (xi_array): %s", xi_values)
+        logger.debug("Physical coordinates (x_array): %s", x_phys_array)
     
         # ------------------------------
         # Block 3: Evaluate Shape Functions (Interpolation via N)
@@ -150,41 +151,52 @@ def compute_force_vector(element, n_gauss=3):
         # ------------------------------
         # Block 4: Load Interpolation (Separate from N-based Interpolation)
         # ------------------------------
-        # This step interpolates the externally defined load data at the physical coordinates.
-        # It provides the value of the distributed load at each Gauss point.
+        # This step interpolates the distributed load at the physical coordinates (x_phys_array)
+        # using element.load_array. The full load vector (q_full) may contain load values for all DOFs.
+        # For a 2-node Euler–Bernoulli element with 3 DOF per node, a full load vector would have 12 components.
+        # However, we only want the translational force components (Fx and Fy):
+        #   - For Node 1: index 0 (Fx) and index 1 (Fy)
+        #   - For Node 2: index 6 (Fx) and index 7 (Fy)
+        # We define an active load mapping accordingly, extract these 4 components, and then reduce them
+        # to a 2-component load vector by averaging the contributions from the two nodes.
+        
         q_full = interpolate_loads(x_phys_array, element.load_array)
+        # Ensure q_full is a 2D array: (n_gauss, number_of_columns)
         if q_full.ndim == 1:
             q_full = q_full.reshape(-1, q_full.size)
-    
-        # Get the binary DOF mapping and extract active indices.
-        dof_map_binary = element.get_dof_map_binary()  # For example, [1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1]
-        active_indices = np.where(np.array(dof_map_binary) == 1)[0]
-    
-        # If the load vector is full (e.g., 12 columns), filter to active DOFs.
-        if q_full.shape[1] == len(dof_map_binary):
-            q_active = q_full[:, active_indices]
+        
+        # Define the active load mapping for a full 12-DOF vector.
+        # Only indices corresponding to Fx and Fy are active:
+        #   - For Node 1: indices 0 (Fx) and 1 (Fy)
+        #   - For Node 2: indices 6 (Fx) and 7 (Fy)
+        active_load_mapping = [1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0]
+        active_indices = np.where(np.array(active_load_mapping) == 1)[0]
+
+        # If q_full is a full 12-component vector, filter to get the 4 active components.
+        # Otherwise, assume q_full is already reduced to 4 active DOFs.
+        if q_full.shape[1] == len(active_load_mapping):
+            q_active_4 = q_full[:, active_indices]  # Shape: (n_gauss, 4)
         else:
-            # Otherwise, assume q_full is already reduced.
-            q_active = q_full
-        logger.debug("Interpolated loads (active DOFs) shape: %s", q_active.shape)
-        logger.debug("Interpolated loads (active DOFs):\n%s", q_active)
-    
-        # Log the active load vectors for each Gauss point (display as (n,1,6)).
-        q_active_display = q_active[:, np.newaxis, :]
-        log_tensor_operation("Interpolated Loads (active DOFs) (n,1,6)", q_active_display, gp_info)
-    
+            q_active_4 = q_full  # Already reduced to 4 components
+
+        # Reduce the 4-component load vector to a 2-component load vector by averaging the nodal values:
+        #   - For Fx: average the value at Node 1 (index 0) with the value at Node 2 (index 2).
+        #   - For Fy: average the value at Node 1 (index 1) with the value at Node 2 (index 3).
+        n_gp = q_active_4.shape[0]  # Number of Gauss points
+        q_active_reduced = np.zeros((n_gp, 2))
+        q_active_reduced[:, 0] = 0.5 * (q_active_4[:, 0] + q_active_4[:, 2])  # Combined Fx
+        q_active_reduced[:, 1] = 0.5 * (q_active_4[:, 1] + q_active_4[:, 3])  # Combined Fy
+
+        # Log the final active loads (now as a (n_gauss, 1, 2) tensor for formatted logging)
+        q_active_display = q_active_reduced[:, np.newaxis, :]  # Reshape for logging purposes
+        log_tensor_operation("Interpolated Loads (active DOFs) (n,1,2)", q_active_display, gp_info)
+        #logger.info("Active load mapping: %s", active_load_mapping)
+
         # ------------------------------
         # Block 5: Integration to Compute the Force Vector
         # ------------------------------
-        # At this stage, the following data is available:
-        #   - N_tensor: the (n,2,6) shape function matrices (from the element's shape_functions).
-        #   - q_active: the interpolated load vectors at Gauss points for active DOFs (n,6),
-        #     obtained from a dedicated load interpolation routine.
-        # The integration step uses these two pieces:
-        #   - The shape functions "project" the load values onto the nodal DOFs.
-        #   - The contributions from all Gauss points are weighted by the Gauss weights and summed,
-        #     then scaled by the determinant of the Jacobian (detJ) to yield the final 6×1 force vector.
-        Fe_reduced = _integrate_force(weights, N_tensor, q_active, element.detJ)
+        # Use the reduced 2-component load vector in the integration routine.
+        Fe_reduced = _integrate_force(weights, N_tensor, q_active_reduced, element.detJ)
         logger.info("Computed force vector: %s", Fe_reduced)
         return Fe_reduced
     
