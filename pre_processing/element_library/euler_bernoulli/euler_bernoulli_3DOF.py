@@ -13,18 +13,13 @@ from pre_processing.element_library.euler_bernoulli.utilities.element_force_vect
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Set the desired logging level
 
-# You can add handlers to the logger if not already configured elsewhere
-# For example, to log to a file:
-# handler = logging.FileHandler('element_debug.log')
-# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-# handler.setFormatter(formatter)
-# logger.addHandler(handler)
-
 class EulerBernoulliBeamElement3DOF(Element1DBase):
     """
     1D structural member governed by Euler-Bernoulli beam theory modelling explciitly axial u_x, bending u_y effects and implicitly rotation θ_z through bending curvature.
     (u_x, u_y, 0, 0, 0, θ_z).
     """
+
+    elements_instances = [] # Initializes elements_instances once at the class level, appends each newly created instance to elements_instances in __init__()
 
     # Class-level indices for geometry and material arrays
     GEOMETRY_A_INDEX = 1    # Cross-sectional area (A)
@@ -43,13 +38,12 @@ class EulerBernoulliBeamElement3DOF(Element1DBase):
         - mesh_dictionary (dict): Mesh data dictionary containing nodal connectivity and coordinates.
         - load_array (np.ndarray): External force/moment distribution on the element.
         """
-        # Element properties
-        self.element_id = element_id
-        self.material_array = material_array
-        self.geometry_array = geometry_array
-        self.mesh_dictionary = mesh_dictionary
-        self.load_array = load_array
+        
+        # Call the parent class constructor before defining attributes
+        super().__init__(geometry_array, material_array, mesh_dictionary, load_array, dof_per_node=6)
 
+        # Assign class-specific properties
+        self.element_id = element_id
         self.A = geometry_array[0, self.GEOMETRY_A_INDEX]
         self.I_z = geometry_array[0, self.GEOMETRY_IZ_INDEX]
         self.E = material_array[0, self.MATERIAL_E_INDEX]
@@ -57,7 +51,9 @@ class EulerBernoulliBeamElement3DOF(Element1DBase):
         # Compute the Jacobian at initialization
         self.jacobian_matrix, self.detJ = self._compute_jacobian_matrix()
 
-        self.dof_map_binary= self.get_dof_map_binary()  # Get the DOF mapping for this element
+        # Now `self.dof_per_node` exists, ensuring `dof_mapping` works correctly
+        self.dof_map_binary = self.get_dof_map_binary()
+
 
     def get_dof_map_binary(self):
         """
@@ -84,8 +80,6 @@ class EulerBernoulliBeamElement3DOF(Element1DBase):
                 - A NumPy array of the active DOF indices.
         """
         return [1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1] 
-
-
 
     def get_element_index(self):
         """Finds the index of the element based on its ID."""
@@ -170,9 +164,9 @@ class EulerBernoulliBeamElement3DOF(Element1DBase):
         - np.ndarray: Diagonal matrix representing axial and bending stiffness.
         """
         # Assemble mayerial stiffness matrix
-        return np.diag([self.E * self.A, self.E * self.I_z]) # Shape: (2,2)
+        return np.diag([self.E * self.A, 0, self.E * self.I_z]) # Shape: (3,3)
         
-    def strain_displacement_matrix(self, dN_dxi_matrix: np.ndarray) -> np.ndarray:
+    #def strain_displacement_matrix(self, dN_dxi_matrix: np.ndarray) -> np.ndarray:
         """
         Computes the strain-displacement matrix B in physical coordinates for an Euler–Bernoulli beam element.
     
@@ -211,22 +205,22 @@ class EulerBernoulliBeamElement3DOF(Element1DBase):
         """
 
         # Compute transformation factor (Jacobian inverse)
-        if np.abs(self.detJ) < 1e-12:  # Avoid division errors for near-zero Jacobian
-            raise ValueError("Jacobian determinant is too small, possible singular transformation.")
+        #if np.abs(self.detJ) < 1e-12:  # Avoid division errors for near-zero Jacobian
+            #raise ValueError("Jacobian determinant is too small, possible singular transformation.")
 
-        dxi_dx = 1.0 / self.detJ
+        #dxi_dx = 1.0 / self.detJ
 
         # Ensure input is at least 3D (n,2,6)
-        dN_dxi_matrix = np.atleast_3d(dN_dxi_matrix)
+        #dN_dxi_matrix = np.atleast_3d(dN_dxi_matrix)
 
         # Allocate memory for the transformed matrix
-        B = np.empty_like(dN_dxi_matrix)
+        #B = np.empty_like(dN_dxi_matrix)
 
         # Apply the transformation
-        B[:, 0, :] = dN_dxi_matrix[:, 0, :] * dxi_dx         # Axial component: (1/detJ) * dN/dξ
-        B[:, 1, :] = dN_dxi_matrix[:, 1, :] * (dxi_dx ** 2)  # Bending component: (1/detJ)² * dN/dξ
+        #B[:, 0, :] = dN_dxi_matrix[:, 0, :] * dxi_dx         # Axial component: (1/detJ) * dN/dξ
+        #B[:, 1, :] = dN_dxi_matrix[:, 1, :] * (dxi_dx ** 2)  # Bending component: (1/detJ)² * dN/dξ
 
-        return B.squeeze()  # Ensures consistent output: (2,6) for a single point, (n,2,6) for multiple points
+        #return B.squeeze()  # Ensures consistent output: (2,6) for a single point, (n,2,6) for multiple points
 
     def element_stiffness_matrix(self):
         """

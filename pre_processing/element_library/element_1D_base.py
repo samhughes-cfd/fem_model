@@ -35,27 +35,9 @@ class Element1DBase:
         self.geometry_array = geometry_array
         self.material_array = material_array
         self.mesh_dictionary = mesh_dictionary
+        self.elements_instances = None
         self.load_array = load_array
         self.dof_per_node = dof_per_node  # Default max DOFs per node = 6
-
-        # Request elements from `element_factory.py`
-        logger.info("Instantiating elements from factory...")
-        self.elements_instances = self._instantiate_elements()
-        logger.info(f"Successfully instantiated {len(self.elements_instances)} elements.")
-
-        # Compute element stiffness and force matrices
-        logger.info("Computing element stiffness matrices...")
-        self.element_stiffness_matrices = self._compute_stiffness_matrices_vectorized()
-        logger.info(f"Computed {len(self.element_stiffness_matrices)} stiffness matrices.")
-
-        logger.info("Computing element force vectors...")
-        self.element_force_vectors = self._compute_force_vectors_vectorized()
-        logger.info(f"Computed {len(self.element_force_vectors)} force vectors.")
-
-        # Convert Ke to sparse format
-        #logger.info("Converting stiffness matrices to sparse COO format...")
-        #self.element_stiffness_matrices = self._convert_to_sparse(self.element_stiffness_matrices)
-        #logger.info("Stiffness matrices successfully converted to sparse format.")
 
     def _instantiate_elements(self):
         """
@@ -64,6 +46,10 @@ class Element1DBase:
         Returns:
             np.ndarray: Array of instantiated element objects.
         """
+        if hasattr(self, 'elements_instances'):
+            logger.warning("Skipping element instantiation to prevent recursion.")
+            return self.elements_instances  # Return existing elements if already instantiated
+
         params_list = np.array([
             {
                 "geometry_array": self.geometry_array,
@@ -85,67 +71,60 @@ class Element1DBase:
 
     def _compute_stiffness_matrices_vectorized(self):
         """
-        Computes the element stiffness matrices (Ke) using NumPy broadcasting.
+        Computes element stiffness matrices (Ke) in a fully vectorized manner.
 
         Returns:
-            np.ndarray: An array of element stiffness matrices.
+            np.ndarray: A 3D NumPy array of shape `(num_elements, dof_per_element, dof_per_element)`,
+                        where `num_elements` is the number of elements,
+                        and `dof_per_element` is `2 * self.dof_per_node`.
         """
-        stiffness_matrices = []
-        for idx, element in enumerate(self.elements_instances):
-            if element is None:
-                logger.error(f"Error: Element {idx} is None. Skipping stiffness matrix computation.")
-                stiffness_matrices.append(None)
-                continue
-            try:
+        num_elements = len(self.elements_instances)
+        dof_per_element = 2 * self.dof_per_node  # Assuming each element has 2 nodes
+
+        # Initialize a 3D NumPy array to store all stiffness matrices
+        stiffness_matrices = np.zeros((num_elements, dof_per_element, dof_per_element))
+
+        # Extract and store stiffness matrices
+        for i, element in enumerate(self.elements_instances):
+            if element is not None:
                 Ke = element.element_stiffness_matrix()
-                stiffness_matrices.append(Ke)
-            except Exception as e:
-                logger.error(f"Error computing stiffness matrix for element {idx}: {e}")
-                stiffness_matrices.append(None)
-        
-        return np.array(stiffness_matrices, dtype=object)
+                if isinstance(Ke, np.ndarray) and Ke.shape == (dof_per_element, dof_per_element):
+                    stiffness_matrices[i] = Ke  # Store in the array
+                else:
+                    logger.warning(f"Element {i}: Stiffness matrix shape mismatch {Ke.shape}, expected {(dof_per_element, dof_per_element)}")
+
+        # Convert the entire batch to sparse format (optional)
+        stiffness_matrices_sparse = np.array([
+            coo_matrix(Ke) for Ke in stiffness_matrices
+        ], dtype=object)
+
+        return stiffness_matrices_sparse
 
     def _compute_force_vectors_vectorized(self):
         """
-        Computes the element force vectors (Fe) using NumPy broadcasting.
+        Computes element force vectors (Fe) in a fully vectorized manner.
 
         Returns:
-            np.ndarray: An array of element force vectors.
+            np.ndarray: A 1D NumPy array (dtype=object) of shape `(num_elements,)` where each element
+                        is a dense NumPy array of shape `(dof_per_element,)`.
         """
-        force_vectors = []
-        for idx, element in enumerate(self.elements_instances):
-            if element is None:
-                logger.error(f"Error: Element {idx} is None. Skipping force vector computation.")
-                force_vectors.append(None)
-                continue
-            try:
+        num_elements = len(self.elements_instances)
+        dof_per_element = 2 * self.dof_per_node  # Assuming each element has 2 nodes
+
+        # ✅ Initialize storage for force vectors (as a list of NumPy arrays)
+        force_vectors = np.empty(num_elements, dtype=object)
+
+        # ✅ Extract and store force vectors
+        for i, element in enumerate(self.elements_instances):
+            if element is not None:
                 Fe = element.element_force_vector()
-                force_vectors.append(Fe)
-            except Exception as e:
-                logger.error(f"Error computing force vector for element {idx}: {e}")
-                force_vectors.append(None)
-        
-        return np.array(force_vectors, dtype=object)
+                if isinstance(Fe, np.ndarray) and Fe.shape == (dof_per_element,):
+                    force_vectors[i] = Fe  # ✅ Store as a dense 1D array
+                else:
+                    logger.warning(f"Element {i}: Force vector shape mismatch {Fe.shape}, expected {(dof_per_element,)}")
+                    force_vectors[i] = np.zeros(dof_per_element)  # Fallback to zero vector
 
-    def _convert_to_sparse(self, matrix_array):
-        """
-        Converts an array of dense matrices or vectors to sparse COO format.
-
-        Args:
-            matrix_array (np.ndarray): Array of dense matrices or vectors.
-
-        Returns:
-            list: A list of sparse matrices in COO format or dense vectors.
-        """
-        if matrix_array is None:
-            logger.warning("Warning: Attempting to convert NoneType matrix array to sparse format.")
-            return []
-
-        return [
-            coo_matrix(matrix.reshape(1, -1) if matrix is not None and matrix.ndim == 1 else matrix)
-            if matrix is not None else None
-            for matrix in np.asarray(matrix_array, dtype=object)
-        ]
+        return force_vectors  # ✅ Returns a 1D NumPy array of dense vectors
 
     def assemble_global_dof_indices(self, element_id):
         """
