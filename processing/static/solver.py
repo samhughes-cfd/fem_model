@@ -1,3 +1,5 @@
+# processing\static\solver.py
+
 import logging
 import numpy as np
 from processing.solver_registry import get_solver_registry

@@ -154,7 +154,7 @@ class Element1DBase:
 
             global_dof_indices.extend(dof_indices)
 
-        return global_dof_indices
+        return np.asarray(global_dof_indices, dtype=int) # Returns a NumPy int array
     
     def validate_matrices(self):
         """

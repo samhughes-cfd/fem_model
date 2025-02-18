@@ -7,7 +7,7 @@ from datetime import datetime
 
 # Configuration Parameters (User-defined)
 L = 0.7  # Beam length [m]
-growth_factor = 0  # Exponential distribution parameter (set to 0 for uniform mesh)
+growth_factor = 3  # Exponential distribution parameter (set to 0 for uniform mesh)
 max_num_nodes = 50  # Maximum number of nodes allowed if using growth factor
 num_uniform_nodes = 11  # Exact number of nodes if using a uniform mesh (growth_factor = 0)
 

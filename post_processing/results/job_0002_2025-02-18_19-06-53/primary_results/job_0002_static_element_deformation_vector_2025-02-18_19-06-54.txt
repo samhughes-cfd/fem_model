@@ -1,0 +1,153 @@
+# Static simulation
+# Job: job_0002
+# Scale: element
+# Data key: deformation_vector
+# Timestamp (runner starts): 2025-02-18_19-06-54
+# Data:
+
+# Element ID: 0
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 1
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 2
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 3
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 4
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 5
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 6
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 7
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 8
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 9
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 10
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 11
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 12
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 13
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 14
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 15
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 16
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 17
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 18
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 19
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 20
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 21
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 22
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 23
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 24
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 25
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 26
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 27
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 28
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 29
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 30
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 31
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 32
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 33
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 34
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 35
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 36
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 37
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 38
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 39
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 40
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 41
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 42
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 43
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 44
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 45
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 46
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 47
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+
+# Element ID: 48
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan

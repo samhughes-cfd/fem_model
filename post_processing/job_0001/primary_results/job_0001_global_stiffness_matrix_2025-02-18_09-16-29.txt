@@ -1,5 +1,0 @@
-# Static Analysis Global Results
-# Job: job_0001
-# Data Key: global_stiffness_matrix
-# Timestamp: 2025-02-18_09-16-29
-# Data:

@@ -37,44 +37,37 @@ def create_elements_batch(mesh_dictionary, params_list):
     unique_types = np.unique(element_types_array)
     modules = {}
 
-    for etype in unique_types:
-        if etype not in ELEMENT_CLASS_MAP:
-            logger.error(f"Unknown element type: {etype}. Check ELEMENT_CLASS_MAP for valid types.")
-            raise ValueError(f"Unknown element type: {etype}. Check ELEMENT_CLASS_MAP for valid types.")
+    # Check for unknown element types before proceeding
+    missing_types = [etype for etype in unique_types if etype not in ELEMENT_CLASS_MAP]
+    if missing_types:
+        logger.error(f"❌ Unrecognized element types found: {missing_types}")
+        raise ValueError(f"❌ Unrecognized element types: {missing_types}. Update ELEMENT_CLASS_MAP.")
 
+    for etype in unique_types:
         module_name = ELEMENT_CLASS_MAP[etype]
         try:
             modules[etype] = importlib.import_module(module_name)  # Import module dynamically
-            logger.info(f"Successfully imported module: {module_name}")
+            logger.info(f"✅ Successfully imported module: {module_name}")
         except ImportError as e:
-            logger.error(f"Module '{module_name}' could not be imported: {e}")
-            raise ImportError(f"Module '{module_name}' could not be imported: {e}")
+            logger.exception(f"❌ Failed to import '{module_name}'. Verify module existence and PYTHONPATH.")
+            raise
 
     # **Vectorized class selection**
-    class_references = []
-    for etype in element_types_array:
+    try:
+        class_references = np.array([getattr(modules[etype], etype) for etype in element_types_array], dtype=object)
+    except AttributeError as e:
+        logger.error(f"❌ Failed to find element class: {e}")
+        raise AttributeError(f"❌ Failed to find element class. Ensure class names match module names.") from e
+
+    # **Vectorized instantiation using np.vectorize**
+    def instantiate_element(cls, elem_id, params):
         try:
-            class_references.append(getattr(modules[etype], etype))
-        except AttributeError as e:
-            logger.error(f"Failed to find class '{etype}' in module '{modules[etype]}'. Ensure the class name matches.")
-            raise AttributeError(f"Failed to find class '{etype}' in module '{modules[etype]}'. Ensure the class name matches.") from e
-
-    class_references = np.array(class_references, dtype=object)
-
-    # **Prevent Infinite Loops: Track Created Elements**
-    seen_elements = set()
-    elements = []
-
-    for cls, elem_id, params in zip(class_references, element_ids_array, params_list):
-        if elem_id in seen_elements:
-            logger.warning(f"Skipping duplicate instantiation of element {elem_id}.")
-            continue  # Skip re-creating elements
-
-        seen_elements.add(elem_id)
-        try:
-            elements.append(cls(element_id=elem_id, **params))
+            return cls(element_id=elem_id, **params)
         except Exception as e:
-            logger.error(f"Error instantiating element {elem_id} of type {cls.__name__}: {e}")
-            elements.append(None)  # Preserve array shape even if an element fails
+            logger.error(f"❌ Error instantiating element {elem_id} of type {cls.__name__}: {e}")
+            return None  # Preserve array shape
 
-    return np.array(elements, dtype=object)  # Convert list to NumPy array
+    vectorized_instantiation = np.vectorize(instantiate_element, otypes=[object])
+    elements = vectorized_instantiation(class_references, element_ids_array, params_list)
+
+    return elements
