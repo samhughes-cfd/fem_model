@@ -65,7 +65,7 @@ class StaticSimulationRunner:
             total_dof = num_nodes * 12
 
             # ✅ Assemble Global Matrices
-            _, _, K_global, F_global = assemble_global_matrices(
+            K_global, F_global = assemble_global_matrices(
                 elements=self.elements,
                 element_stiffness_matrices=self.element_stiffness_matrices,
                 element_force_vectors=self.element_force_vectors,

@@ -139,14 +139,23 @@ class Element1DBase:
         element_index = np.where(self.mesh_dictionary["element_ids"] == element_id)[0][0]
         node_ids = self.mesh_dictionary["connectivity"][element_index]
 
+        print(f"Element ID: {element_id}, Element Index: {element_index}, Node IDs: {node_ids}")
+
         global_dof_indices = []
         for node_id in node_ids:
-            start_dof = (node_id - 1) * self.dof_per_node
+            if node_id < 0:  # Node ID should never be negative
+                raise ValueError(f"Invalid node ID detected: {node_id} in element {element_id}")
+
+            # FIXED: Remove -1 since node_id already starts at 0
+            start_dof = node_id * self.dof_per_node
             dof_indices = list(range(start_dof, start_dof + self.dof_per_node))
+
+            print(f"Node {node_id}: Start DOF={start_dof}, DOF Indices={dof_indices}")
+
             global_dof_indices.extend(dof_indices)
 
         return global_dof_indices
-
+    
     def validate_matrices(self):
         """
         Ensures all element stiffness matrices (Ke) and force vectors (Fe) have the correct dimensions.
