@@ -174,13 +174,13 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
 
         # 4) Solve Linear System
         step_start = time.time()
-        U_global = runner.solve_linear_system(K_mod, F_mod)
+        U_global, K_cond, F_cond, U_cond = runner.solve_static(K_mod, F_mod)
         solve_time = time.time() - step_start
-        performance_data.append(["Solve Linear System", solve_time, *track_usage().values()])
+        performance_data.append(["Solve Linear Static System", solve_time, *track_usage().values()])
 
         # 5) Compute Primary Results
         step_start = time.time()
-        runner.compute_primary_results(K_global, F_global, K_mod, F_mod, U_global)
+        runner.compute_primary_results(K_global, F_global, K_mod, F_mod, K_cond, F_cond, U_cond, U_global)
         compute_primary_time = time.time() - step_start
         performance_data.append(["Compute Primary Results", compute_primary_time, *track_usage().values()])
 

@@ -1,13 +1,14 @@
-# simulation_runner\static_simulation.py
+# simulation_runner/static_simulation.py
 
 import logging
 import numpy as np
 import os
 import datetime
-from scipy.sparse import coo_matrix, csr_matrix
+from scipy.sparse import coo_matrix
 from processing.assembly import assemble_global_matrices
 from processing.boundary_conditions import apply_boundary_conditions
 from processing.static.solver import solve_fem_system
+from processing.static_condensation import condensation, reconstruction
 
 logger = logging.getLogger(__name__)
 
@@ -112,58 +113,95 @@ class StaticSimulationRunner:
         return K_mod, F_mod
 
     # -------------------------------------------------------------------------
-    # 3) SOLVE LINEAR SYSTEM
+    # 3) SOLVE SYSTEM (STATIC CONDENSATION & RECONSTRUCTION)
     # -------------------------------------------------------------------------
-    def solve_linear_system(self, K_mod, F_mod):
-        """
-        Solves the linear system using the specified solver
-        and returns the global displacement vector.
-        """
-        logger.info(f"Solving FEM system using `{self.solver_name}`.")
-        U_global = solve_fem_system(K_mod, F_mod, self.solver_name)
 
-        if U_global is None:
-            raise ValueError("❌ Error: Solver returned no results!")
-
-        return U_global
+    def solve_static(self, K_mod, F_mod):
+        """
+        Applies static condensation to K_mod and F_mod to remove inactive DOFs,
+        solves the reduced system to obtain U_cond, and reconstructs the full
+        global displacement vector U_global.
+        """
+        logger.info(f"Solving FEM system using static condensation with `{self.solver_name}`.")
+        # Condense the modified system.
+        active_dofs, _ , K_cond, F_cond = condensation(K_mod, F_mod, tol=1e-12, zero_inactive_forces=True)
+        # Solve the condensed system.
+        U_cond = solve_fem_system(K_cond, F_cond, self.solver_name)
+        if U_cond is None:
+            raise ValueError("Error: Solver returned no results for the condensed system!")
+        # Reconstruct the full displacement vector using the active DOFs mapping.
+        U_global = reconstruction(active_dofs, U_cond, K_mod.shape[0])
+        return U_global, K_cond, F_cond, U_cond
 
     # -------------------------------------------------------------------------
     # 4) COMPUTE PRIMARY RESULTS
     # -------------------------------------------------------------------------
-    def compute_primary_results(self, K_global, F_global, K_mod, F_mod, U_global):
+    def compute_primary_results(self, K_global, F_global, K_mod, F_mod, K_cond, F_cond, U_cond, U_global):
         """
-        Computes key global results (reactions, etc.) from the displacement solution.
-        Stores them in `self.primary_results`.
+        Computes key global results (such as reaction forces) from the displacement solutions of the 
+        original, modified, and condensed systems. The results include the original global stiffness 
+        matrix and force vector, the modified matrices with boundary conditions applied, and the 
+        condensed system matrices and corresponding displacement solution. It also computes the reaction 
+        forces for both the global and condensed systems. The computed results are stored in 
+        `self.primary_results`.
+
+        Args:
+            K_global (csr_matrix or ndarray): 
+                The original global stiffness matrix.
+            F_global (np.ndarray): 
+                The original global force vector.
+            K_mod (csr_matrix or ndarray): 
+                The modified global stiffness matrix with boundary conditions applied.
+         F_mod (np.ndarray): 
+                The modified global force vector with boundary conditions applied.
+            K_cond (csr_matrix or ndarray): 
+                The condensed global stiffness matrix after removing inactive DOFs.
+            F_cond (np.ndarray): 
+                The condensed global force vector after removing inactive DOFs.
+            U_cond (np.ndarray):
+                The displacement solution for the condensed system.
+            U_global (np.ndarray):
+                The full global displacement vector reconstructed from U_cond.
+
+        Returns:
+            None. The computed results are stored in the `self.primary_results` dictionary.
         """
         logger.info("Computing primary results...")
 
-        # Global reaction forces
+        # Compute global reaction forces
         R_global = K_global @ U_global
 
-        # ✅ Store Global Results including modified matrices
+        # Compute reaction forces for the condensed system
+        R_cond = K_cond @ U_cond
+
+        # Store global results including original, modified, and condensed systems
         self.primary_results["global"] = {
-            "stiffness_matrix": K_global,  # Original
-            "force_vector": F_global,      # Original
-            "modified_stiffness_matrix": K_mod,  # ✅ Added modified matrix
-            "modified_force_vector": F_mod,      # ✅ Added modified force vector
-            "deformation_vector": U_global,
-            "reaction_force_vector": R_global,
+            "K_global": K_global,                      # Original global stiffness matrix
+            "F_global": F_global,                      # Original global force vector
+            "K_mod": K_mod,                            # Modified stiffness matrix (with BCs applied)
+            "F_mod": F_mod,                            # Modified force vector (with BCs applied)
+            "K_cond": K_cond,                          # Condensed stiffness matrix
+            "F_cond": F_cond,                          # Condensed force vector
+            "U_cond": U_cond,                          # Condensed displacement solution
+            "R_cond": R_cond,                          # Reaction forces from the condensed system                                                    
+            "U_global": U_global,                      # Global displacement solution
+            "R_global": R_global,                      # Global reaction forces
         }
 
-        # Compute and Store Element-wise Results
+        # Compute and store element-wise results
         self.primary_results["element"]["data"] = []
-
         for element_id, element_matrix in enumerate(self.element_stiffness_matrices):
             force_vector = self.element_force_vectors[element_id]
-            deformation_vector = U_global[:len(force_vector)]  # Extract relevant part of U
+            # Extract the relevant portion of the global displacement vector for the element.
+            deformation_vector = U_global[:len(force_vector)]
             reaction_force_vector = element_matrix @ deformation_vector
 
             self.primary_results["element"]["data"].append({
                 "element_id": element_id,
-                "stiffness_matrix": element_matrix,
-                "force_vector": force_vector,
-                "deformation_vector": deformation_vector,
-                "reaction_force_vector": reaction_force_vector,
+                "K_e": element_matrix,
+                "F_e": force_vector,
+                "U_e": deformation_vector,
+                "R_e": reaction_force_vector,
             })
 
         logger.info(f"Primary results computed. Element count: {len(self.primary_results['element']['data'])}")
@@ -172,6 +210,7 @@ class StaticSimulationRunner:
     # -------------------------------------------------------------------------
     # 5) SAVE PRIMARY RESULTS (GLOBAL + ELEMENT)
     # -------------------------------------------------------------------------
+
     def save_primary_results(self, output_dir=None):
         """
         Saves both global and element-wise primary simulation results.
@@ -217,11 +256,11 @@ class StaticSimulationRunner:
                 with open(file_path, "w") as f:
                     _write_signature_header(f, global_scale, key_name, timestamp)
                     if isinstance(data, np.ndarray):
-                        np.savetxt(f, data, fmt="%.6f", delimiter=",")
-                    elif isinstance(data, (coo_matrix, csr_matrix)):
-                        coo_data = coo_matrix(data)
+                        np.savetxt(f, data, fmt="%.6e")
+                    elif hasattr(data, "tocoo"):
+                        coo_data = data.tocoo()
                         for row, col, value in zip(coo_data.row, coo_data.col, coo_data.data):
-                            f.write(f"{row}, {col}, {value:.6f}\n")
+                            f.write(f"{row}, {col}, {value:.6e}\n")
                 logger.info(f"✅ Saved global {key_name} -> {file_path}")
             except Exception as e:
                 logger.error(f"❌ Error saving global result '{key_name}': {e}", exc_info=True)
@@ -237,46 +276,32 @@ class StaticSimulationRunner:
             logger.info("⚠️ No element data found. Skipping element-level save.")
             return
 
-        # Assume all element dictionaries share the same keys; get them from the first element.
-        # Exclude 'element_id' from the result keys.
-        result_keys = [key for key in element_data[0].keys() if key != "element_id"]
-
-        # Prepare filenames for each result type using the unified naming format.
-        filenames = {
-            key: os.path.join(primary_results_dir,
-                            f"{self.job_name}_static_{element_scale}_{key}_{timestamp}.txt")
-            for key in result_keys
-        }
-
-        # Use ExitStack to manage multiple file handles.
         from contextlib import ExitStack
         with ExitStack() as stack:
+            # Prepare file handles for each result type.
             file_handles = {
-                key: stack.enter_context(open(filenames[key], "w"))
-                for key in result_keys
+                key: stack.enter_context(open(os.path.join(primary_results_dir,
+                                        f"{self.job_name}_static_{element_scale}_{key}_{timestamp}.txt"), "w"))
+                for key in element_data[0].keys() if key != "element_id"
             }
-            # Write a signature header at the top of each element result file.
-            for key in result_keys:
+            # Write signature header in each file.
+            for key in file_handles:
                 _write_signature_header(file_handles[key], element_scale, key, timestamp)
     
-            # Write data for each element into the appropriate file.
             for elem_info in element_data:
                 element_id = elem_info["element_id"]
-                for key in result_keys:
-                    file_handles[key].write(f"\n# Element ID: {element_id}\n")
+                for key, f_handle in file_handles.items():
+                    f_handle.write(f"\n# Element ID: {element_id}\n")
                     value = elem_info[key]
-                    # Handle sparse matrix values (e.g., stiffness matrices)
                     if hasattr(value, "tocoo"):
                         coo_val = value.tocoo()
                         for row, col, val in zip(coo_val.row, coo_val.col, coo_val.data):
-                            file_handles[key].write(f"{row}, {col}, {val:.6f}\n")
+                            f_handle.write(f"{row}, {col}, {val:.6e}\n")
                     else:
-                        # Assume it's a NumPy array
-                        np.savetxt(file_handles[key], value.reshape(1, -1), fmt="%.6f", delimiter=",")
+                        np.savetxt(f_handle, value.reshape(1, -1), fmt="%.6e", delimiter=",")
     
-        # Log saved files for element-level results.
-        for key in result_keys:
-            logger.info(f"✅ Saved element {key} -> {filenames[key]}")
+        for key in file_handles:
+            logger.info(f"✅ Saved element {key} -> {file_handles[key].name}")
         logger.info("✅ Element-level primary results saved successfully.")
 
     # -------------------------------------------------------------------------
@@ -294,13 +319,10 @@ class StaticSimulationRunner:
             logger.warning("⚠️ Cannot compute secondary results: No primary results available.")
             return
 
-        # Example: Compute stress & strain (Placeholder)
         self.secondary_results["global"]["stress"] = np.array([0.0])  # Replace with actual stress computation
         self.secondary_results["global"]["strain"] = np.array([0.0])  # Replace with actual strain computation
 
-        # Example: Compute element-wise secondary results (Placeholder)
         self.secondary_results["element"]["data"] = []
-
         for element in self.primary_results["element"]["data"]:
             self.secondary_results["element"]["data"].append({
                 "element_id": element["element_id"],
@@ -318,12 +340,6 @@ class StaticSimulationRunner:
         """
         Saves secondary simulation results (e.g., stress, strain, energy).
         These results are derived from primary results.
-
-        Parameters
-        ----------
-        output_dir : str, optional
-            If provided, saves the secondary results to this directory
-            instead of the default `self.primary_results_dir`.
         """
         if not self.secondary_results.get("global") and not self.secondary_results.get("element", {}).get("data"):
             logger.warning(f"⚠️ No secondary results to save for job: {self.job_name}.")
@@ -331,22 +347,14 @@ class StaticSimulationRunner:
 
         logger.info("Saving secondary results...")
 
-        # Use the simulation start time for consistent timestamps
         timestamp = self.start_time
-
-        # Ensure the correct results directory
         results_dir = output_dir if output_dir else self.primary_results_dir
         secondary_results_dir = os.path.join(results_dir, "secondary_results")
         os.makedirs(secondary_results_dir, exist_ok=True)
 
-        # -------------------------------------------------------------------------
-        # 7.1) SAVE GLOBAL SECONDARY RESULTS
-        # -------------------------------------------------------------------------
         logger.info("Saving global secondary results...")
-
         for key_name, data in self.secondary_results.get("global", {}).items():
             file_path = os.path.join(secondary_results_dir, f"{self.job_name}_{key_name}_{timestamp}.txt")
-
             try:
                 with open(file_path, "w") as f:
                     f.write("# Static simulation\n")
@@ -354,24 +362,17 @@ class StaticSimulationRunner:
                     f.write(f"# Data key: {key_name}\n")
                     f.write(f"# Timestamp (runner start): {timestamp}\n")
                     f.write("# Data:\n")
-
                     if isinstance(data, np.ndarray):
                         np.savetxt(f, data, fmt="%.6f", delimiter=",")
-                    elif isinstance(data, (coo_matrix, csr_matrix)):
-                        coo_data = coo_matrix(data)
+                    elif hasattr(data, "tocoo"):
+                        coo_data = data.tocoo()
                         for row, col, value in zip(coo_data.row, coo_data.col, coo_data.data):
                             f.write(f"{row}, {col}, {value:.6f}\n")
-
                 logger.info(f"Saved global secondary result '{key_name}' -> {file_path}")
-
             except Exception as e:
                 logger.error(f"Error saving global secondary result '{key_name}': {e}", exc_info=True)
 
-        # -------------------------------------------------------------------------
-        # 5.2) SAVE ELEMENT-WISE SECONDARY RESULTS
-        # -------------------------------------------------------------------------
         logger.info("Saving element-wise secondary results...")
-
         element_data = self.secondary_results.get("element", {}).get("data", [])
         if not element_data:
             logger.info("⚠️ No element secondary data found. Skipping element-level save.")
@@ -384,37 +385,28 @@ class StaticSimulationRunner:
         }
 
         with open(filenames["stress"], 'w') as f_stress, \
-            open(filenames["strain"], 'w') as f_strain, \
-            open(filenames["energy"], 'w') as f_energy:
+             open(filenames["strain"], 'w') as f_strain, \
+             open(filenames["energy"], 'w') as f_energy:
 
             for elem_info in element_data:
                 element_id = elem_info["element_id"]
-
-                # Write headers
                 f_stress.write(f"\n# Element ID: {element_id}\n")
                 f_strain.write(f"\n# Element ID: {element_id}\n")
                 f_energy.write(f"\n# Element ID: {element_id}\n")
 
-                # 1) Stress
                 if "stress" in elem_info:
                     np.savetxt(f_stress, elem_info["stress"].reshape(1, -1), fmt="%.6f", delimiter=",")
-
-                # 2) Strain
                 if "strain" in elem_info:
                     np.savetxt(f_strain, elem_info["strain"].reshape(1, -1), fmt="%.6f", delimiter=",")
-
-                # 3) Energy (if computed)
                 if "energy" in elem_info:
                     np.savetxt(f_energy, elem_info["energy"].reshape(1, -1), fmt="%.6f", delimiter=",")
-
         logger.info(f"Saved element stress -> {filenames['stress']}")
         logger.info(f"Saved element strain -> {filenames['strain']}")
         logger.info(f"Saved element energy -> {filenames['energy']}")
-
         logger.info("Element-level secondary results saved successfully.")
 
     # -------------------------------------------------------------------------
-    # MAIN ENTRY POINT
+    # 8) MAIN ENTRY POINT
     # -------------------------------------------------------------------------
     def run(self):
         """
@@ -425,25 +417,23 @@ class StaticSimulationRunner:
         self.setup_simulation()
 
         try:
-            # 1) Assemble; assemble global matrices from element-wise contributions
+            # 1) Assemble global matrices.
             K_global, F_global = self.assemble_global_matrices()
 
-            # 2) Modify; apply boundary conditions
+            # 2) Apply boundary conditions.
             K_mod, F_mod = self.modify_global_matrices(K_global, F_global)
 
-            # 3) Solve; solve the F = K U for U
-            U_global = self.solve_linear_system(K_mod, F_mod)
+            # 3) Solve condensed system and reconstruct
+            U_global, K_cond, F_cond, U_cond = self.solve_static(K_mod, F_mod)
 
-            # 4) Compute primary results
-            self.compute_primary_results(K_global, F_global, K_mod, F_mod, U_global)
+            # 5) Compute primary results.
+            self.compute_primary_results(K_global, F_global, K_mod, F_mod, K_cond, F_cond, U_cond, U_global)
 
-            # 5) Save primary results
+            # 6) Save primary results.
             self.save_primary_results()
 
-            # 6) Placeholder for advanced post-processing
+            # 7) (Optional) Compute & Save secondary results.
             # self.compute_secondary_results()
-
-            # 7) Save secondary results
             # self.save_secondary_results()
 
             logger.info("Static simulation completed successfully.")

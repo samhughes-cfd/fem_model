@@ -1,0 +1,25 @@
+### Diagnostics for System
+Total DOFs: 30
+Total Equations (nonzero rows in K): 10
+Fixed DOFs: [0, 1, 2, 3, 4, 5]
+⚠️ Underconstrained system detected
+⚠️ Singular matrix detected! K is not invertible
+⚠️ Zero rows found at indices: [np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(7), np.int64(8), np.int64(9), np.int64(10), np.int64(13), np.int64(14), np.int64(15), np.int64(16), np.int64(19), np.int64(20), np.int64(21), np.int64(22), np.int64(25), np.int64(26), np.int64(27), np.int64(28)]
+⚠️ Zero columns found at indices: [np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(7), np.int64(8), np.int64(9), np.int64(10), np.int64(13), np.int64(14), np.int64(15), np.int64(16), np.int64(19), np.int64(20), np.int64(21), np.int64(22), np.int64(25), np.int64(26), np.int64(27), np.int64(28)]
+
+### Diagnostics for Modified System (K_mod, F_mod)
+Total DOFs: 30
+Total Equations (nonzero rows in K): 10
+Fixed DOFs: [0, 1, 2, 3, 4, 5]
+⚠️ Underconstrained system detected
+⚠️ Singular matrix detected! K is not invertible
+⚠️ Zero rows found at indices: [np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(7), np.int64(8), np.int64(9), np.int64(10), np.int64(13), np.int64(14), np.int64(15), np.int64(16), np.int64(19), np.int64(20), np.int64(21), np.int64(22), np.int64(25), np.int64(26), np.int64(27), np.int64(28)]
+⚠️ Zero columns found at indices: [np.int64(1), np.int64(2), np.int64(3), np.int64(4), np.int64(7), np.int64(8), np.int64(9), np.int64(10), np.int64(13), np.int64(14), np.int64(15), np.int64(16), np.int64(19), np.int64(20), np.int64(21), np.int64(22), np.int64(25), np.int64(26), np.int64(27), np.int64(28)]
+
+### Diagnostics for Condensed System (K_condensed, F_condensed)
+Total DOFs: 10
+Total Equations (nonzero rows in K): 10
+Fixed DOFs: [0, 1, 2, 3, 4, 5]
+✅ Well-posed system detected
+✅ K is positive definite (Invertible)
+
