@@ -98,6 +98,9 @@ class StaticSimulationRunner:
         # Ensure F_global is a flattened 1D array
         F_global = np.asarray(F_global).flatten()
 
+        # Call the diagnostic function.
+        log_system_diagnostics(K_global, F_global, fixed_dofs, output_dir, label="Example System")
+
         return K_global, F_global
 
     # -------------------------------------------------------------------------

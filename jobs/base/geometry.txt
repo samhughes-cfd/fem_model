@@ -1,7 +1,7 @@
 # jobs\base\geometry.txt
 
 [Geometry]
-[L]                                8.0                  # Beam length, aligned with the +ve x-axis direction where x = [0, L] (m)         
+[L]                                8                  # Beam length, aligned with the +ve x-axis direction where x = [0, L] (m)         
 
 [Section]
 [A]                                0.006                # Cross-sectional area (m^2)
