@@ -75,14 +75,14 @@ formulas = {
         "parabolic": r"$\theta_z (x) = -\frac{w x}{20 L^3 E I}(5L^5-10L^4x+6L^3x^2-x^5)$"
     },
     "shear": {
-        "udl": r"$S (x) = -w (L - x)$",
-        "triangular": r"$S (x) = -\frac{w x^2}{2 L}$",
-        "parabolic": r"$S (x) = -\frac{w x^3}{3 L^2}$"
+        "udl": r"$V (x) = -w (L - x)$",
+        "triangular": r"$V (x) = -\frac{w x^2}{2 L}$",
+        "parabolic": r"$V (x) = -\frac{w x^3}{3 L^2}$"
     },
     "moment": {
-        "udl": r"$M (x) = -w (Lx - \frac{x^2}{2})$",
-        "triangular": r"$M (x) = -\frac{w x^3}{6 L}$",
-        "parabolic": r"$M (x) = -\frac{w x^4}{12 L^2}$"
+        "udl": r"$M (x) = \frac{d V (x)}{dx} = -w (Lx - \frac{x^2}{2})$",
+        "triangular": r"$M (x) = \frac{d V (x)}{dx} = -\frac{w x^3}{6 L}$",
+        "parabolic": r"$M (x) = \frac{d V (x)}{dx} = -\frac{w x^4}{12 L^2}$"
     }
 }
 

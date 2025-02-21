@@ -76,14 +76,14 @@ formulas = {
         "quarter": r"$\theta_z (x) = -\frac{P x}{64 E I} (8L - 3x)$"
     },
     "shear": {
-        "end": r"$S (x) = -P$",
-        "mid": r"$S (x) = -P$ (x ≥ L/2)",
-        "quarter": r"$S (x) = -P$ (x ≥ L/4)"
+        "end": r"$V (x) = -P$",
+        "mid": r"$V (x) = -P$ (x ≥ L/2)",
+        "quarter": r"$V (x) = -P$ (x ≥ L/4)"
     },
     "moment": {
-        "end": r"$M (x) = -P (L - x)$",
-        "mid": r"$M (x) = -P (L/2 - x)$ (x ≥ L/2)",
-        "quarter": r"$M (x) = -P (L/4 - x)$ (x ≥ L/4)"
+        "end": r"$M (x) = \frac{d V (x)}{dx} = -P (L - x)$",
+        "mid": r"$M (x) = \frac{d V (x)}{dx} = -P (L/2 - x)$ (x ≥ L/2)",
+        "quarter": r"$M (x) = \frac{d V (x)}{dx} = -P (L/4 - x)$ (x ≥ L/4)"
     }
 }
 
