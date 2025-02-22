@@ -29,7 +29,7 @@ from pre_processing.parsing.material_parser import parse_material
 from pre_processing.parsing.solver_parser import parse_solver
 from pre_processing.parsing.load_parser import parse_load
 from processing.solver_registry import get_solver_registry
-from simulation_runner.static_simulation import StaticSimulationRunner
+from simulation_runner.static.static_simulation import StaticSimulationRunner
 from pre_processing.element_library.element_factory import create_elements_batch
 
 # Configure logging
@@ -79,7 +79,7 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
     os.makedirs(job_results_dir, exist_ok=True)
     
     # Performance log saved in the job folder
-    performance_log_path = os.path.join(job_results_dir, "performance_log.txt")
+    performance_log_path = os.path.join(job_results_dir, "job_performance.log")
 
     # Note: We do NOT create "primary_results" or "secondary_results" here.
     # The StaticSimulationRunner will do that if we pass job_results_dir as `output_dir`.
@@ -162,21 +162,22 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
 
         # 2) Assemble Global Matrices
         step_start = time.time()
-        K_global, F_global = runner.assemble_global_matrices()
+        K_global, F_global = runner.assemble_global_matrices(job_results_dir)
         assembly_time = time.time() - step_start
         performance_data.append(["Assemble Global Matrices", assembly_time, *track_usage().values()])
 
         # 3) Modify Global Matrices (apply BCs)
         step_start = time.time()
-        K_mod, F_mod = runner.modify_global_matrices(K_global, F_global)
+        K_mod, F_mod = runner.modify_global_matrices(K_global, F_global, job_results_dir)
         modify_time = time.time() - step_start
         performance_data.append(["Modify Global Matrices", modify_time, *track_usage().values()])
 
         # 4) Solve Linear System
         step_start = time.time()
-        U_global, K_cond, F_cond, U_cond = runner.solve_static(K_mod, F_mod)
+        U_global, K_cond, F_cond, U_cond = runner.solve_static(K_mod, F_mod, job_results_dir)
         solve_time = time.time() - step_start
         performance_data.append(["Solve Linear Static System", solve_time, *track_usage().values()])
+
 
         # 5) Compute Primary Results
         step_start = time.time()

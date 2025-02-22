@@ -6,8 +6,9 @@ import os
 from datetime import datetime
 
 # Configuration Parameters (User-defined)
-L = 8.0                 # Beam length [m]
-growth_factor = 3       # Exponential distribution parameter (set to 0 for uniform mesh)
+L = 0.7                 # Beam length [m]
+growth_factor = 0       # Exponential distribution parameter (set to 0 for uniform mesh)
+num_uniform_nodes = 11   # Number of nodes for uniform mesh
 max_num_nodes = 100     # Maximum number of nodes allowed if using growth factor
 
 def generate_mesh(growth_factor, max_num_nodes, num_uniform_nodes, tolerance=1e-6):

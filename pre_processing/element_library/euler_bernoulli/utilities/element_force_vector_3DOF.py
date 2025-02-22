@@ -193,6 +193,9 @@ def compute_force_vector(element, n_gauss=3):
         q_active_reduced[:, 1] = 0.5 * (q_active_6[:, 1] + q_active_6[:, 4])  # Fy avg
         q_active_reduced[:, 2] = 0.5 * (q_active_6[:, 2] + q_active_6[:, 5])  # Mz avg
 
+        # Zero out the moment (Mz) contribution
+        q_active_reduced[:, 2] = 0.0
+
         # Log the new active load vector
         q_active_display = q_active_reduced[:, np.newaxis, :]  # shape: (n_gp, 1, 3)
         log_tensor_operation("Interpolated Loads (active DOFs) (n,1,3)", q_active_display, gp_info)

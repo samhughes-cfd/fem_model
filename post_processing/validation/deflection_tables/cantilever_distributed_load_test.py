@@ -65,14 +65,14 @@ bending_moments = {lt: bending_moment(x_vals, L, loads[lt], lt) for lt in loads}
 # Explicit formulas for legend labels
 formulas = {
     "deflection": {
-        "udl": r"$u_y (x) = -\frac{w x^2}{24 E I}(L^3-2Lx+x^2)$",
-        "triangular": r"$u_y (x) = -\frac{w x^2}{120 L E I}(10L^3-10L^2x+5Lx^2-x^3)$",
-        "parabolic": r"$u_y (x) = -\frac{w x^2}{60 L^3 E I}(6L^5-10L^4x+5L^3x^2-x^5)$"
+        "udl": r"$u_y (x) = -\frac{w x^2}{24 E I_z}(L^3-2Lx+x^2)$",
+        "triangular": r"$u_y (x) = -\frac{w x^2}{120 L E I_z}(10L^3-10L^2x+5Lx^2-x^3)$",
+        "parabolic": r"$u_y (x) = -\frac{w x^2}{60 L^3 E I_z}(6L^5-10L^4x+5L^3x^2-x^5)$"
     },
     "rotation": {
-        "udl": r"$\theta_z (x) = -\frac{w x}{6 E I}(L^3-3Lx+x^2)$",
-        "triangular": r"$\theta_z (x) = -\frac{w x}{24 L E I}(4L^3-6L^2x+4Lx^2-x^3)$",
-        "parabolic": r"$\theta_z (x) = -\frac{w x}{20 L^3 E I}(5L^5-10L^4x+6L^3x^2-x^5)$"
+        "udl": r"$\theta_z (x) = -\frac{w x}{6 E I_z}(L^3-3Lx+x^2)$",
+        "triangular": r"$\theta_z (x) = -\frac{w x}{24 L E I_z}(4L^3-6L^2x+4Lx^2-x^3)$",
+        "parabolic": r"$\theta_z (x) = -\frac{w x}{20 L^3 E I_z}(5L^5-10L^4x+6L^3x^2-x^5)$"
     },
     "shear": {
         "udl": r"$V (x) = -w (L - x)$",
@@ -115,11 +115,26 @@ for i, lt in enumerate(["udl", "triangular", "parabolic"]):
 
         # Set y-axis labels explicitly for each row
         if i == 0:
-            axes[row, i].set_ylabel(f"{category.capitalize()} ({'mm' if category == 'deflection' else '°' if category == 'rotation' else 'kN' if category == 'shear' else 'kNm'})", fontsize=12)
-
+            axes[row, i].set_ylabel(
+                r"{} ${}$ ({})".format(
+                    "Deflection" if category == "deflection" else
+                    "Rotation" if category == "rotation" else
+                    "Shear Force" if category == "shear" else
+                    "Bending Moment",
+                    "u_y" if category == "deflection" else
+                    r"\theta_z" if category == "rotation" else
+                    "V" if category == "shear" else
+                    "M",
+                    "mm" if category == "deflection" else
+                    "°" if category == "rotation" else
+                    "kN" if category == "shear" else
+                    "kNm"
+                ),
+                fontsize=12
+            )
         # Set x-axis label only on the bottom row
         if row == 3:
-            axes[row, i].set_xlabel("Position along beam (m)")
+            axes[row, i].set_xlabel(r"Position $\mathit{x}$ (m)")
 
         # Add legend without a surrounding box
         axes[row, i].legend(frameon=False)
