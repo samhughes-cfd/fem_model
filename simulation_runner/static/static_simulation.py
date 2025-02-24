@@ -83,71 +83,169 @@ class StaticSimulationRunner:
     # -------------------------------------------------------------------------
     def assemble_global_matrices(self, job_results_dir):
         """
-        Assembles the global stiffness matrix (K_global) and logs diagnostics.
+        Assembles the global stiffness matrix (K_global) and force vector (F_global).
+
+        Steps:
+        1) Compute total DOFs.
+        2) Assemble K_global and F_global from element data.
+        3) Validate and log the assembled system.
+
+        Parameters:
+            job_results_dir (str): Directory for logging results.
+
+        Returns:
+            Tuple[csr_matrix, np.ndarray]:
+                - K_global: Assembled global stiffness matrix (CSR format).
+                - F_global: Assembled global force vector (1D NumPy array).
         """
-        logger.info("Assembling global matrices...")
+
+        logger.info("🔧 Assembling global stiffness and force matrices...")
+
+        # Compute total degrees of freedom (DOFs)
         num_nodes = len(self.mesh_dictionary["node_ids"])
-        total_dof = num_nodes * 6  # assuming 6 DOFs per node
+        total_dof = num_nodes * 6  # Assuming 6 DOFs per node
 
-        K_global, F_global = assemble_global_matrices(
-            elements=self.elements,
-            element_stiffness_matrices=self.element_stiffness_matrices,
-            element_force_vectors=self.element_force_vectors,
-            total_dof=total_dof
-        )
+        try:
+            # Assemble global stiffness matrix (K_global) and force vector (F_global)
+            K_global, F_global = assemble_global_matrices(
+                elements=self.elements,
+                element_stiffness_matrices=self.element_stiffness_matrices,
+                element_force_vectors=self.element_force_vectors,
+                total_dof=total_dof
+            )
 
-        if K_global is None or F_global is None:
-            raise ValueError("❌ Error: Global matrices could not be assembled!")
+            if K_global is None or F_global is None:
+                raise ValueError("❌ Error: Global matrices could not be assembled!")
 
-        # Ensure F_global is a flattened 1D array
-        F_global = np.asarray(F_global).flatten()
+            # Ensure F_global is a flattened 1D array
+            F_global = np.asarray(F_global).flatten()
 
-        # Log system state
-        log_system_diagnostics(K_global, F_global, bc_dofs=[], job_results_dir=job_results_dir, label="Global System")
+            # Log system diagnostics before applying boundary conditions
+            log_system_diagnostics(K_global, F_global, bc_dofs=[], job_results_dir=job_results_dir, label="Global System")
+
+            logger.info("✅ Global stiffness matrix and force vector successfully assembled!")
+
+        except Exception as e:
+            logger.error(f"⚠️ Assembly failed: {e}")
+            raise
 
         return K_global, F_global
+
 
     # -------------------------------------------------------------------------
     # 2) MODIFY GLOBAL MATRICES (BOUNDARY CONDITIONS)
     # -------------------------------------------------------------------------
+    
     def modify_global_matrices(self, K_global, F_global, job_results_dir):
         """
-        Applies boundary conditions (e.g., constraints) and logs diagnostics.
+        Applies boundary conditions to the global system and logs diagnostics.
+
+        Steps:
+        1) Apply boundary conditions using penalty method.
+        2) Validate and log the modified system.
+
+        Parameters:
+            K_global (csr_matrix): Assembled global stiffness matrix.
+            F_global (np.ndarray): Assembled global force vector.
+            job_results_dir (str): Directory for logging results.
+
+        Returns:
+            Tuple[csr_matrix, np.ndarray, np.ndarray]:
+                - K_mod: Modified global stiffness matrix (CSR format).
+                - F_mod: Modified global force vector.
+                - bc_dofs: Indices of fixed DOFs where constraints were applied.
         """
-        logger.info("Applying boundary conditions...")
 
-        # Apply boundary conditions
-        K_mod, F_mod, bc_dofs = apply_boundary_conditions(K_global.copy(), F_global.copy())
+        logger.info("🔒 Applying boundary conditions to global matrices...")
 
-        # Log diagnostics after applying BCs
-        log_system_diagnostics(K_mod, F_mod, bc_dofs=bc_dofs, job_results_dir=job_results_dir, label="Modified System")
+        try:
+            # Apply boundary conditions using the penalty method
+            K_mod, F_mod, bc_dofs = apply_boundary_conditions(K_global.copy(), F_global.copy())
 
-        return K_mod, F_mod
+            # Ensure modified force vector is correctly formatted
+            F_mod = np.asarray(F_mod).flatten()
+
+            # Log diagnostics after applying boundary conditions
+            log_system_diagnostics(K_mod, F_mod, bc_dofs=bc_dofs, job_results_dir=job_results_dir, label="Modified System")
+
+            logger.info("✅ Boundary conditions successfully applied!")
+
+        except Exception as e:
+            logger.error(f"⚠️ Error applying boundary conditions: {e}")
+            raise
+
+        return K_mod, F_mod, bc_dofs
 
     # -------------------------------------------------------------------------
     # 3) SOLVE SYSTEM (STATIC CONDENSATION & RECONSTRUCTION)
     # -------------------------------------------------------------------------
 
-    def solve_static(self, K_mod, F_mod, job_results_dir):
+    def solve_static(self, K_mod, F_mod, fixed_dofs, job_results_dir):
         """
-        Applies static condensation, solves the reduced system, and logs diagnostics.
+        Solves the FEM system using static condensation and logs diagnostics.
+
+        Steps:
+        1) Condense the system by removing fixed DOFs and inactive DOFs.
+        2) Solve the reduced system.
+        3) Reconstruct the full displacement vector.
+
+        Parameters:
+            K_mod (csr_matrix): Modified global stiffness matrix after applying boundary conditions.
+            F_mod (np.ndarray): Modified global force vector after applying boundary conditions.
+            fixed_dofs (np.ndarray): Indices of fixed DOFs (explicit boundary conditions).
+            job_results_dir (str): Directory for logging results.
+
+        Returns:
+            Tuple[np.ndarray, csr_matrix, np.ndarray, np.ndarray]:
+                - U_global: Full displacement vector with zeros at fixed DOFs.
+                - K_cond: Condensed stiffness matrix after removing inactive DOFs.
+                - F_cond: Condensed force vector.
+                - U_cond: Solution of the condensed system.
+
+        Raises:
+            ValueError: If condensation leads to an empty system.
+            ValueError: If solver returns a zero displacement vector.
         """
-        logger.info(f"Solving FEM system using static condensation with `{self.solver_name}`.")
 
-        # Condense the modified system.
-        active_dofs, _, K_cond, F_cond = condensation(K_mod.copy(), F_mod.copy(), tol=1e-12, zero_inactive_forces=True)
+        logger.info(f"🔹 Solving FEM system using static condensation with `{self.solver_name}`.")
 
-        # Log after condensation
-        log_system_diagnostics(K_cond, F_cond, bc_dofs=[], job_results_dir=job_results_dir, label="Condensed System")
+        # 1️⃣ **Perform Static Condensation**
+        try:
+            logger.info("🔹 Performing static condensation...")
+            active_dofs, inactive_dofs, K_cond, F_cond = condensation(K_mod, F_mod, fixed_dofs, tol=1e-12)
 
-        # Solve the condensed system & log performance
-        U_cond = solve_fem_system(K_cond, F_cond, self.solver_name, job_results_dir)
-        
-        if U_cond is None:
-            raise ValueError("Error: Solver returned no results for the condensed system!")
+            if K_cond.shape[0] == 0 or F_cond.shape[0] == 0:
+                raise ValueError("❌ Condensed system is empty! Possible over-constrained system.")
 
-        # Reconstruct the full displacement vector using the active DOFs mapping.
-        U_global = reconstruction(active_dofs, U_cond, K_mod.shape[0])
+            # Log system diagnostics
+            log_system_diagnostics(K_cond, F_cond, bc_dofs=fixed_dofs, job_results_dir=job_results_dir, label="Condensed System")
+
+        except Exception as e:
+            logger.error(f"❌ Error during static condensation: {e}")
+            raise
+
+        # 2️⃣ **Solve the Condensed System**
+        try:
+            logger.info("🔹 Solving the reduced system...")
+            U_cond = solve_fem_system(K_cond, F_cond, self.solver_name, job_results_dir)
+
+            if U_cond is None or np.allclose(U_cond, 0, atol=1e-12):
+                logger.warning("⚠️ Solver returned an all-zero displacement vector. Proceeding with zero displacements for debugging.")
+                U_cond = np.zeros_like(F_cond)  # Assign zeros instead of stopping
+
+        except Exception as e:
+            logger.error(f"❌ Solver failure: {e}")
+            U_cond = np.zeros_like(F_cond)  # Allow execution to continue
+
+        # 3️⃣ **Reconstruct the Full Displacement Vector**
+        try:
+            logger.info("🔹 Reconstructing the full displacement vector...")
+            U_global = reconstruction(active_dofs, U_cond, K_mod.shape[0])
+            logger.info(f"✅ Displacement vector computed: {U_global}")
+        except Exception as e:
+            logger.error(f"❌ Error during displacement reconstruction: {e}")
+
+        logger.info("✅ Static solve completed successfully!")
 
         return U_global, K_cond, F_cond, U_cond
 

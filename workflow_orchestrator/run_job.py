@@ -168,16 +168,15 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
 
         # 3) Modify Global Matrices (apply BCs)
         step_start = time.time()
-        K_mod, F_mod = runner.modify_global_matrices(K_global, F_global, job_results_dir)
+        K_mod, F_mod, fixed_dofs = runner.modify_global_matrices(K_global, F_global, job_results_dir)
         modify_time = time.time() - step_start
         performance_data.append(["Modify Global Matrices", modify_time, *track_usage().values()])
 
         # 4) Solve Linear System
         step_start = time.time()
-        U_global, K_cond, F_cond, U_cond = runner.solve_static(K_mod, F_mod, job_results_dir)
+        U_global, K_cond, F_cond, U_cond = runner.solve_static(K_mod, F_mod, fixed_dofs, job_results_dir)
         solve_time = time.time() - step_start
         performance_data.append(["Solve Linear Static System", solve_time, *track_usage().values()])
-
 
         # 5) Compute Primary Results
         step_start = time.time()

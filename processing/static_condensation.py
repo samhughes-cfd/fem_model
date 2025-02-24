@@ -1,67 +1,65 @@
 import numpy as np
+from scipy.sparse import csr_matrix
 
-def condensation(K_mod, F_mod, tol=1e-12, zero_inactive_forces=True):
+def condensation(K_mod, F_mod, fixed_dofs, tol=1e-12):
     """
     Condenses the modified global stiffness matrix (K_mod) and force vector (F_mod)
-    by removing rows and columns corresponding to inactive DOFs (i.e., rows where all
-    entries are below a specified tolerance), along with the associated entries in F_mod.
+    by removing:
+    1) Explicitly fixed DOFs (primary condensation).
+    2) Any remaining fully zero rows/columns (secondary condensation).
 
     Args:
-        K_mod (csr_matrix): 
-            Global stiffness matrix with boundary conditions applied, in CSR format.
-        F_mod (np.ndarray): 
-            Global force vector with boundary conditions applied, as a 1D NumPy array.
-        tol (float, optional): 
-            Tolerance below which an entry is considered zero. Defaults to 1e-12.
-        zero_inactive_forces (bool, optional): 
-            If True, forces in inactive DOFs (those corresponding to zero rows in K_mod) are
-            zeroed out. If False, a nonzero force in an inactive DOF will raise an error.
-            Defaults to True.
+        K_mod (csr_matrix): Stiffness matrix with boundary conditions applied.
+        F_mod (np.ndarray): Force vector with boundary conditions applied.
+        fixed_dofs (np.ndarray): Indices of fixed DOFs (from boundary conditions).
+        tol (float, optional): Threshold below which matrix entries are considered zero. Defaults to 1e-12.
 
     Returns:
         Tuple[np.ndarray, np.ndarray, csr_matrix, np.ndarray]:
-            - active_dofs (np.ndarray): Indices of DOFs that are active (nonzero rows).
-            - inactive_dofs (np.ndarray): Indices of DOFs that were pruned (all zero rows).
-            - K_cond (csr_matrix): The condensed global stiffness matrix in CSR format.
-            - F_cond (np.ndarray): The condensed global force vector.
-
-    Raises:
-        ValueError: If any pruned DOF has a nonzero force and zero_inactive_forces is False.
+            - active_dofs: Indices of DOFs remaining after condensation.
+            - inactive_dofs: Indices of DOFs that were pruned due to zero rows.
+            - K_cond: The fully condensed global stiffness matrix.
+            - F_cond: The fully condensed global force vector.
     """
-    # Identify active DOFs: rows (and corresponding columns) with any entry above tol.
-    # Conversion to a dense array is necessary to perform element-wise comparisons.
-    active_dofs = np.where(np.any(np.abs(K_mod.toarray()) > tol, axis=1))[0]
+    num_dofs = K_mod.shape[0]
 
-    # Identify inactive DOFs.
-    inactive_dofs = np.setdiff1d(np.arange(K_mod.shape[0]), active_dofs)
+    # PRIMARY CONDENSATION: Remove explicitly fixed DOFs
+    active_dofs = np.setdiff1d(np.arange(num_dofs), fixed_dofs)
+    print(f"Primary Condensation: {len(fixed_dofs)} fixed DOFs removed, {len(active_dofs)} remaining.")
 
-    # Check forces on inactive DOFs.
-    if np.any(np.abs(F_mod[inactive_dofs]) > tol):
-        if zero_inactive_forces:
-            print("Warning: Inactive DOFs have nonzero forces. Zeroing out forces for DOFs:", inactive_dofs)
-            F_mod[inactive_dofs] = 0.0
-        else:
-            raise ValueError("Force vector has nonzero entries for DOFs with zero stiffness. Inconsistent system!")
+    # Extract intermediate condensed system (fixed DOFs removed)
+    K_intermediate = K_mod[active_dofs, :][:, active_dofs]
+    F_intermediate = F_mod[active_dofs]
 
-    # Build the reduced (condensed) system.
-    # Slicing a CSR matrix with lists of indices returns a CSR matrix.
-    K_cond = K_mod[active_dofs, :][:, active_dofs]
-    F_cond = F_mod[active_dofs]
+    # SECONDARY CONDENSATION: Identify and remove any remaining zero rows/columns
+    nonzero_rows = np.where(np.any(np.abs(K_intermediate.toarray()) > tol, axis=1))[0]
+    fully_active_dofs = active_dofs[nonzero_rows]  # DOFs remaining after secondary condensation
 
-    return active_dofs, inactive_dofs, K_cond, F_cond
+    # Extract final condensed system
+    K_cond = K_intermediate[nonzero_rows, :][:, nonzero_rows]
+    F_cond = F_intermediate[nonzero_rows]
+
+    # Identify DOFs that were pruned
+    inactive_dofs = np.setdiff1d(active_dofs, fully_active_dofs)
+    print(f"Secondary Condensation: {len(inactive_dofs)} additional DOFs removed. Final DOFs: {len(fully_active_dofs)}")
+
+    # SAFETY CHECK: Ensure non-trivial force remains
+    if np.allclose(F_cond, 0, atol=1e-12):
+        print("⚠️ Warning: Force vector is entirely zero after condensation! Check boundary conditions.")
+
+    return fully_active_dofs, inactive_dofs, K_cond, F_cond
 
 def reconstruction(active_dofs, U_cond, total_dofs):
     """
     Reconstructs the full displacement vector from the condensed solution.
-    The pruned (inactive) DOFs are filled with zeros.
-
+    
     Parameters:
-        active_dofs (ndarray): Indices of DOFs used in the condensed system.
-        U_cond (ndarray): Displacement vector from solving the condensed system.
+        active_dofs (ndarray): Indices of free DOFs in the condensed system.
+        U_cond (ndarray): Displacement vector from solving the reduced system.
         total_dofs (int): Total number of DOFs in the original system.
 
     Returns:
-        U_global (ndarray): Full displacement vector with zeros inserted for inactive DOFs.
+        U_global (ndarray): Full displacement vector with zeros at constrained DOFs.
     """
     U_global = np.zeros(total_dofs)
     U_global[active_dofs] = U_cond

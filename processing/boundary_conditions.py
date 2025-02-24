@@ -27,8 +27,9 @@ def apply_boundary_conditions(K_global, F_global):
     # Define a large penalty value for fixed DOFs
     large_penalty = 1e12  
 
-    # Identify fixed DOFs (assuming first 6 are fixed for a cantilever beam)
-    fixed_dofs = np.arange(6)
+    # Identify fixed DOFs based on active DOFs at the cantilever node.
+    # For example, if only u_x, u_y, and θ_z are active, then fix only indices 0, 1, and 5.
+    fixed_dofs = np.array([0, 1, 5])
 
     # Ensure K_global is in a mutable format before modification
     if isinstance(K_global, csr_matrix):
@@ -41,7 +42,8 @@ def apply_boundary_conditions(K_global, F_global):
     K_mod[:, fixed_dofs] = 0
 
     # Assign large penalty to the diagonal entries of fixed DOFs
-    K_mod.setdiag(large_penalty, k=0)  # Efficiently modifies diagonal
+    for dof in fixed_dofs:
+        K_mod[dof, dof] = large_penalty
 
     # Ensure zero external force at the fixed DOFs
     F_mod[fixed_dofs] = 0

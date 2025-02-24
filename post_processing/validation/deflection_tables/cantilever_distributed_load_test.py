@@ -104,7 +104,11 @@ for i, lt in enumerate(["udl", "triangular", "parabolic"]):
             [deflections, rotations, shear_forces, bending_moments])):
 
         # Apply unit conversions
-        converted_data = data[lt] * (1000 if category == "deflection" else np.degrees(1) if category == "rotation" else 1/1000)
+        converted_data = (
+            data[lt] * 1000 if category == "deflection" else  # Convert meters to millimeters
+            np.degrees(data[lt]) if category == "rotation" else  # Convert radians to degrees
+            data[lt] / 1000  # Convert N to kN for shear and Nm to kNm for moment
+        )
 
         # Plot the converted data with assigned color
         axes[row, i].plot(x_vals, converted_data, color=colors[category], label=formulas[category][lt])
