@@ -2,6 +2,6 @@
 
 [Solver]
 [solver_type]       [solver_name]
-Static              direct_solver_sparse
+Static              conjugate_gradient_solver
 Dynamic             #conjugate_gradient_solver
 Modal               #direct_solver_sparse
