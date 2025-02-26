@@ -88,5 +88,3 @@ def euler_bernoulli_shape_functions(xi, L, poly_order=3):
     ), axis=1)  # Shape: (n, 3, 6)
 
     return N_matrix, dN_dxi_matrix, d2N_dxi2_matrix
-
-import numpy as np

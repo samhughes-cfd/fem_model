@@ -7,17 +7,17 @@ from scipy.integrate import quad
 def roark_load_intensity(x, L, w, load_type):
     """
     Returns q(x) for the chosen load type (UDL, triangular, parabolic),
-    with maximum at x=0 (the fixed end) and zero at x=L for non-UDL.
+    with maximum at x=L (right-hand side).
     """
     if load_type == "udl":
-        # Uniform load
-        return w * np.ones_like(x)
+        # Uniformly distributed load (constant)
+        return w * np.ones_like(x), "q(x) = w"
     elif load_type == "triangular":
-        # q(x) = w(1 - x/L)
-        return w * (1 - x/L)
+        # Linearly increasing load: q(x) = w_max * (x / L)
+        return w * (x / L), "q(x) = w * (x/L)"
     elif load_type == "parabolic":
-        # q(x) = w(1 - x/L)^2
-        return w * (1 - x/L)**2
+        # Quadratically increasing load: q(x) = w_max * (x / L)^2
+        return w * (x / L)**2, "q(x) = w * (x/L)^2"
     else:
         raise ValueError("Invalid load_type. Must be 'udl', 'triangular', or 'parabolic'.")
 
@@ -99,8 +99,6 @@ def roark_deflection(x_array, L, w, E, I, load_type):
 
     return np.array(u_vals)
 
-    return np.array(u_vals)
-
 def roark_distributed_load_response(x, L, E, I, w, load_type):
     """
     Returns a dictionary of distributed-load responses:
@@ -114,7 +112,7 @@ def roark_distributed_load_response(x, L, E, I, w, load_type):
     if load_type not in ("udl", "triangular", "parabolic"):
         raise ValueError("Invalid load_type: must be 'udl','triangular','parabolic'.")
 
-    q_vals      = roark_load_intensity(x, L, w, load_type)
+    q_vals      = roark_load_intensity(x, L, w, load_type)[0]  # Fix: Extract array only
     shear_vals  = roark_shear(x, L, w, load_type)
     moment_vals = roark_moment(x, L, w, load_type)
     rot_vals    = roark_rotation(x, L, w, E, I, load_type)

@@ -2,6 +2,17 @@
 
 import numpy as np
 
+def roark_point_load_intensity(x, L, P, a):
+    """
+    Defines the point load intensity q(x), which is zero everywhere except at x=a.
+    The function approximates the Dirac delta function by setting q(x) = P at the
+    closest discrete point to x=a.
+    """
+    q = np.zeros_like(x)
+    idx_a = np.argmin(abs(x - a))  # Find index closest to x=a
+    q[idx_a] = -P  # Negative because load acts downward
+    return q
+
 def roark_point_load_shear(x, L, P, a):
     """
     Roark's shear V(x) for a cantilever of length L,
@@ -87,7 +98,7 @@ def roark_point_load_response(x, L, E, I, P, load_type):
     """
     Returns a dictionary of:
       {
-        "intensity":  q(x) ~ 0 for point loads,
+        "intensity":  q(x),
         "shear":      V(x),
         "moment":     M(x),
         "rotation":   theta_z(x),
@@ -110,15 +121,11 @@ def roark_point_load_response(x, L, E, I, P, load_type):
         a = L / 4
 
     # Compute piecewise arrays
+    qvals = roark_point_load_intensity(x, L, P, a)
     Vvals = roark_point_load_shear(x, L, P, a)
     Mvals = roark_point_load_moment(x, L, P, a)
     thetavals = roark_point_load_rotation(x, L, E, I, P, a)
     uvals = roark_point_load_deflection(x, L, E, I, P, a)
-
-    # For point loads, the "intensity" is theoretically a Dirac delta;
-    # we'll store zeros, and the plotting script can insert a
-    # negative spike at x=a if desired.
-    qvals = np.zeros_like(x)
 
     return {
         "intensity":  qvals,
