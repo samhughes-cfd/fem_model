@@ -1,6 +1,6 @@
-# Load Type: TRIANGULAR
+# Load Type: Triangular (Linear)
 # Load Formula: q(x) = w * (x/L)
-[Loads]
+[Distributed load]
          [x]          [y]          [z]        [F_x]        [F_y]        [F_z]        [M_x]        [M_y]        [M_z]
     0.000000     0.000000     0.000000     0.000000     0.000000     0.000000     0.000000     0.000000     0.000000
     0.275862     0.000000     0.000000     0.000000   -34.482759     0.000000     0.000000     0.000000     0.000000

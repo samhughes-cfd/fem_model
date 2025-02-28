@@ -1,6 +1,6 @@
-# Load Type: PARABOLIC
+# Load Type: Prabolic (Quadratic)
 # Load Formula: q(x) = w * (x/L)^2
-[Loads]
+[Distributed load]
          [x]          [y]          [z]        [F_x]        [F_y]        [F_z]        [M_x]        [M_y]        [M_z]
     0.000000     0.000000     0.000000     0.000000     0.000000     0.000000     0.000000     0.000000     0.000000
     0.275862     0.000000     0.000000     0.000000    -1.189061     0.000000     0.000000     0.000000     0.000000

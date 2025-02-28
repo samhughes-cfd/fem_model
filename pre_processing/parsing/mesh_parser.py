@@ -37,7 +37,7 @@ def parse_mesh(mesh_file_path):
     Connectivity         `connectivity`           `np.ndarray[int]`      (M, 2)    0-based      -      
     Element IDs          `element_ids`            `np.ndarray[int]`      (M,)      0-based      -      
     Element Lengths      `element_lengths`        `np.ndarray[float]`    (M,)      0-based      [m] 
-    Element Types        `element_types`          `np.ndarray[str]`      (M,)      0-based      -      
+    Element Types        `element_types`          `np.ndarray[str]`      (M,)      0-based      -   
 
     The function reads mesh data, extracts node positions, and computes 
     element lengths using the Euclidean distance formula. Empty lines and 
