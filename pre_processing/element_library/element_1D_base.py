@@ -90,7 +90,7 @@ class Element1DBase:
         element_index = np.where(self.mesh_dictionary["element_ids"] == element_id)[0][0]
         node_ids = self.mesh_dictionary["connectivity"][element_index]
 
-        print(f"Element ID: {element_id}, Element Index: {element_index}, Node IDs: {node_ids}")
+        #print(f"Element ID: {element_id}, Element Index: {element_index}, Node IDs: {node_ids}")
 
         global_dof_indices = []
         for node_id in node_ids:
@@ -101,7 +101,7 @@ class Element1DBase:
             start_dof = node_id * self.dof_per_node
             dof_indices = list(range(start_dof, start_dof + self.dof_per_node))
 
-            print(f"Node {node_id}: Start DOF={start_dof}, DOF Indices={dof_indices}")
+            #print(f"Node {node_id}: Start DOF={start_dof}, DOF Indices={dof_indices}")
 
             global_dof_indices.extend(dof_indices)
 

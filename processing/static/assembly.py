@@ -49,8 +49,8 @@ def assemble_global_matrices(
         [np.array(element.assemble_global_dof_indices(element.element_id), dtype=int) for element in elements]
     )
 
-    print(f"Type of dof_mappings: {type(dof_mappings)}, dtype: {dof_mappings.dtype}")
-    print(f"dof_mappings shape: {dof_mappings.shape}")
+    #print(f"Type of dof_mappings: {type(dof_mappings)}, dtype: {dof_mappings.dtype}")
+    #print(f"dof_mappings shape: {dof_mappings.shape}")
 
     if dof_mappings.size == 0:
         raise ValueError("❌ Error: dof_mappings array is empty, no DOF indices available!")
@@ -89,13 +89,13 @@ def assemble_global_matrices(
             dof_map = dof_mappings[i]
 
             # 🔍 Debugging prints
-            print(f"Processing element {i}: DOF mapping = {dof_map}")
-            print(f"Fe shape before flatten: {Fe.shape}")
+            #print(f"Processing element {i}: DOF mapping = {dof_map}")
+            #print(f"Fe shape before flatten: {Fe.shape}")
 
             # ✅ Ensure Fe is a 1D NumPy array
             Fe = np.array(Fe, dtype=np.float64).flatten()
 
-            print(f"Fe shape after flatten: {Fe.shape}")
+            #print(f"Fe shape after flatten: {Fe.shape}")
 
             # ✅ Safe update operation: No shape mismatch
             F_global[dof_map] += Fe
