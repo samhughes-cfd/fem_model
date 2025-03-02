@@ -1,0 +1,65 @@
+
+------------------------------------------------------------
+### Diagnostics for Global System
+Total DOFs: 66
+Independent Equations (nonzero rows in K): 66
+Boundary Condition DOFs: None detected
+✅  Well-posed system detected
+⚠️  Singular matrix detected! K is not invertible
+🔹 Condition Number: 6.92e+17
+
+🔹 **Force Vector Diagnostics**
+⚠️  DOFs with zero applied force: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] ...
+📌 Min Force: -5.0000e+02, Max Force: 0.0000e+00
+📌 Sum of all forces: -1.0000e+03 ⚠️ (Nonzero: Possible imbalance!)
+🔹 F_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 F_y: Min -5.0000e+02, Max 0.0000e+00
+🔹 F_z: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_y: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_z: Min 0.0000e+00, Max 0.0000e+00
+
+
+------------------------------------------------------------
+### Diagnostics for Modified System
+Total DOFs: 66
+Independent Equations (nonzero rows in K): 66
+Boundary Condition DOFs: [0, 1, 2, 3, 4, 5]
+✅  Well-posed system detected
+✅  K is positive definite (Invertible)
+🔹 Condition Number: 1.17e+09
+
+🔹 **Force Vector Diagnostics**
+⚠️  DOFs with zero applied force: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] ...
+📌 Min Force: -5.0000e+02, Max Force: 0.0000e+00
+📌 Sum of all forces: -1.0000e+03 ⚠️ (Nonzero: Possible imbalance!)
+✅  No forces detected at constrained DOFs (Correct).
+🔹 F_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 F_y: Min -5.0000e+02, Max 0.0000e+00
+🔹 F_z: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_y: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_z: Min 0.0000e+00, Max 0.0000e+00
+
+
+------------------------------------------------------------
+### Diagnostics for Condensed System
+Total DOFs: 60
+Independent Equations (nonzero rows in K): 60
+Boundary Condition DOFs: [0, 1, 2, 3, 4, 5]
+✅  Well-posed system detected
+✅  K is positive definite (Invertible)
+🔹 Condition Number: 1.10e+06
+
+🔹 **Force Vector Diagnostics**
+⚠️  DOFs with zero applied force: [0, 1, 2, 3, 4, 5, 6, 8, 9, 10] ...
+📌 Min Force: -5.0000e+02, Max Force: 0.0000e+00
+📌 Sum of all forces: -1.0000e+03 ⚠️ (Nonzero: Possible imbalance!)
+✅  No forces detected at constrained DOFs (Correct).
+🔹 F_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 F_y: Min -5.0000e+02, Max 0.0000e+00
+🔹 F_z: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_y: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_z: Min 0.0000e+00, Max 0.0000e+00
+

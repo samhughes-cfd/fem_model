@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 
 # Registry mapping element names to module paths
 ELEMENT_CLASS_MAP = {
-    "EulerBernoulliBeamElement3DOF": "pre_processing.element_library.euler_bernoulli.euler_bernoulli_3DOF"
+    "EulerBernoulliBeamElement3DOF": "pre_processing.element_library.euler_bernoulli.euler_bernoulli_3DOF",
+    "EulerBernoulliBeamElement6DOF": "pre_processing.element_library.euler_bernoulli.euler_bernoulli_6DOF"  
 }
 
 def create_elements_batch(mesh_dictionary, params_list):

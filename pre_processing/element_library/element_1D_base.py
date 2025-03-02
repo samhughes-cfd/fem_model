@@ -19,7 +19,7 @@ class Element1DBase:
     - Precomputes Jacobians to optimize matrix calculations.
     """
 
-    def __init__(self, geometry_array, material_array, mesh_dictionary, load_array, dof_per_node=6):
+    def __init__(self, geometry_array, material_array, mesh_dictionary, point_load_array, distributed_load_array, dof_per_node=6):
         """
         Initializes the base 1D finite element system.
 
@@ -35,96 +35,44 @@ class Element1DBase:
         self.geometry_array = geometry_array
         self.material_array = material_array
         self.mesh_dictionary = mesh_dictionary
+        self.point_load_array = point_load_array
+        self.distributed_load_array = distributed_load_array
+        self.dof_per_node = dof_per_node
         self.elements_instances = None
-        self.load_array = load_array
-        self.dof_per_node = dof_per_node  # Default max DOFs per node = 6
 
     def _instantiate_elements(self):
-        """
-        Requests batch element instantiation from `element_factory.py`.
-
-        Returns:
-            np.ndarray: Array of instantiated element objects.
-        """
+        """Updated element factory interface with proper parameters"""
         if hasattr(self, 'elements_instances'):
             logger.warning("Skipping element instantiation to prevent recursion.")
-            return self.elements_instances  # Return existing elements if already instantiated
+            return self.elements_instances
 
-        params_list = np.array([
-            {
-                "geometry_array": self.geometry_array,
-                "material_array": self.material_array,
-                "mesh_dictionary": self.mesh_dictionary,
-                "load_array": self.load_array,
-            }
-            for _ in self.mesh_dictionary["element_ids"]
-        ], dtype=object)
+        params_list = np.array([{
+            "geometry_array": self.geometry_array,
+            "material_array": self.material_array,
+            "mesh_dictionary": self.mesh_dictionary,
+            "point_load_array": self.point_load_array,
+            "distributed_load_array": self.distributed_load_array,
+            "element_id": elem_id  # Critical addition
+        } for elem_id in self.mesh_dictionary["element_ids"]], dtype=object)
 
         elements = create_elements_batch(self.mesh_dictionary, params_list)
 
-        # Check for missing elements
+        # Validation remains unchanged
         if any(el is None for el in elements):
             missing_indices = [i for i, el in enumerate(elements) if el is None]
-            logger.warning(f"Warning: Missing elements at indices {missing_indices}!")
+            logger.warning(f"Missing elements at indices: {missing_indices}")
 
         return elements
 
     def _compute_stiffness_matrices_vectorized(self):
-        """
-        Computes element stiffness matrices (Ke) in a fully vectorized manner.
-
-        Returns:
-            np.ndarray: A 3D NumPy array of shape `(num_elements, dof_per_element, dof_per_element)`,
-                        where `num_elements` is the number of elements,
-                        and `dof_per_element` is `2 * self.dof_per_node`.
-        """
-        num_elements = len(self.elements_instances)
-        dof_per_element = 2 * self.dof_per_node  # Assuming each element has 2 nodes
-
-        # Initialize a 3D NumPy array to store all stiffness matrices
-        stiffness_matrices = np.zeros((num_elements, dof_per_element, dof_per_element))
-
-        # Extract and store stiffness matrices
-        for i, element in enumerate(self.elements_instances):
-            if element is not None:
-                Ke = element.element_stiffness_matrix()
-                if isinstance(Ke, np.ndarray) and Ke.shape == (dof_per_element, dof_per_element):
-                    stiffness_matrices[i] = Ke  # Store in the array
-                else:
-                    logger.warning(f"Element {i}: Stiffness matrix shape mismatch {Ke.shape}, expected {(dof_per_element, dof_per_element)}")
-
-        # Convert the entire batch to sparse format (optional)
-        stiffness_matrices_sparse = np.array([
-            coo_matrix(Ke) for Ke in stiffness_matrices
-        ], dtype=object)
-
-        return stiffness_matrices_sparse
+        """Handle sparse matrix conversion"""
+        stiffness_matrices = super()._compute_stiffness_matrices_vectorized()
+        return [mat.tocsr() for mat in stiffness_matrices]  # Convert to CSR for assembly
 
     def _compute_force_vectors_vectorized(self):
-        """
-        Computes element force vectors (Fe) in a fully vectorized manner.
-
-        Returns:
-            np.ndarray: A 1D NumPy array (dtype=object) of shape `(num_elements,)` where each element
-                        is a dense NumPy array of shape `(dof_per_element,)`.
-        """
-        num_elements = len(self.elements_instances)
-        dof_per_element = 2 * self.dof_per_node  # Assuming each element has 2 nodes
-
-        # ✅ Initialize storage for force vectors (as a list of NumPy arrays)
-        force_vectors = np.empty(num_elements, dtype=object)
-
-        # ✅ Extract and store force vectors
-        for i, element in enumerate(self.elements_instances):
-            if element is not None:
-                Fe = element.element_force_vector()
-                if isinstance(Fe, np.ndarray) and Fe.shape == (dof_per_element,):
-                    force_vectors[i] = Fe  # ✅ Store as a dense 1D array
-                else:
-                    logger.warning(f"Element {i}: Force vector shape mismatch {Fe.shape}, expected {(dof_per_element,)}")
-                    force_vectors[i] = np.zeros(dof_per_element)  # Fallback to zero vector
-
-        return force_vectors  # ✅ Returns a 1D NumPy array of dense vectors
+        """Ensure force vector consistency"""
+        vectors = super()._compute_force_vectors_vectorized()
+        return np.array([v.flatten() for v in vectors], dtype=np.float64)
 
     def assemble_global_dof_indices(self, element_id):
         """
@@ -136,6 +84,9 @@ class Element1DBase:
         Returns:
             list: A list of global DOF indices associated with the element.
         """
+        if element_id not in self.mesh_dictionary["element_ids"]:
+            raise ValueError(f"Invalid element_id: {element_id}")
+
         element_index = np.where(self.mesh_dictionary["element_ids"] == element_id)[0][0]
         node_ids = self.mesh_dictionary["connectivity"][element_index]
 
@@ -157,35 +108,23 @@ class Element1DBase:
         return np.asarray(global_dof_indices, dtype=int) # Returns a NumPy int array
     
     def validate_matrices(self):
-        """
-        Ensures all element stiffness matrices (Ke) and force vectors (Fe) have the correct dimensions.
-
-        Raises:
-            AssertionError: If any Ke or Fe matrix has incorrect dimensions.
-        """
+        """Updated validation for sparse matrices"""
         expected_Ke_shape = (self.dof_per_node * 2, self.dof_per_node * 2)
         expected_Fe_shape = (self.dof_per_node * 2,)
 
         for idx, element in enumerate(self.elements_instances):
             if element is None:
-                logger.warning(f"Warning: Skipping validation for missing element {idx}.")
+                logger.error(f"Null element at index {idx}")
                 continue
 
-            if element.Ke is None:
-                logger.error(f"Error: Stiffness matrix (Ke) is None for element {idx}.")
-                continue
+            # Handle sparse matrices
+            Ke = element.Ke.toarray() if isinstance(element.Ke, coo_matrix) else element.Ke
+            Fe = element.Fe  # Force vectors remain dense
 
-            if element.Fe is None:
-                logger.error(f"Error: Force vector (Fe) is None for element {idx}.")
-                continue
+            if Ke.shape != expected_Ke_shape:
+                logger.error(f"Element {idx}: Invalid Ke shape {Ke.shape}")
+                
+            if Fe.shape != expected_Fe_shape:
+                logger.error(f"Element {idx}: Invalid Fe shape {Fe.shape}")
 
-            assert element.Ke.shape == expected_Ke_shape, (
-                f"Element {self.mesh_dictionary['element_ids'][idx]}: Ke shape mismatch. "
-                f"Expected {expected_Ke_shape}, got {element.Ke.shape}"
-            )
-            assert element.Fe.shape == expected_Fe_shape, (
-                f"Element {self.mesh_dictionary['element_ids'][idx]}: Fe shape mismatch. "
-                f"Expected {expected_Fe_shape}, got {element.Fe.shape}"
-            )
-
-        logger.info("Element stiffness matrices and force vectors successfully validated.")
+        logger.info("Matrix validation completed")

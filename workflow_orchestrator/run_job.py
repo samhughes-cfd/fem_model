@@ -27,7 +27,8 @@ from pre_processing.parsing.geometry_parser import parse_geometry
 from pre_processing.parsing.mesh_parser import parse_mesh
 from pre_processing.parsing.material_parser import parse_material
 from pre_processing.parsing.solver_parser import parse_solver
-from pre_processing.parsing.load_parser import parse_load
+from pre_processing.parsing.point_load_parser import parse_point_load
+from pre_processing.parsing.distributed_load_parser import parse_distributed_load
 from processing.solver_registry import get_solver_registry
 from simulation_runner.static.static_simulation import StaticSimulationRunner
 from pre_processing.element_library.element_factory import create_elements_batch
@@ -90,7 +91,19 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
         # --- Parsing Job-Specific Input Files ---
         step_start = time.time()
         mesh_dictionary = parse_mesh(os.path.join(job_dir, "mesh.txt"))
-        load_array = parse_load(os.path.join(job_dir, "load.txt"))
+        
+        # Parse point and distributed loads
+        point_load_path = os.path.join(job_dir, "point_load.txt")
+        distributed_load_path = os.path.join(job_dir, "distributed_load.txt")
+        
+        point_load_array = np.array([])
+        if os.path.exists(point_load_path):
+            point_load_array = parse_point_load(point_load_path)
+        
+        distributed_load_array = np.array([])
+        if os.path.exists(distributed_load_path):
+            distributed_load_array = parse_distributed_load(distributed_load_path)
+        
         parsing_time = time.time() - step_start
         performance_data.append(["Parsing", parsing_time, *track_usage().values()])
 
@@ -100,7 +113,8 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
             "material_array": base_settings["material"],
             "solver_array": base_settings["solver"],
             "mesh_dictionary": mesh_dictionary,
-            "load_array": load_array,
+            "point_load_array": point_load_array,
+            "distributed_load_array": distributed_load_array,
         }
 
         # --- Element Instantiation ---
@@ -110,10 +124,12 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
             "geometry_array": base_settings["geometry"],
             "material_array": base_settings["material"],
             "mesh_dictionary": mesh_dictionary,
-            "load_array": load_array
+            "point_load_array": point_load_array,
+            "distributed_load_array": distributed_load_array
         } for _ in element_ids], dtype=object)
 
         all_elements = create_elements_batch(mesh_dictionary, params_list)
+
         if any(elem is None for elem in all_elements):
             logging.error(f"❌ Error: Some elements failed to instantiate in {case_name}.")
             raise ValueError(f"❌ Invalid elements detected in {case_name}.")
