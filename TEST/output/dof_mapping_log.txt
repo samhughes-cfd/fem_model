@@ -25,3 +25,28 @@ Element ID: 4
   Local Node 1 (Local DOFs 6-11) -> Global Node 5 (Global DOFs 30-35)
   Combined: Local DOFs (0-11) -> Global DOFs 24-35
 
+Element ID: 5
+  Local Node 0 (Local DOFs 0-5) -> Global Node 5 (Global DOFs 30-35)
+  Local Node 1 (Local DOFs 6-11) -> Global Node 6 (Global DOFs 36-41)
+  Combined: Local DOFs (0-11) -> Global DOFs 30-41
+
+Element ID: 6
+  Local Node 0 (Local DOFs 0-5) -> Global Node 6 (Global DOFs 36-41)
+  Local Node 1 (Local DOFs 6-11) -> Global Node 7 (Global DOFs 42-47)
+  Combined: Local DOFs (0-11) -> Global DOFs 36-47
+
+Element ID: 7
+  Local Node 0 (Local DOFs 0-5) -> Global Node 7 (Global DOFs 42-47)
+  Local Node 1 (Local DOFs 6-11) -> Global Node 8 (Global DOFs 48-53)
+  Combined: Local DOFs (0-11) -> Global DOFs 42-53
+
+Element ID: 8
+  Local Node 0 (Local DOFs 0-5) -> Global Node 8 (Global DOFs 48-53)
+  Local Node 1 (Local DOFs 6-11) -> Global Node 9 (Global DOFs 54-59)
+  Combined: Local DOFs (0-11) -> Global DOFs 48-59
+
+Element ID: 9
+  Local Node 0 (Local DOFs 0-5) -> Global Node 9 (Global DOFs 54-59)
+  Local Node 1 (Local DOFs 6-11) -> Global Node 10 (Global DOFs 60-65)
+  Combined: Local DOFs (0-11) -> Global DOFs 54-65
+
