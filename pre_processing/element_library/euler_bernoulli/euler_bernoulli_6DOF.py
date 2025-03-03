@@ -108,20 +108,21 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
     # Shape functions ----------------------------------------------------------
     def shape_functions(self, xi: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Compute shape functions and derivatives for 3D beam
-    
+        Compute shape functions and derivatives for 3D Euler-Bernoulli beam.
+
         Args:
-            xi: Natural coordinates [-1, 1]
-        
+            xi: Natural coordinates in range [-1, 1]
+
         Returns:
-            (N_matrix, dN_dxi_matrix, d2N_dxi2_matrix) each of shape (g, 12, 6)
+            - N_matrix (g, 12, 6): Shape functions for translation and rotation DOFs
+            - dN_dxi_matrix (g, 12, 6): First derivatives
+            - d2N_dxi2_matrix (g, 12, 6): Second derivatives
         """
         xi = np.atleast_1d(xi)
-        g = xi.shape[0]
-        L = self.L
+        g = xi.shape[0]  # Number of Gauss points
+        L = self.L  # Element length
 
-        # Calculate shape functions and derivatives
-        # Axial functions
+        # **1. Axial Shape Functions (Linear Lagrange)**
         N1 = 0.5 * (1 - xi)
         N7 = 0.5 * (1 + xi)
         dN1_dxi = -0.5 * np.ones(g)
@@ -129,25 +130,24 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         d2N1_dxi2 = np.zeros(g)
         d2N7_dxi2 = np.zeros(g)
 
-        # Bending in XY plane
-        N2 = 0.25 * (1 - xi)**2 * (2 + xi)
-        N8 = 0.25 * (1 + xi)**2 * (2 - xi)
-        N3 = (L / 8) * (1 - xi)**2 * (1 + xi)
-        N9 = (L / 8) * (1 + xi)**2 * (1 - xi)
-    
-        # Derivatives for bending
-        dN2_dxi = 0.5*(1 - xi)*(2 + xi) - 0.5*(1 - xi)**2
-        dN8_dxi = -0.5*(1 + xi)*(2 - xi) + 0.5*(1 + xi)**2
-        dN3_dxi = (L/8)*((1 - xi)**2 - 2*(1 - xi)*(1 + xi))
-        dN9_dxi = (L/8)*((1 + xi)**2 - 2*(1 + xi)*(1 - xi))
-    
-        # Second derivatives
-        d2N2_dxi2 = 1.5*xi - 0.5
-        d2N8_dxi2 = -1.5*xi + 0.5
-        d2N3_dxi2 = (L/8)*(3*xi - 1)
-        d2N9_dxi2 = (L/8)*(-3*xi + 1)
+        # **2. Bending in XY Plane (Hermite Cubic)**
+        N2 = 0.5 * (1 - 3 * xi**2 + 2 * xi**3)  # Displacement
+        N8 = 0.5 * (3 * xi**2 - 2 * xi**3 + 1)  # Displacement
+        N3 = 0.5 * L * (xi - 2 * xi**2 + xi**3)  # Rotation θ
+        N9 = 0.5 * L * (-xi**2 + xi**3)  # Rotation θ
 
-        # Bending in XZ plane (reuse XY functions)
+        # **Derivatives**
+        dN2_dxi = -3 * xi + 2 * xi**2
+        dN8_dxi = 3 * xi - 2 * xi**2
+        dN3_dxi = 0.5 * L * (1 - 4 * xi + 3 * xi**2)
+        dN9_dxi = 0.5 * L * (-2 * xi + 3 * xi**2)
+
+        d2N2_dxi2 = -3 + 4 * xi
+        d2N8_dxi2 = 3 - 4 * xi
+        d2N3_dxi2 = 0.5 * L * (-4 + 6 * xi)
+        d2N9_dxi2 = 0.5 * L * (-2 + 6 * xi)
+
+        # **3. Bending in XZ Plane (Reuse Hermite Cubic Functions)**
         N4, N10 = N2, N8
         N5, N11 = N3, N9
         dN4_dxi, dN10_dxi = dN2_dxi, dN8_dxi
@@ -155,150 +155,177 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         d2N4_dxi2, d2N10_dxi2 = d2N2_dxi2, d2N8_dxi2
         d2N5_dxi2, d2N11_dxi2 = d2N3_dxi2, d2N9_dxi2
 
-        # Torsion functions
+        # **4. Torsion Shape Functions (Linear Interpolation)**
         N6, N12 = N1, N7
         dN6_dxi, dN12_dxi = dN1_dxi, dN7_dxi
         d2N6_dxi2, d2N12_dxi2 = d2N1_dxi2, d2N7_dxi2
 
-        # Assemble shape functions and derivatives into matrices
+        # **5. Assemble Shape Function Matrices**
         N_matrix = np.zeros((g, 12, 6))
         dN_dxi_matrix = np.zeros((g, 12, 6))
         d2N_dxi2_matrix = np.zeros((g, 12, 6))
 
-        # Assign shape functions and derivatives to the correct DOFs
-        N_matrix[:, 0, 0] = N1  # Axial DOF at node 1
-        N_matrix[:, 6, 0] = N7  # Axial DOF at node 2
-        N_matrix[:, 1, 1] = N2  # Bending DOF (u_y) at node 1
-        N_matrix[:, 7, 1] = N8  # Bending DOF (u_y) at node 2
-        N_matrix[:, 2, 2] = N4  # Bending DOF (u_z) at node 1
-        N_matrix[:, 8, 2] = N10  # Bending DOF (u_z) at node 2
-        N_matrix[:, 3, 3] = N6  # Torsion DOF at node 1
-        N_matrix[:, 9, 3] = N12  # Torsion DOF at node 2
-        N_matrix[:, 4, 4] = N5  # Rotation DOF (θ_y) at node 1
-        N_matrix[:, 10, 4] = N11  # Rotation DOF (θ_y) at node 2
-        N_matrix[:, 5, 5] = N3  # Rotation DOF (θ_z) at node 1
-        N_matrix[:, 11, 5] = N9  # Rotation DOF (θ_z) at node 2
+        ### **Axial DOF (u_x - along the beam length)**
+        # Linear Lagrange shape functions for axial displacement
+        N_matrix[:, 0, 0] = N1   # Node 1 axial displacement (u_x)
+        N_matrix[:, 6, 0] = N7   # Node 2 axial displacement (u_x)
 
-        # Assign derivatives
-        dN_dxi_matrix[:, 0, 0] = dN1_dxi
-        dN_dxi_matrix[:, 6, 0] = dN7_dxi
-        dN_dxi_matrix[:, 1, 1] = dN2_dxi
-        dN_dxi_matrix[:, 7, 1] = dN8_dxi
-        dN_dxi_matrix[:, 2, 2] = dN4_dxi
-        dN_dxi_matrix[:, 8, 2] = dN10_dxi
-        dN_dxi_matrix[:, 3, 3] = dN6_dxi
-        dN_dxi_matrix[:, 9, 3] = dN12_dxi
-        dN_dxi_matrix[:, 4, 4] = dN5_dxi
-        dN_dxi_matrix[:, 10, 4] = dN11_dxi
-        dN_dxi_matrix[:, 5, 5] = dN3_dxi
-        dN_dxi_matrix[:, 11, 5] = dN9_dxi
+        ### **Transverse DOF (u_y - bending in the XZ plane)**
+        # Hermite cubic shape functions for transverse displacement in Y-direction
+        N_matrix[:, 1, 1] = N2   # Node 1 transverse displacement (u_y)
+        N_matrix[:, 7, 1] = N8   # Node 2 transverse displacement (u_y)
 
-        # Assign second derivatives
-        d2N_dxi2_matrix[:, 1, 1] = d2N2_dxi2
-        d2N_dxi2_matrix[:, 7, 1] = d2N8_dxi2
-        d2N_dxi2_matrix[:, 2, 2] = d2N4_dxi2
-        d2N_dxi2_matrix[:, 8, 2] = d2N10_dxi2
-        d2N_dxi2_matrix[:, 5, 5] = d2N3_dxi2
-        d2N_dxi2_matrix[:, 11, 5] = d2N9_dxi2
+        ### **Transverse DOF (u_z - bending in the XY plane)**
+        # Hermite cubic shape functions for transverse displacement in Z-direction
+        N_matrix[:, 2, 2] = N4   # Node 1 transverse displacement (u_z)
+        N_matrix[:, 8, 2] = N10  # Node 2 transverse displacement (u_z)
 
+        ### **Torsion DOF (θ_x - twist about the beam axis)**
+        # Linear shape functions for torsion
+        N_matrix[:, 3, 3] = N6   # Node 1 torsion (θ_x)
+        N_matrix[:, 9, 3] = N12  # Node 2 torsion (θ_x)
+
+        ### **Rotation DOF (θ_y - rotation about Y-axis, associated with u_z)**
+        # Hermite cubic shape functions for bending rotation in the XY plane
+        N_matrix[:, 4, 4] = N5   # Node 1 rotation (θ_y)
+        N_matrix[:, 10, 4] = N11 # Node 2 rotation (θ_y)
+
+        ### **Rotation DOF (θ_z - rotation about Z-axis, associated with u_y)**
+        # Hermite cubic shape functions for bending rotation in the XZ plane
+        N_matrix[:, 5, 5] = N3   # Node 1 rotation (θ_z)
+        N_matrix[:, 11, 5] = N9  # Node 2 rotation (θ_z)
+
+        # ---------------------------------------------------------------------------
+
+        # **First Derivative Assignments (Strains & Curvatures)**
+
+        ### **Axial Strain (ε_x = du_x/dx)**
+        dN_dxi_matrix[:, 0, 0] = dN1_dxi  # Node 1 axial derivative
+        dN_dxi_matrix[:, 6, 0] = dN7_dxi  # Node 2 axial derivative
+
+        ### **Bending Curvature in XZ plane (κ_z = d²u_y/dx²)**
+        dN_dxi_matrix[:, 1, 1] = dN2_dxi  # Node 1 bending derivative (u_y)
+        dN_dxi_matrix[:, 7, 1] = dN8_dxi  # Node 2 bending derivative (u_y)
+
+        ### **Bending Curvature in XY plane (κ_y = d²u_z/dx²)**
+        dN_dxi_matrix[:, 2, 2] = dN4_dxi  # Node 1 bending derivative (u_z)
+        dN_dxi_matrix[:, 8, 2] = dN10_dxi # Node 2 bending derivative (u_z)
+
+        ### **Torsional Strain (γ_x = dθ_x/dx)**
+        dN_dxi_matrix[:, 3, 3] = dN6_dxi  # Node 1 torsion derivative (θ_x)
+        dN_dxi_matrix[:, 9, 3] = dN12_dxi # Node 2 torsion derivative (θ_x)
+
+        ### **Rotational Derivatives (dθ_y/dx and dθ_z/dx)**
+        dN_dxi_matrix[:, 4, 4] = dN5_dxi   # Node 1 bending rotation (θ_y)
+        dN_dxi_matrix[:, 10, 4] = dN11_dxi # Node 2 bending rotation (θ_y)
+        dN_dxi_matrix[:, 5, 5] = dN3_dxi   # Node 1 bending rotation (θ_z)
+        dN_dxi_matrix[:, 11, 5] = dN9_dxi  # Node 2 bending rotation (θ_z)
+
+        # ---------------------------------------------------------------------------
+
+        # **Second Derivative Assignments (For Bending Moments Only)**
+        # Second derivatives are only relevant for bending (curvatures).
+
+        ### **Bending Curvature in XZ plane (κ_z = d²u_y/dx²)**
+        d2N_dxi2_matrix[:, 1, 1] = d2N2_dxi2  # Node 1 curvature (u_y)
+        d2N_dxi2_matrix[:, 7, 1] = d2N8_dxi2  # Node 2 curvature (u_y)
+
+        ### **Bending Curvature in XY plane (κ_y = d²u_z/dx²)**
+        d2N_dxi2_matrix[:, 2, 2] = d2N4_dxi2  # Node 1 curvature (u_z)
+        d2N_dxi2_matrix[:, 8, 2] = d2N10_dxi2 # Node 2 curvature (u_z)
+
+        ### **Rotational Second Derivatives (d²θ_y/dx² and d²θ_z/dx²)**
+        d2N_dxi2_matrix[:, 5, 5] = d2N3_dxi2  # Node 1 rotation (θ_z)
+        d2N_dxi2_matrix[:, 11, 5] = d2N9_dxi2 # Node 2 rotation (θ_z)
+        
         return N_matrix, dN_dxi_matrix, d2N_dxi2_matrix
 
-    # Matrix computations ------------------------------------------------------
-    def element_stiffness_matrix(self):
-        """Compute the element stiffness matrix using Gauss quadrature"""
-        xi_points, weights = self.integration_points
-        detJ = self.L / 2
 
-        # Material matrix
+    # Matrix computations ------------------------------------------------------
+    def element_stiffness_matrix(self) -> np.ndarray:
+        """Compute the element stiffness matrix using block matrix formulation with debug print statements"""
+
+        xi_points, weights = self.integration_points
+        detJ = self.L / 2  # Jacobian determinant
+
+        # Material stiffness matrix (D)
         D = np.diag([
-            self.E * self.A,  # Axial
-            self.E * self.I_z,  # Bending Z
-            self.E * self.I_y,  # Bending Y
-            self.G * self.I_x   # Torsion
+            self.E * self.A,  # Axial stiffness
+            self.E * self.I_z,  # Bending about z-axis
+            self.E * self.I_y,  # Bending about y-axis
+            self.G * self.I_x   # Torsion stiffness
         ])
 
-        # Initialize stiffness matrix
+        print(f"Material stiffness matrix D:\n{D}")
+
+        # Initialize full stiffness matrix (12 x 12)
         Ke = np.zeros((12, 12))
 
+        # Initialize block matrices (6x6 each)
+        K11 = np.zeros((6, 6))
+        K12 = np.zeros((6, 6))
+        K21 = np.zeros((6, 6))
+        K22 = np.zeros((6, 6))
+
         for g in range(len(xi_points)):
-            
+
+            # Get shape function derivatives
+            _, dN_dxi, d2N_dxi2 = self.shape_functions(xi_points[g])
+
+            # Strain-displacement matrix B (4 strains × 12 DOFs)
+            B = np.zeros((4, 12))
+
+            # Axial strain (ε = du_x/dx)
+            B[0, 0] = (1.0 / detJ) * dN_dxi[0, 0, 0]  # Node 1, axial DOF
+            B[0, 6] = (1.0 / detJ) * dN_dxi[0, 6, 0]  # Node 2, axial DOF
+
+            # Bending in z-direction (κ_z = d²u_y/dx²)
+            B[1, 1] = (1.0 / detJ) ** 2 * d2N_dxi2[0, 1, 1]
+            B[1, 7] = (1.0 / detJ) ** 2 * d2N_dxi2[0, 7, 1]
+
+            # Bending in y-direction (κ_y = d²u_z/dx²)
+            B[2, 2] = (1.0 / detJ) ** 2 * d2N_dxi2[0, 2, 2]
+            B[2, 8] = (1.0 / detJ) ** 2 * d2N_dxi2[0, 8, 2]
+
+            # Torsion (dθ_x/dx)
+            B[3, 3] = (1.0 / detJ) * dN_dxi[0, 3, 3]
+            B[3, 9] = (1.0 / detJ) * dN_dxi[0, 9, 3]
+
+            # Debug prints to verify B matrix dimensions
+            print(f"\nIteration {g}: Gauss point {xi_points[g]}")
+            print(f"B.shape: {B.shape}, Expected: (4, 12)")
+            print(f"B = \n{B}")
+
+            # Compute elemental contribution: Bᵀ * D * B
             try:
-                # Get shape function derivatives
-                _, dN_dxi, d2N_dxi2 = self.shape_functions(xi_points[g])
+                Ke_contribution = np.einsum('ij, jk, kl -> il', B.T, D, B) * weights[g] * detJ
 
-                # Strain-displacement matrix (4 strains × 12 DOFs)
-                B = np.zeros((4, 12))
+                # Debug prints for einsum calculation
+                print(f"Ke_contribution.shape: {Ke_contribution.shape}, Expected: (12, 12)")
+                print(f"Ke_contribution = \n{Ke_contribution}")
 
-                # Axial: ε = du_x/dx
-                B[0, 0] = (1.0 / detJ) * dN_dxi[0, 0, 0]  # Node 1, axial DOF
-                B[0, 6] = (1.0 / detJ) * dN_dxi[0, 6, 0]  # Node 2, axial DOF
+                # Assemble blocks
+                K11 += Ke_contribution[:6, :6]
+                K12 += Ke_contribution[:6, 6:]
+                K21 += Ke_contribution[6:, :6]
+                K22 += Ke_contribution[6:, 6:]
 
-                # Bending Z: κ_z = d²u_y/dx²
-                B[1, 1] = (1.0 / detJ) ** 2 * d2N_dxi2[0, 1, 1]
-                B[1, 7] = (1.0 / detJ) ** 2 * d2N_dxi2[0, 7, 1]
+            except ValueError as e:
+                print(f"\n❌ ERROR at Gauss point {xi_points[g]}: {e}")
+                print(f"Shapes: B.T={B.T.shape}, D={D.shape}, B={B.shape}")
+                raise e  # Re-raise error for debugging
 
-                # Bending Y: κ_y = d²u_z/dx²
-                B[2, 2] = (1.0 / detJ) ** 2 * d2N_dxi2[0, 2, 2]
-                B[2, 8] = (1.0 / detJ) ** 2 * d2N_dxi2[0, 8, 2]
+        # Assemble final element stiffness matrix using block structure
+        Ke[:6, :6] = K11
+        Ke[:6, 6:] = K12
+        Ke[6:, :6] = K21
+        Ke[6:, 6:] = K22
 
-                # Torsion: dθ_x/dx
-                B[3, 3] = (1.0 / detJ) * dN_dxi[0, 3, 3]
-                B[3, 9] = (1.0 / detJ) * dN_dxi[0, 9, 3]
+        # Debug print for final assembled matrix
+        print("\nFinal element stiffness matrix Ke:\n", Ke)
 
-                # Log tensor values
-                print(f"Iteration {g}: Computing B^T * D")
-                print(f"B.shape = {B.shape}, D.shape = {D.shape}")
-                print(f"B = \n{B}")
-                print(f"D = \n{D}")
-
-                try:
-                    # Restrict B to first 4 columns to match D dimensions
-                    B_reduced = B[:, :4]
-
-                    print(f"B_reduced.shape = {B_reduced.shape}, D.shape = {D.shape}")
-                    print(f"B_reduced = \n{B_reduced}")
-
-                    # Step 1: Compute B^T * D manually
-                    BT_D = np.zeros((12, 4))  # Shape (12, 4)
-                    for i in range(12):
-                        for j in range(4):
-                            for k in range(4):
-                                BT_D[i, j] += B[i % 4, k] * D[k, j]
-
-                    print(f"BT_D.shape = {BT_D.shape}")
-                    print(f"BT_D = \n{BT_D}")
-
-                    # Step 2: Compute BT_D * B manually (extend back to full 12 columns)
-                    BT_D_B = np.zeros((12, 12))  # Shape (12, 12)
-                    for i in range(12):
-                        for j in range(12):
-                            for k in range(4):
-                                BT_D_B[i, j] += BT_D[i, k] * B[k, j]
-
-                    print(f"BT_D_B.shape = {BT_D_B.shape}")
-                    print(f"BT_D_B = \n{BT_D_B}")
-
-                    # Step 3: Scale by weights and Jacobian determinant
-                    Ke_contribution = BT_D_B * weights[g] * detJ
-
-                    # Add contribution to stiffness matrix
-                    Ke += Ke_contribution
-
-                except Exception as e:
-                    print(f"Iteration {g}: Error in einsum computation: {e}")
-                    print(f"Shapes: B {B.shape}, D {D.shape}, BT_D N/A")
-                    print(f"B = \n{B}")
-                    print(f"D = \n{D}")
-                    raise e  # Re-raise the exception for debugging
-        
-            except Exception as e:
-                print(f"Fatal error in iteration {g}: {e}")
-                print(f"B.shape = {B.shape}, D.shape = {D.shape} (before einsum)")
-                print(f"B = \n{B}")
-                print(f"D = \n{D}")
-                raise e  # Propagate the exception for further debugging
-                
         return Ke
+
 
     def element_force_vector(self) -> np.ndarray:
         """Compute the element force vector considering all loads"""

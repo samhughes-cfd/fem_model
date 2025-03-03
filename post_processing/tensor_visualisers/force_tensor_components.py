@@ -145,7 +145,7 @@ def load_and_process_force_vectors(job_dir, output_base_dir):
 if __name__ == "__main__":
     base_directory = "post_processing/results"
     output_directory = "post_processing/tensor_visualisers"
-    selected_job = "job_0003_2025-02-26_16-02-28"
+    selected_job = "job_0006_2025-03-03_09-41-09"
     
     job_directory = os.path.join(base_directory, selected_job)
     

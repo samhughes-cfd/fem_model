@@ -1,0 +1,70 @@
+
+------------------------------------------------------------
+### Diagnostics for Global System
+Total DOFs: 66
+Independent Equations (nonzero rows in K): 44
+Boundary Condition DOFs: None detected
+⚠️  Underconstrained system detected (too few equations)
+⚠️  Singular matrix detected! K is not invertible
+🔹 Condition Number: inf
+⚠️  Zero rows found at indices: [4, 5, 10, 11, 16, 17, 22, 23, 28, 29, 34, 35, 40, 41, 46, 47, 52, 53, 58, 59, 64, 65]
+⚠️  Zero columns found at indices: [4, 5, 10, 11, 16, 17, 22, 23, 28, 29, 34, 35, 40, 41, 46, 47, 52, 53, 58, 59, 64, 65]
+
+🔹 **Force Vector Diagnostics**
+⚠️  DOFs with zero applied force: [0, 2, 3, 4, 5, 6, 8, 9, 10, 11] ...
+📌 Min Force: -7.5200e+02, Max Force: 0.0000e+00
+📌 Sum of all forces: -4.0000e+03 ⚠️ (Nonzero: Possible imbalance!)
+🔹 F_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 F_y: Min -7.5200e+02, Max -8.0000e+00
+🔹 F_z: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_y: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_z: Min 0.0000e+00, Max 0.0000e+00
+
+
+------------------------------------------------------------
+### Diagnostics for Modified System
+Total DOFs: 66
+Independent Equations (nonzero rows in K): 46
+Boundary Condition DOFs: [0, 1, 2, 3, 4, 5]
+⚠️  Underconstrained system detected (too few equations)
+⚠️  Singular matrix detected! K is not invertible
+🔹 Condition Number: inf
+⚠️  Zero rows found at indices: [10, 11, 16, 17, 22, 23, 28, 29, 34, 35, 40, 41, 46, 47, 52, 53, 58, 59, 64, 65]
+⚠️  Zero columns found at indices: [10, 11, 16, 17, 22, 23, 28, 29, 34, 35, 40, 41, 46, 47, 52, 53, 58, 59, 64, 65]
+
+🔹 **Force Vector Diagnostics**
+⚠️  DOFs with zero applied force: [0, 1, 2, 3, 4, 5, 6, 8, 9, 10] ...
+📌 Min Force: -7.5200e+02, Max Force: 0.0000e+00
+📌 Sum of all forces: -3.9920e+03 ⚠️ (Nonzero: Possible imbalance!)
+✅  No forces detected at constrained DOFs (Correct).
+🔹 F_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 F_y: Min -7.5200e+02, Max 0.0000e+00
+🔹 F_z: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_y: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_z: Min 0.0000e+00, Max 0.0000e+00
+
+
+------------------------------------------------------------
+### Diagnostics for Condensed System
+Total DOFs: 40
+Independent Equations (nonzero rows in K): 40
+Boundary Condition DOFs: [0, 1, 2, 3, 4, 5]
+✅  Well-posed system detected
+✅  K is positive definite (Invertible)
+🔹 Condition Number: 8.20e+04
+
+🔹 **Force Vector Diagnostics**
+⚠️  DOFs with zero applied force: [0, 2, 3, 4, 6, 7, 8, 10, 11, 12] ...
+📌 Min Force: -7.5200e+02, Max Force: 0.0000e+00
+📌 Sum of all forces: -3.9920e+03 ⚠️ (Nonzero: Possible imbalance!)
+⚠️  Nonzero forces detected at fixed DOFs! Values: [  0.          40.00001      0.           0.           0.
+ 120.00002252]
+🔹 F_x: Min 0.0000e+00, Max 0.0000e+00
+🔹 F_y: Min -7.5200e+02, Max 0.0000e+00
+🔹 F_z: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_x: Min -6.8000e+02, Max 0.0000e+00
+🔹 M_y: Min 0.0000e+00, Max 0.0000e+00
+🔹 M_z: Min -6.0000e+02, Max 0.0000e+00
+
