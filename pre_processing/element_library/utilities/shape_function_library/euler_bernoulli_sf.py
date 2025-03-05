@@ -2,135 +2,136 @@
 
 import numpy as np
 
-def euler_bernoulli_shape_functions(xi, L, poly_order=3):
-    """
-  Computes the shape functions and their derivatives for an Euler-Bernoulli beam element.
-
-  Parameters
-  ----------
-  xi : float or ndarray
-      Natural coordinate(s) in [-1, 1]. Can be a scalar or a 1D array (n,).
-  L : float
-      Element length.
-  poly_order : int, optional (default=3)
-      Polynomial order (must be 3 for Euler-Bernoulli elements).
-
-  Returns
-  -------
-  tuple (N_matrix, dN_dxi_matrix, d2N_dxi2_matrix)
-      - **N_matrix** (ndarray, shape (n, 2, 6)): Shape function matrix.
-      - **dN_dxi_matrix** (ndarray, shape (n, 2, 6)): First derivative w.r.t. ξ.
-      - **d2N_dxi2_matrix** (ndarray, shape (n, 2, 6)): Second derivative w.r.t. ξ.
-
-  Element System
-  --------------
-  A two-node Euler-Bernoulli beam element with **three degrees of freedom per node**:
-    - **Axial displacement**: \( N_1, N_4 \) (Nodes 1, 2)
-    - **Transverse displacement**: \( N_2, N_5 \) (Nodes 1, 2)
-    - **Rotation (slope from transverse displacement)**: \( N_3, N_6 \) (Nodes 1, 2)
-
-  Tensor Structure
-  ----------------
-  The returned matrices have shape **(n, 2, 6)**:
-  - **Axis 0 (n)**: Evaluation points (layers).
-  - **Axis 1 (2)**: Displacement type:
-      - `0` → Axial displacements (\(N_1, N_4\))
-      - `1` → Transverse & rotational (\(N_2, N_3, N_5, N_6\))
-  - **Axis 2 (6)**: Shape functions for element degrees of freedom.
-
-  Example Indexing
-  ----------------
-  - `N_matrix[i, :, :]` → (2,6) shape function matrix at Gauss point `i`.
-  - `N_matrix[:, 0, :]` → Axial shape functions across all Gauss points.
-  - `N_matrix[:, 1, :]` → Transverse & rotational shape functions across all Gauss points.
-
-  Theoretical Notes
-  -----------------
-  - The rotation shape functions (N3, N6) are derived as the first derivative of the transverse displacement shape functions (N2, N5).
-  - Euler-Bernoulli beam theory assumes no shear deformation, meaning the rotation is given by the derivative of the transverse displacement: θz = du_y/dx
-  - Using the transformation from the natural coordinate ξ to the physical coordinate x, where:
-
-    x = (L/2) * xi,
-    
-    We obtain the relation:
-
-    d/dx = (2/L) d/dxi
-
-  - Applying this transformation, the rotation shape functions are computed as:
-
-    N3 = (2/L) (dN2/dξ),
-    N6 = (2/L) (dN5/dξ)
-
-    This transformation ensures that the transverse displacement and the rotation are properly coupled within the element.
+def shape_functions(self, xi: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
   """
+  Compute shape functions and derivatives for 3D Euler-Bernoulli beam.
 
+  Args:
+      xi: Natural coordinates in range [-1, 1]
 
-    if poly_order != 3:
-        raise ValueError("Euler-Bernoulli elements require cubic (3rd order) shape functions.")
-    
-    # Ensure xi is a NumPy array.
-    # If a scalar is passed, np.atleast_1d converts it to an array of shape (1,).
-    xi = np.atleast_1d(xi)  # shape: (n,)
-    n = xi.shape[0] # Number of evaluation points
-    
-    # (1) compute the scalar shape functions and their derivatives, each computed array is vectorized and has shape (n,)
+  Returns:
+      - N_matrix (g, 12, 6): Shape functions for translation and rotation DOFs
+      - dN_dxi_matrix (g, 12, 6): First derivatives
+      - d2N_dxi2_matrix (g, 12, 6): Second derivatives
+  """
+  xi = np.atleast_1d(xi)
+  g = xi.shape[0]  # Number of Gauss points
+  L = self.L  # Element length
 
-    # --- Axial Shape Functions (Linear Lagrange) ---
-    # N1: axial displacement at node 1, N4: axial displacement at node 2.
-    N1 = 0.5 * (1 - xi)     # shape: (n,)
-    N4 = 0.5 * (1 + xi)     # shape: (n,)
-    
-    # --- Transverse Displacement Shape Functions (Cubic Hermite) ---
-    # N2: transverse displacement at node 1, N5: transverse displacement at node 2.
-    N2 = 0.25 * (1 - xi)**2 * (1 + 2*xi)  # shape: (n,)
-    N5 = 0.25 * (1 + xi)**2 * (1 - 2*xi)  # shape: (n,)
-    
-    # --- Rotation Shape Functions (Derived from transverse displacement) ---
-    # N3: rotation at node 1, N6: rotation at node 2.
-    N3 = (L/8) * (1 - xi)**2 * (1 + xi)   # shape: (n,)
-    N6 = (L/8) * (1 + xi)**2 * (1 - xi)   # shape: (n,)
-    
-    # --- First Derivatives dN/dxi ---
-    # Constant derivatives are expanded to arrays with the same shape as xi.
-    dN1_dxi = -0.5 * np.ones_like(xi)  # shape: (n,)
-    dN4_dxi =  0.5 * np.ones_like(xi)  # shape: (n,)
-    
-    dN2_dxi = 0.5 * (1 - xi) * (1 + 2*xi) - 0.25 * (1 - xi)**2 * 2  # shape: (n,)
-    dN5_dxi = -0.5 * (1 + xi) * (1 - 2*xi) + 0.25 * (1 + xi)**2 * (-2)  # shape: (n,)
-    
-    dN3_dxi = (L/8) * (3*xi**2 - 1 - 2*xi)  # shape: (n,)
-    dN6_dxi = (L/8) * (3*xi**2 - 1 + 2*xi)  # shape: (n,)
-    
-    # --- Second Derivatives d2N/dxi2 ---
-    d2N1_dxi2 = np.zeros_like(xi)  # shape: (n,)
-    d2N4_dxi2 = np.zeros_like(xi)  # shape: (n,)
-    
-    d2N2_dxi2 = 1.5 * xi - 0.5  # shape: (n,)
-    d2N5_dxi2 = -1.5 * xi + 0.5  # shape: (n,)
-    
-    d2N3_dxi2 = (3*L/8) * (2*xi - 1)  # shape: (n,)
-    d2N6_dxi2 = (3*L/8) * (2*xi + 1)  # shape: (n,)
+  # **1. Axial Shape Functions (Linear Lagrange)**
+  N1 = 0.5 * (1 - xi)
+  N7 = 0.5 * (1 + xi)
+  dN1_dxi = -0.5 * np.ones(g)
+  dN7_dxi = 0.5 * np.ones(g)
+  d2N1_dxi2 = np.zeros(g)
+  d2N7_dxi2 = np.zeros(g)
 
-    # (2) Assemble the shape function and deriavtive computed arrays into matrices for each evaluation point n
+  # **2. Bending in XY Plane (Hermite Cubic)**
+  N2 = 0.5 * (1 - 3 * xi**2 + 2 * xi**3)  # Displacement
+  N8 = 0.5 * (3 * xi**2 - 2 * xi**3 + 1)  # Displacement
+  N3 = 0.5 * L * (xi - 2 * xi**2 + xi**3)  # Rotation θ
+  N9 = 0.5 * L * (-xi**2 + xi**3)  # Rotation θ
 
-    # --- Assemble N_matrix ---
-    N_matrix = np.stack((
-      np.column_stack((N1, np.zeros(n), np.zeros(n), N4, np.zeros(n), np.zeros(n))),  # axial row: shape (n, 6)
-      np.column_stack((np.zeros(n), N2, N3, np.zeros(n), N5, N6))  # transverse row: shape (n, 6)
-    ), axis=1)  # for each Gauss point n we have (2,6), therefore shape: (n, 2, 6)
+  # **Derivatives**
+  dN2_dxi = -3 * xi + 2 * xi**2
+  dN8_dxi = 3 * xi - 2 * xi**2
+  dN3_dxi = 0.5 * L * (1 - 4 * xi + 3 * xi**2)
+  dN9_dxi = 0.5 * L * (-2 * xi + 3 * xi**2)
 
-    # --- Assemble dN_dxi_matrix ---
-    dN_dxi_matrix = np.stack((
-      np.column_stack((dN1_dxi, np.zeros(n), np.zeros(n), dN4_dxi, np.zeros(n), np.zeros(n))),  # axial row: shape (n, 6)
-      np.column_stack((np.zeros(n), dN2_dxi, dN3_dxi, np.zeros(n), dN5_dxi, dN6_dxi))  # transverse row: shape (n, 6)
-    ), axis=1)  # for each Gauss point n we have (2,6), therefore shape: (n, 2, 6)
+  d2N2_dxi2 = -3 + 4 * xi
+  d2N8_dxi2 = 3 - 4 * xi
+  d2N3_dxi2 = 0.5 * L * (-4 + 6 * xi)
+  d2N9_dxi2 = 0.5 * L * (-2 + 6 * xi)
 
-    # --- Second Derivatives d2N/dxi2 ---
-    d2N_dxi2_matrix = np.stack((
-      np.column_stack((d2N1_dxi2, np.zeros(n), np.zeros(n), d2N4_dxi2, np.zeros(n), np.zeros(n))),  # axial row: shape (n, 6)
-      np.column_stack((np.zeros(n), d2N2_dxi2, d2N3_dxi2, np.zeros(n), d2N5_dxi2, d2N6_dxi2))  # transverse row: shape (n, 6)
-    ), axis=1)  # for each Gauss point n we have (2,6), therefore shape: (n, 2, 6)
+  # **3. Bending in XZ Plane (Reuse Hermite Cubic Functions)**
+  N4, N10 = N2, N8
+  N5, N11 = N3, N9
+  dN4_dxi, dN10_dxi = dN2_dxi, dN8_dxi
+  dN5_dxi, dN11_dxi = dN3_dxi, dN9_dxi
+  d2N4_dxi2, d2N10_dxi2 = d2N2_dxi2, d2N8_dxi2
+  d2N5_dxi2, d2N11_dxi2 = d2N3_dxi2, d2N9_dxi2
 
-    # (3) Return the matrices
+  # **4. Torsion Shape Functions (Linear Interpolation)**
+  N6, N12 = N1, N7
+  dN6_dxi, dN12_dxi = dN1_dxi, dN7_dxi
+  d2N6_dxi2, d2N12_dxi2 = d2N1_dxi2, d2N7_dxi2
 
-    return N_matrix, dN_dxi_matrix, d2N_dxi2_matrix
+  # **5. Assemble Shape Function Matrices**
+  N_matrix = np.zeros((g, 12, 6))
+  dN_dxi_matrix = np.zeros((g, 12, 6))
+  d2N_dxi2_matrix = np.zeros((g, 12, 6))
+
+  ### **Axial DOF (u_x - along the beam length)**
+  # Linear Lagrange shape functions for axial displacement
+  N_matrix[:, 0, 0] = N1   # Node 1 axial displacement (u_x)
+  N_matrix[:, 6, 0] = N7   # Node 2 axial displacement (u_x)
+
+  ### **Transverse DOF (u_y - bending in the XZ plane)**
+  # Hermite cubic shape functions for transverse displacement in Y-direction
+  N_matrix[:, 1, 1] = N2   # Node 1 transverse displacement (u_y)
+  N_matrix[:, 7, 1] = N8   # Node 2 transverse displacement (u_y)
+
+  ### **Transverse DOF (u_z - bending in the XY plane)**
+  # Hermite cubic shape functions for transverse displacement in Z-direction
+  N_matrix[:, 2, 2] = N4   # Node 1 transverse displacement (u_z)
+  N_matrix[:, 8, 2] = N10  # Node 2 transverse displacement (u_z)
+
+  ### **Torsion DOF (θ_x - twist about the beam axis)**
+  # Linear shape functions for torsion
+  N_matrix[:, 3, 3] = N6   # Node 1 torsion (θ_x)
+  N_matrix[:, 9, 3] = N12  # Node 2 torsion (θ_x)
+
+  ### **Rotation DOF (θ_y - rotation about Y-axis, associated with u_z)**
+  # Hermite cubic shape functions for bending rotation in the XY plane
+  N_matrix[:, 4, 4] = N5   # Node 1 rotation (θ_y)
+  N_matrix[:, 10, 4] = N11 # Node 2 rotation (θ_y)
+
+  ### **Rotation DOF (θ_z - rotation about Z-axis, associated with u_y)**
+  # Hermite cubic shape functions for bending rotation in the XZ plane
+  N_matrix[:, 5, 5] = N3   # Node 1 rotation (θ_z)
+  N_matrix[:, 11, 5] = N9  # Node 2 rotation (θ_z)
+
+  # ---------------------------------------------------------------------------
+
+  # **First Derivative Assignments (Strains & Curvatures)**
+
+  ### **Axial Strain (ε_x = du_x/dx)**
+  dN_dxi_matrix[:, 0, 0] = dN1_dxi  # Node 1 axial derivative
+  dN_dxi_matrix[:, 6, 0] = dN7_dxi  # Node 2 axial derivative
+
+  ### **Bending Curvature in XZ plane (κ_z = d²u_y/dx²)**
+  dN_dxi_matrix[:, 1, 1] = dN2_dxi  # Node 1 bending derivative (u_y)
+  dN_dxi_matrix[:, 7, 1] = dN8_dxi  # Node 2 bending derivative (u_y)
+
+  ### **Bending Curvature in XY plane (κ_y = d²u_z/dx²)**
+  dN_dxi_matrix[:, 2, 2] = dN4_dxi  # Node 1 bending derivative (u_z)
+  dN_dxi_matrix[:, 8, 2] = dN10_dxi # Node 2 bending derivative (u_z)
+
+  ### **Torsional Strain (γ_x = dθ_x/dx)**
+  dN_dxi_matrix[:, 3, 3] = dN6_dxi  # Node 1 torsion derivative (θ_x)
+  dN_dxi_matrix[:, 9, 3] = dN12_dxi # Node 2 torsion derivative (θ_x)
+
+  ### **Rotational Derivatives (dθ_y/dx and dθ_z/dx)**
+  dN_dxi_matrix[:, 4, 4] = dN5_dxi   # Node 1 bending rotation (θ_y)
+  dN_dxi_matrix[:, 10, 4] = dN11_dxi # Node 2 bending rotation (θ_y)
+  dN_dxi_matrix[:, 5, 5] = dN3_dxi   # Node 1 bending rotation (θ_z)
+  dN_dxi_matrix[:, 11, 5] = dN9_dxi  # Node 2 bending rotation (θ_z)
+
+  # ---------------------------------------------------------------------------
+
+  # **Second Derivative Assignments (For Bending Moments Only)**
+  # Second derivatives are only relevant for bending (curvatures).
+
+  ### **Bending Curvature in XZ plane (κ_z = d²u_y/dx²)**
+  d2N_dxi2_matrix[:, 1, 1] = d2N2_dxi2  # Node 1 curvature (u_y)
+  d2N_dxi2_matrix[:, 7, 1] = d2N8_dxi2  # Node 2 curvature (u_y)
+
+  ### **Bending Curvature in XY plane (κ_y = d²u_z/dx²)**
+  d2N_dxi2_matrix[:, 2, 2] = d2N4_dxi2  # Node 1 curvature (u_z)
+  d2N_dxi2_matrix[:, 8, 2] = d2N10_dxi2 # Node 2 curvature (u_z)
+
+  ### **Rotational Second Derivatives (d²θ_y/dx² and d²θ_z/dx²)**
+  d2N_dxi2_matrix[:, 5, 5] = d2N3_dxi2  # Node 1 rotation (θ_z)
+  d2N_dxi2_matrix[:, 11, 5] = d2N9_dxi2 # Node 2 rotation (θ_z)
+        
+  return N_matrix, dN_dxi_matrix, d2N_dxi2_matrix

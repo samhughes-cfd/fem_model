@@ -1,4 +1,4 @@
-# pre_processing/element_library/euler_bernoulli_beam_6dof.py
+# pre_processing\element_library\euler_bernoulli\euler_bernoulli_6DOF.py
 
 import numpy as np
 import logging
