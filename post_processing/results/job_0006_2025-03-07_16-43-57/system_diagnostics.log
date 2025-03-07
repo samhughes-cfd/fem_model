@@ -1,0 +1,79 @@
+
+------------------------------------------------------------
+### Diagnostics for Global System
+Total DOFs: 66
+Independent Equations (nonzero rows): 44
+Boundary Condition DOFs: None
+✅ Matrix is symmetric.
+⚠️ K is not positive definite. Possibly singular or indefinite.
+🔹 Approx. rank of K: 40/66
+🔹 Condition Number: inf
+⚠️ Zero rows: [4, 5, 10, 11, 16, 17, 22, 23, 28, 29, 34, 35, 40, 41, 46, 47, 52, 53, 58, 59, 64, 65]
+⚠️ Zero columns: [4, 5, 10, 11, 16, 17, 22, 23, 28, 29, 34, 35, 40, 41, 46, 47, 52, 53, 58, 59, 64, 65]
+⚠️ DOFs with zero force: [0, 2, 3, 4, 5, 6, 8, 9, 10, 11]...
+Min Force = -1.7699e+04, Max Force = 0.0000e+00
+Sum of Forces = -6.6706e+04 (⚠️ Nonzero!)
+Top DOFs by force magnitude:
+  DOF 61, Force = -1.7699e+04
+  DOF 55, Force = -1.4512e+04
+  DOF 49, Force = -1.1311e+04
+  DOF 43, Force = -8.5097e+03
+  DOF 37, Force = -6.1086e+03
+  DOF 31, Force = -4.1081e+03
+  DOF 25, Force = -2.5088e+03
+  DOF 19, Force = -1.3111e+03
+  DOF 13, Force = -5.1203e+02
+  DOF 7, Force = -1.1250e+02
+
+
+------------------------------------------------------------
+### Diagnostics for Modified System
+Total DOFs: 66
+Independent Equations (nonzero rows): 46
+Boundary Condition DOFs: [0, 1, 2, 3, 4, 5]
+✅ Matrix is symmetric.
+⚠️ K is not positive definite. Possibly singular or indefinite.
+🔹 Approx. rank of K: 46/66
+🔹 Condition Number: inf
+⚠️ Zero rows: [10, 11, 16, 17, 22, 23, 28, 29, 34, 35, 40, 41, 46, 47, 52, 53, 58, 59, 64, 65]
+⚠️ Zero columns: [10, 11, 16, 17, 22, 23, 28, 29, 34, 35, 40, 41, 46, 47, 52, 53, 58, 59, 64, 65]
+⚠️ DOFs with zero force: [0, 1, 2, 3, 4, 5, 6, 8, 9, 10]...
+Min Force = -1.7699e+04, Max Force = 0.0000e+00
+Sum of Forces = -6.6693e+04 (⚠️ Nonzero!)
+Top DOFs by force magnitude:
+  DOF 61, Force = -1.7699e+04
+  DOF 55, Force = -1.4512e+04
+  DOF 49, Force = -1.1311e+04
+  DOF 43, Force = -8.5097e+03
+  DOF 37, Force = -6.1086e+03
+  DOF 31, Force = -4.1081e+03
+  DOF 25, Force = -2.5088e+03
+  DOF 19, Force = -1.3111e+03
+  DOF 13, Force = -5.1203e+02
+  DOF 7, Force = -1.1250e+02
+
+
+------------------------------------------------------------
+### Diagnostics for Condensed System
+Total DOFs: 40
+Independent Equations (nonzero rows): 40
+Boundary Condition DOFs: [0, 1, 2, 3, 4, 5]
+✅ Matrix is symmetric.
+✅ K is positive definite.
+🔹 Approx. rank of K: 40/40
+🔹 Condition Number: 1.11e+09
+⚠️ DOFs with zero force: [0, 2, 3, 4, 6, 7, 8, 10, 11, 12]...
+Min Force = -1.7699e+04, Max Force = 0.0000e+00
+Sum of Forces = -6.6693e+04 (⚠️ Nonzero!)
+Top DOFs by force magnitude:
+  DOF 37, Force = -1.7699e+04
+  DOF 33, Force = -1.4512e+04
+  DOF 29, Force = -1.1311e+04
+  DOF 25, Force = -8.5097e+03
+  DOF 21, Force = -6.1086e+03
+  DOF 17, Force = -4.1081e+03
+  DOF 13, Force = -2.5088e+03
+  DOF 9, Force = -1.3111e+03
+  DOF 5, Force = -5.1203e+02
+  DOF 1, Force = -1.1250e+02
+
