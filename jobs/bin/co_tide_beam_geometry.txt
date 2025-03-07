@@ -1,0 +1,40 @@
+	 Physical Properties Report	 Part: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\Abaqus\CBeamSolid-Sketch.par		 3/7/2025   3:29 Pm
+	
+	Lnegth = 2000 mm
+	 density= 7800.000000 	 kg/m^3    
+
+	       volume= 1822079.632679 	 mm^3    
+	         mass= 14.212221 	 kg    
+	 Surface Area= 750653.932704 	 mm^2    
+
+	 With respect to the Global Coordinate System :
+
+	 Center of Mass :
+		 X= 26.244443 	 mm    
+		 Y= 45.750000 	 mm    
+		 Z= 1000.000000 	 mm    
+
+	 Center of Volume :
+		 X= 26.244443 	 mm    
+		 Y= 45.750000 	 mm    
+		 Z= 1000.000000 	 mm    
+
+	 Mass Moments of Inertia :
+		 Ixx= 18.999183 	 kg-m^2    	 Iyy= 18.962826 	 kg-m^2    	 Izz= 0.062753 kg-m^2    
+		 Ixy= 0.017064 	 kg-m^2    	 Ixz= 0.372992 	 kg-m^2    	 Iyz= 0.650209 	 kg-m^2    
+
+	 Principal Axes Orientation :
+		 X= 1.000000 	0.000000 	0.000000 	
+		 Y= 0.000000 	1.000000 	0.000000 	
+		 Z= 0.000000 	0.000000 	1.000000 	
+
+	 With respect to the Principal Axes :
+
+	 Principal Moments of Inertia :
+		 I1= 4.757215 	 kg-m^2    	 I2= 4.740816 	 kg-m^2    	 I3= 0.023217 	 kg-m^2    
+
+	 Radii of Gyration :
+		 Rx= 578.555991 	 mm    
+		 Ry= 577.557972 	 mm    
+		 Rz= 40.417553 	 mm    
+
