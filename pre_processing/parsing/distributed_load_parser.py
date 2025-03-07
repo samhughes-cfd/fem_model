@@ -86,3 +86,15 @@ def parse_distributed_load(file_path):
     logging.debug(f"[Distributed load] Final parsed array:\n{distributed_load_array}")
 
     return distributed_load_array
+
+# Standalone execution for testing
+if __name__ == "__main__":
+    test_file = r"jobs\job_0004\distributed_load.txt"  # Use raw string for Windows paths
+    if not os.path.exists(test_file):
+        logging.error(f"Test file '{test_file}' not found. Make sure it exists before running.")
+    else:
+        try:
+            output = parse_distributed_load(test_file)
+            print("\n-------------Parsed [Distributed load] Data-------------\n", output)
+        except Exception as e:
+            logging.error(f"Error parsing load file: {e}")

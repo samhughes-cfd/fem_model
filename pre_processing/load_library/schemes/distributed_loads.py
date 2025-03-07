@@ -2,8 +2,8 @@ import numpy as np
 import os
 
 # Beam parameters
-L = 8.0         # Beam length (m)
-w_max = 1000    # Maximum distributed load (N/m)
+L = 2.0         # Beam length (m)
+w_max = 100000    # Maximum distributed load (N/m)
 num_points = 30  # Number of discretized points
 
 # Generate x values along the beam
@@ -49,7 +49,7 @@ def save_load_file(filename, x_vals, w_x, load_type, formula):
         # Write file header with load type and formula
         f.write(f"# Load Type: {load_type.upper()}\n")
         f.write(f"# Load Formula: {formula}\n")
-        f.write("[Loads]\n")
+        f.write("[Distributed load]\n")
         f.write(f"{'[x]':>12} {'[y]':>12} {'[z]':>12} {'[F_x]':>12} {'[F_y]':>12} {'[F_z]':>12} {'[M_x]':>12} {'[M_y]':>12} {'[M_z]':>12}\n")
 
         for i in range(len(x_vals)):

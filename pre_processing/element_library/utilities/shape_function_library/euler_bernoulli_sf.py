@@ -2,7 +2,7 @@
 
 import numpy as np
 
-def shape_functions(self, xi: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def euler_bernoulli_shape_functions(self, xi: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
   """
   Compute shape functions and derivatives for 3D Euler-Bernoulli beam.
 
