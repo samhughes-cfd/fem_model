@@ -133,8 +133,8 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         # **2. Bending in XY Plane (Hermite Cubic)**
         N2 = 0.5 * (1 - 3 * xi**2 + 2 * xi**3)  # Displacement
         N8 = 0.5 * (3 * xi**2 - 2 * xi**3 + 1)  # Displacement
-        N3 = 0.5 * L * (xi - 2 * xi**2 + xi**3)  # Rotation θ
-        N9 = 0.5 * L * (-xi**2 + xi**3)  # Rotation θ
+        N3 = 0.5 * L * (xi - 2 * xi**2 + xi**3)  # Rotation
+        N9 = 0.5 * L * (-xi**2 + xi**3)  # Rotation
 
         # **Derivatives**
         dN2_dxi = -3 * xi + 2 * xi**2
@@ -148,8 +148,10 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         d2N9_dxi2 = 0.5 * L * (-2 + 6 * xi)
 
         # **3. Bending in XZ Plane (Reuse Hermite Cubic Functions)**
-        N4, N10 = N2, N8
-        N5, N11 = N3, N9
+        N4, N10 = N2, N8  # Displacement
+        N5, N11 = N3, N9  # Rotation
+
+        # **Derivatives**
         dN4_dxi, dN10_dxi = dN2_dxi, dN8_dxi
         dN5_dxi, dN11_dxi = dN3_dxi, dN9_dxi
         d2N4_dxi2, d2N10_dxi2 = d2N2_dxi2, d2N8_dxi2
@@ -256,7 +258,7 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
             self.G * self.I_x   # Torsion stiffness
         ])
 
-        print(f"Material stiffness matrix D:\n{D}")
+        #print(f"Material stiffness matrix D:\n{D}")
 
         # Initialize full stiffness matrix (12 x 12)
         Ke = np.zeros((12, 12))
@@ -292,17 +294,17 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
             B[3, 9] = (1.0 / detJ) * dN_dxi[0, 9, 3]
 
             # Debug prints to verify B matrix dimensions
-            print(f"\nIteration {g}: Gauss point {xi_points[g]}")
-            print(f"B.shape: {B.shape}, Expected: (4, 12)")
-            print(f"B = \n{B}")
+            #print(f"\nIteration {g}: Gauss point {xi_points[g]}")
+            #print(f"B.shape: {B.shape}, Expected: (4, 12)")
+            #print(f"B = \n{B}")
 
             # Compute elemental contribution: Bᵀ * D * B
             try:
                 Ke_contribution = np.einsum('ij, jk, kl -> il', B.T, D, B) * weights[g] * detJ
 
                 # Debug prints for einsum calculation
-                print(f"Ke_contribution.shape: {Ke_contribution.shape}, Expected: (12, 12)")
-                print(f"Ke_contribution = \n{Ke_contribution}")
+                #print(f"Ke_contribution.shape: {Ke_contribution.shape}, Expected: (12, 12)")
+                #print(f"Ke_contribution = \n{Ke_contribution}")
 
                 # Assemble blocks
                 K11 += Ke_contribution[:6, :6]
@@ -311,8 +313,8 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
                 K22 += Ke_contribution[6:, 6:]
 
             except ValueError as e:
-                print(f"\n❌ ERROR at Gauss point {xi_points[g]}: {e}")
-                print(f"Shapes: B.T={B.T.shape}, D={D.shape}, B={B.shape}")
+                #print(f"\n❌ ERROR at Gauss point {xi_points[g]}: {e}")
+                #print(f"Shapes: B.T={B.T.shape}, D={D.shape}, B={B.shape}")
                 raise e  # Re-raise error for debugging
 
         # Assemble final element stiffness matrix using block structure
@@ -322,10 +324,9 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         Ke[6:, 6:] = K22
 
         # Debug print for final assembled matrix
-        print("\nFinal element stiffness matrix Ke:\n", Ke)
+        #print("\nFinal element stiffness matrix Ke:\n", Ke)
 
         return Ke
-
 
     def element_force_vector(self) -> np.ndarray:
         """Compute the element force vector considering all loads"""

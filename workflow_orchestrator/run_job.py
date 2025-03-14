@@ -33,16 +33,42 @@ from processing.solver_registry import get_solver_registry
 from simulation_runner.static.static_simulation import StaticSimulationRunner
 from pre_processing.element_library.element_factory import create_elements_batch
 
-# Configure logging
-log_file_path = os.path.join(script_dir, "run_job.log")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(log_file_path, mode="a")
-    ]
-)
+# Configure logging for the main process
+def configure_logging(log_file_path):
+    """
+    Configures logging for the application.
+    """
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(),  # Print logs to the terminal
+            logging.FileHandler(log_file_path, mode="w")  # Overwrite logs in the file
+        ]
+    )
+    logger = logging.getLogger(__name__)
+    logger.propagate = False  # Disable propagation to avoid duplicate logs
+    return logger
+
+# Helper function to configure logging in child processes
+def configure_child_logging(job_results_dir):
+    """
+    Configures logging for a child process.
+    """
+    log_file_path = os.path.join(job_results_dir, "process_job.log")
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    # Clear existing handlers to avoid duplication
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+
+    # Add new handlers
+    file_handler = logging.FileHandler(log_file_path, mode="w")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(file_handler)
+
+    return logger
 
 def get_machine_specs():
     """Returns system specifications as a formatted string."""
@@ -69,21 +95,18 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
     Records performance metrics for each modular step and saves results in a structured directory.
     """
     case_name = os.path.basename(job_dir)
-    logging.info(f"\n🟢 Starting job: {case_name}")
+    job_results_dir = os.path.join(fem_model_root, 'post_processing', 'results', f"{case_name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}")
+    os.makedirs(job_results_dir, exist_ok=True)
+
+    # Configure logging for this process
+    logger = configure_child_logging(job_results_dir)
+    logger.info(f"🟢 Starting job: {case_name}")
 
     start_time = time.time()
     usage_start = track_usage()
 
-    # Create a unique top-level job directory with a timestamp
-    job_timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    job_results_dir = os.path.join(fem_model_root, 'post_processing', 'results', f"{case_name}_{job_timestamp}")
-    os.makedirs(job_results_dir, exist_ok=True)
-    
     # Performance log saved in the job folder
     performance_log_path = os.path.join(job_results_dir, "job_performance.log")
-
-    # Note: We do NOT create "primary_results" or "secondary_results" here.
-    # The StaticSimulationRunner will do that if we pass job_results_dir as `output_dir`.
 
     performance_data = [["Step", "Time (s)", "Memory (MB)", "Disk (GB)", "CPU (%)"]]
 
@@ -131,12 +154,12 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
         all_elements = create_elements_batch(mesh_dictionary, params_list)
 
         if any(elem is None for elem in all_elements):
-            logging.error(f"❌ Error: Some elements failed to instantiate in {case_name}.")
+            logger.error(f"❌ Error: Some elements failed to instantiate in {case_name}.")
             raise ValueError(f"❌ Invalid elements detected in {case_name}.")
         element_creation_time = time.time() - step_start
         performance_data.append(["Element Instantiation", element_creation_time, *track_usage().values()])
 
-        # --- Element-Wise Computations ---per
+        # --- Element-Wise Computations ---
         # 1) Compute element stiffness matrices
         step_start = time.time()
         vectorized_stiffness = np.vectorize(lambda elem: elem.element_stiffness_matrix() if elem else None, otypes=[object])
@@ -152,7 +175,7 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
         performance_data.append(["Element Force Computation", force_time, *track_usage().values()])
 
         if any(e is None for e in all_elements):
-            logging.error(f"❌ Error: Some elements are None in {case_name}.")
+            logger.error(f"❌ Error: Some elements are None in {case_name}.")
             raise ValueError(f"❌ Invalid elements detected in {case_name}.")
 
         # --- Create Simulation Runner Instance ---
@@ -206,18 +229,6 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
         save_primary_time = time.time() - step_start
         performance_data.append(["Save Primary Results", save_primary_time, *track_usage().values()])
 
-        # 7) (Optional) Compute Secondary Results
-        # step_start = time.time()
-        # runner.compute_secondary_results()
-        # secondary_compute_time = time.time() - step_start
-        # performance_data.append(["Compute Secondary Results", secondary_compute_time, *track_usage().values()])
-
-        # 8) (Optional) Save Secondary Results -- pass the same job folder
-        # step_start = time.time()
-        # runner.save_secondary_results(output_dir=job_results_dir)
-        # secondary_save_time = time.time() - step_start
-        # performance_data.append(["Save Secondary Results", secondary_save_time, *track_usage().values()])
-
         # --- Final Job Tracking ---
         end_time = time.time()
         usage_end = track_usage()
@@ -232,7 +243,7 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
         with open(performance_log_path, "w") as f:
             f.write(get_machine_specs() + "\n")
             f.write(f"Job: {case_name}\n")
-            f.write(f"Timestamp (job start): {job_timestamp}\n")
+            f.write(f"Timestamp (job start): {datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}\n")
             f.write(f"Total Time: {end_time - start_time:.2f} sec\n\n")
             f.write(tabulate(performance_data, headers="firstrow", tablefmt="grid") + "\n\n")
             f.write(f"Parallel Jobs: {', '.join(parallel_jobs) if parallel_jobs else 'None'}\n")
@@ -241,34 +252,36 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
             f.write(f"Start CPU: {usage_start['CPU (%)']:.2f}% | End CPU: {usage_end['CPU (%)']:.2f}%\n")
 
     except Exception as e:
-        logging.error(f"❌ Error in job {case_name}: {e}", exc_info=True)
+        logger.error(f"❌ Error in job {case_name}: {e}", exc_info=True)
 
 def main():
     """
     Manages and runs multiple FEM simulation jobs in parallel.
-    Loads base settings once and merges them with job-specific settings.
     """
-    logging.info("🚀 Starting FEM Simulation Workflow")
+    # Configure logging for the main process
+    log_file_path = os.path.join(script_dir, "run_job.log")
+    logger = configure_logging(log_file_path)
+    logger.info("🚀 Starting FEM Simulation Workflow")
 
     jobs_dir = os.path.join(fem_model_root, 'jobs')
     base_dir = os.path.join(jobs_dir, "base")
     job_dirs = [d for d in glob.glob(os.path.join(jobs_dir, 'job_*')) if os.path.isdir(d)]
     
     if not job_dirs:
-        logging.warning("⚠️ No job directories found.")
+        logger.warning("⚠️ No job directories found.")
         return
 
     # Load base settings ONCE
-    logging.info("📥 Loading base settings...")
+    logger.info("📥 Loading base settings...")
     base_settings = {
         "geometry": parse_geometry(os.path.join(base_dir, "geometry.txt")),
         "material": parse_material(os.path.join(base_dir, "material.txt")),
         "solver": parse_solver(os.path.join(base_dir, "solver.txt")),
     }
-    logging.info("✅ Base settings loaded successfully.")
+    logger.info("✅ Base settings loaded successfully.")
 
     num_processes = min(mp.cpu_count(), len(job_dirs))
-    logging.info(f"🟢 Running {len(job_dirs)} jobs across {num_processes} CPU cores.")
+    logger.info(f"🟢 Running {len(job_dirs)} jobs across {num_processes} CPU cores.")
 
     with mp.Manager() as manager:
         job_times = manager.dict()

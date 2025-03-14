@@ -27,7 +27,7 @@ def apply_boundary_conditions(K_global, F_global):
     F_mod = np.asarray(F_global).flatten()
 
     # Define a large penalty value to effectively fix the DOFs.
-    large_penalty = 1e12  
+    large_penalty = 1e36  
 
     # Define fixed DOFs: fix the first 6 degrees of freedom (indices 0 through 5)
     fixed_dofs = np.arange(6)

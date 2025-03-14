@@ -16,6 +16,7 @@ from processing.static.disassembly import disassemble_global_matrices
 from processing.static.solver import solve_fem_system
 from simulation_runner.static.linear_static_diagnostic import log_system_diagnostics
 
+# Configure logging for this module
 logger = logging.getLogger(__name__)
 
 class StaticSimulationRunner:
@@ -45,6 +46,7 @@ class StaticSimulationRunner:
         self.mesh_dictionary = self.settings.get("mesh_dictionary", {})
 
         if self.elements.size == 0 or not self.mesh_dictionary:
+            logger.error("❌ Error: Missing elements or mesh data in settings!")
             raise ValueError("❌ Error: Missing elements or mesh data in settings!")
 
         self.solver_name = self.settings.get("solver_name", None)
@@ -82,24 +84,11 @@ class StaticSimulationRunner:
     # -------------------------------------------------------------------------
     # 1) ASSEMBLE GLOBAL MATRICES
     # -------------------------------------------------------------------------
+    
     def assemble_global_matrices(self, job_results_dir):
         """
         Assembles the global stiffness matrix (K_global) and force vector (F_global).
-
-        Steps:
-        1) Compute total DOFs.
-        2) Assemble K_global and F_global from element data.
-        3) Validate and log the assembled system.
-
-        Parameters:
-            job_results_dir (str): Directory for logging results.
-
-        Returns:
-            Tuple[csr_matrix, np.ndarray]:
-                - K_global: Assembled global stiffness matrix (CSR format).
-                - F_global: Assembled global force vector (1D NumPy array).
         """
-
         logger.info("🔧 Assembling global stiffness and force matrices...")
 
         # Compute total degrees of freedom (DOFs)
@@ -112,10 +101,12 @@ class StaticSimulationRunner:
                 elements=self.elements,
                 element_stiffness_matrices=self.element_stiffness_matrices,
                 element_force_vectors=self.element_force_vectors,
-                total_dof=total_dof
+                total_dof=total_dof,
+                job_results_dir=job_results_dir  # Pass job_results_dir
             )
 
             if K_global is None or F_global is None:
+                logger.error("❌ Error: Global matrices could not be assembled!")
                 raise ValueError("❌ Error: Global matrices could not be assembled!")
 
             # Ensure F_global is a flattened 1D array
@@ -131,8 +122,7 @@ class StaticSimulationRunner:
             raise
 
         return K_global, F_global
-
-
+    
     # -------------------------------------------------------------------------
     # 2) MODIFY GLOBAL MATRICES (BOUNDARY CONDITIONS)
     # -------------------------------------------------------------------------
@@ -216,6 +206,7 @@ class StaticSimulationRunner:
             active_dofs, inactive_dofs, K_cond, F_cond = condensation(K_mod, F_mod, fixed_dofs, tol=1e-12)
 
             if K_cond.shape[0] == 0 or F_cond.shape[0] == 0:
+                logger.error("❌ Condensed system is empty! Possible over-constrained system.")
                 raise ValueError("❌ Condensed system is empty! Possible over-constrained system.")
 
             # Log system diagnostics

@@ -25,7 +25,7 @@ def condensation(K_mod, F_mod, fixed_dofs, tol=1e-12):
 
     # PRIMARY CONDENSATION: Remove explicitly fixed DOFs (6 DOFs in this case)
     active_dofs = np.setdiff1d(np.arange(num_dofs), fixed_dofs)
-    print(f"Primary Condensation: {len(fixed_dofs)} fixed DOFs removed, {len(active_dofs)} remaining.")
+    #print(f"Primary Condensation: {len(fixed_dofs)} fixed DOFs removed, {len(active_dofs)} remaining.")
 
     # Extract intermediate system where fixed DOFs have been removed
     K_intermediate = K_mod[active_dofs, :][:, active_dofs]
@@ -41,7 +41,7 @@ def condensation(K_mod, F_mod, fixed_dofs, tol=1e-12):
 
     # Identify DOFs that were pruned
     inactive_dofs = np.setdiff1d(active_dofs, fully_active_dofs)
-    print(f"Secondary Condensation: {len(inactive_dofs)} additional DOFs removed. Final DOFs: {len(fully_active_dofs)}")
+    #print(f"Secondary Condensation: {len(inactive_dofs)} additional DOFs removed. Final DOFs: {len(fully_active_dofs)}")
 
     # SAFETY CHECK: Ensure non-trivial force remains after condensation
     if np.allclose(F_cond, 0, atol=tol):
