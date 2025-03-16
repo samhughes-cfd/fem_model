@@ -435,14 +435,14 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
                     # ✅ **Evaluate shape functions at load location**
                     N_p, _, _ = self.shape_functions(np.array([xi_p]))
 
-                    # ✅ **Separate translational (force) and rotational (moment) contributions**
-                    Fe_trans = np.einsum("ij,j->i", N_p[0, :, :3], F_p[:3])  # Translational (Fx, Fy, Fz)
-                    Fe_rot = np.einsum("ij,j->i", N_p[0, :, 3:], F_p[3:])  # Rotational moments (Mx, My, Mz)
+                    # ✅ **Use einsum for efficient multiplication**
+                    Fe_trans = np.einsum("ij,j->i", N_p[0, [0, 1, 2, 6, 7, 8], :3], F_p[:3])  # Translational
+                    Fe_rot = np.einsum("ij,j->i", N_p[0, [3, 4, 5, 9, 10, 11], 3:], F_p[3:])  # Rotational
 
                     # ✅ **Correct indexing for proper DOF allocation**
                     Fe[[0, 1, 2, 6, 7, 8]] += Fe_trans  # Apply translational contributions (u_x, u_y, u_z)
                     Fe[[3, 4, 5, 9, 10, 11]] += Fe_rot  # Apply rotational contributions (θ_x, θ_y, θ_z)
-
+                    
                     ## Enhanced debug logging for validation
                     self.logger.debug(f"\nPoint Load at x_p = {x_p:.6e} (xi_p = {xi_p:.6e})")
                     self.logger.debug(f"Point Load Vector (F_p): {F_p}")
