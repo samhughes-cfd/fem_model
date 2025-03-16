@@ -3,9 +3,20 @@
 import logging
 import numpy as np
 from scipy.sparse import coo_matrix
+from typing import Optional
+import os
 from pre_processing.element_library.element_factory import create_elements_batch
 
+# Configure Logger
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # Debug level logs go to `.log` file
+
+# Console Handler (Minimal terminal output)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)  # Terminal only shows key info/errors
+console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+console_handler.setFormatter(console_formatter)
+logger.addHandler(console_handler)
 
 
 class Element1DBase:
@@ -27,9 +38,11 @@ class Element1DBase:
             geometry_array (np.ndarray): Geometry properties.
             material_array (np.ndarray): Material properties.
             mesh_dictionary (dict): Mesh data including connectivity, element types, and node coordinates.
-            load_array (np.ndarray): External loads applied to the system.
+            point_load_array (np.ndarray): Point loads applied to the system.
+            distributed_load_array (np.ndarray): Distributed loads applied to the system.
             dof_per_node (int, optional): Degrees of freedom per node (default: 6).
         """
+        self.logger = logger  # Make the logger accessible to child classes
         logger.info("Initializing Element1DBase...")
 
         self.geometry_array = geometry_array
@@ -39,6 +52,26 @@ class Element1DBase:
         self.distributed_load_array = distributed_load_array
         self.dof_per_node = dof_per_node
         self.elements_instances = None
+
+    def configure_element_stiffness_logging(self, job_results_dir: Optional[str] = None):
+        """Configures logging for element stiffness matrix computations."""
+        if job_results_dir:
+            stiffness_log_path = os.path.join(job_results_dir, "element_stiffness_matrices.log")
+            file_handler = logging.FileHandler(stiffness_log_path, mode="a", encoding="utf-8")  # Append mode
+            file_handler.setLevel(logging.DEBUG)  # Full debugging goes here
+            file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            file_handler.setFormatter(file_formatter)
+            logger.addHandler(file_handler)
+
+    def configure_element_force_logging(self, job_results_dir: Optional[str] = None):
+        """Configures logging for element force vector computations."""
+        if job_results_dir:
+            force_log_path = os.path.join(job_results_dir, "element_force_vectors.log")
+            file_handler = logging.FileHandler(force_log_path, mode="a", encoding="utf-8")  # Append mode
+            file_handler.setLevel(logging.DEBUG)  # Full debugging goes here
+            file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            file_handler.setFormatter(file_formatter)
+            logger.addHandler(file_handler)
 
     def _instantiate_elements(self):
         """Updated element factory interface with proper parameters"""
@@ -90,23 +123,17 @@ class Element1DBase:
         element_index = np.where(self.mesh_dictionary["element_ids"] == element_id)[0][0]
         node_ids = self.mesh_dictionary["connectivity"][element_index]
 
-        #print(f"Element ID: {element_id}, Element Index: {element_index}, Node IDs: {node_ids}")
-
         global_dof_indices = []
         for node_id in node_ids:
             if node_id < 0:  # Node ID should never be negative
                 raise ValueError(f"Invalid node ID detected: {node_id} in element {element_id}")
 
-            # FIXED: Remove -1 since node_id already starts at 0
             start_dof = node_id * self.dof_per_node
             dof_indices = list(range(start_dof, start_dof + self.dof_per_node))
-
-            #print(f"Node {node_id}: Start DOF={start_dof}, DOF Indices={dof_indices}")
-
             global_dof_indices.extend(dof_indices)
 
-        return np.asarray(global_dof_indices, dtype=int) # Returns a NumPy int array
-    
+        return np.asarray(global_dof_indices, dtype=int)  # Returns a NumPy int array
+
     def validate_matrices(self):
         """Updated validation for sparse matrices"""
         expected_Ke_shape = (self.dof_per_node * 2, self.dof_per_node * 2)
@@ -123,7 +150,7 @@ class Element1DBase:
 
             if Ke.shape != expected_Ke_shape:
                 logger.error(f"Element {idx}: Invalid Ke shape {Ke.shape}")
-                
+
             if Fe.shape != expected_Fe_shape:
                 logger.error(f"Element {idx}: Invalid Fe shape {Fe.shape}")
 

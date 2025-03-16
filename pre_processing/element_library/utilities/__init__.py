@@ -8,7 +8,17 @@ from pre_processing.element_library.utilities.gauss_quadrature import get_gauss_
 from pre_processing.element_library.utilities.jacobian import compute_jacobian_matrix, compute_jacobian_determinant, general_jacobian_and_determinant
 
 # Define explicitly exported members
-__all__ = ["timoshenko_shape_functions", "euler_bernoulli_shape_functions",
-            "expand_stiffness_matrix", "expand_force_vector",
-            "get_gauss_points", "integrate_vector", "integrate_matrix",
-            "compute_jacobian_matrix", "compute_jacobian_determinant", "general_jacobian_and_determinant"]
+__all__ = [
+    "timoshenko_shape_functions", 
+    "euler_bernoulli_shape_functions",
+    "expand_stiffness_matrix", 
+    "expand_force_vector",
+    "get_gauss_points", 
+    "integrate_vector", 
+    "integrate_matrix",
+    "compute_jacobian_matrix", 
+    "compute_jacobian_determinant", 
+    "general_jacobian_and_determinant",
+    "format_tensor_for_logging",  # Corrected function name
+    "log_tensor"  # Added log_tensor to __all__
+]

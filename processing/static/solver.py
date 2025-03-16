@@ -8,129 +8,148 @@ import scipy.sparse as sp
 import matplotlib.pyplot as plt
 from processing.solver_registry import get_solver_registry
 
+# ✅ Configure module-level logging
 logger = logging.getLogger(__name__)
+
+def configure_solver_logging(job_results_dir):
+    """📜 Configures logging for solver performance, ensuring logs are stored in the results directory."""
+    os.makedirs(job_results_dir, exist_ok=True)
+    log_filepath = os.path.join(job_results_dir, "solver.log")
+
+    # 📝 Remove existing handlers to prevent duplicate logs
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
+    # 📂 File handler (detailed logs)
+    file_handler = logging.FileHandler(log_filepath, mode="w", encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(file_handler)
+
+    # 🖥️ Console handler (minimal logs)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(console_handler)
+
+    # 🎯 Set log level (Suppress excessive logs in terminal)
+    logger.setLevel(logging.INFO)
 
 def solve_fem_system(K_mod, F_mod, solver_name, job_results_dir):
     """
-    Solves the FEM system for nodal displacements using the selected solver,
-    logs solver-specific performance, and generates performance plots.
+    🚀 Solves the FEM system for nodal displacements using the selected solver.
 
-    Args:
-        K_mod (scipy.sparse matrix or ndarray): The modified global stiffness matrix.
-        F_mod (numpy.ndarray): The modified global force vector.
-        solver_name (str): The name of the solver function to use.
-        job_results_dir (str): Directory where solver performance logs and plots are stored.
+    Logs solver-specific performance and generates diagnostic plots.
 
-    Returns:
-        numpy.ndarray: The computed nodal displacements.
+    **Parameters:**
+        🔹 `K_mod (csr_matrix)`: Modified global stiffness matrix.
+        🔹 `F_mod (np.ndarray)`: Modified global force vector.
+        🔹 `solver_name (str)`: Solver function name.
+        🔹 `job_results_dir (str)`: Directory for storing logs/plots.
 
-    Raises:
-        ValueError: If the solver name is not in the registry.
-        RuntimeError: If the solver fails to solve the system.
+    **Returns:**
+        ✅ Computed nodal displacements (`np.ndarray`), or `None` if solver fails.
     """
 
-    logger.info(f"Solving FEM system using `{solver_name}`.")
+    # 📝 Step 1: Configure logging
+    configure_solver_logging(job_results_dir)
+    log_filepath = os.path.join(job_results_dir, "solver.log")
 
-    # Ensure output directory exists
-    os.makedirs(job_results_dir, exist_ok=True)
-    log_filepath = os.path.join(job_results_dir, "solver_performance.log")
+    logger.info(f"🔹 Solving FEM system using `{solver_name}`...")
 
-    # Get registered solver
+    # 🔎 Step 2: Retrieve solver function from registry
     solver_registry = get_solver_registry()
     if solver_name not in solver_registry:
-        raise ValueError(f"Solver '{solver_name}' is not registered.")
+        logger.error(f"❌ Solver `{solver_name}` is not registered.")
+        raise ValueError(f"Solver `{solver_name}` is not registered.")
 
     solver_func = solver_registry[solver_name]
 
-    # Check if K_mod is sparse
+    # 🏗️ Step 3: Matrix Properties Logging
     is_sparse = sp.issparse(K_mod)
+    nnz = K_mod.nnz if is_sparse else np.count_nonzero(K_mod)
+    sparsity_ratio = 1 - (nnz / (K_mod.shape[0] * K_mod.shape[1]))
 
     with open(log_filepath, 'a', encoding="utf-8") as log_file:
-        log_file.write("\n" + "-" * 60 + "\n")
-        log_file.write(f"### Solver Performance: {solver_name}\n")
+        log_file.write(f"\n🔍 Matrix Properties:\n")
+        log_file.write(f"   - Shape: {K_mod.shape}\n")
+        log_file.write(f"   - Sparsity: {sparsity_ratio:.4%}\n")
+        log_file.write(f"   - Nonzero Entries: {nnz}\n")
 
-        # Compute condition number if feasible
+    # 📊 Step 4: Compute Condition Number (if feasible)
+    cond_number = None
+    if is_sparse:
         try:
-            cond_number = np.linalg.cond(K_mod.toarray()) if is_sparse else np.linalg.cond(K_mod)
-            log_file.write(f"🔹 Condition Number: {cond_number:.2e}\n")
-            if cond_number > 1e10:
-                log_file.write("⚠️  High condition number detected: Consider preconditioning.\n")
+            cond_number = np.linalg.cond(K_mod.toarray())
+            logger.info(f"📊 Condition Number: {cond_number:.2e}")
+            with open(log_filepath, 'a', encoding="utf-8") as log_file:
+                log_file.write(f"   - Condition Number: {cond_number:.2e}\n")
         except np.linalg.LinAlgError:
-            log_file.write("⚠️  Condition number could not be computed (singular matrix)\n")
-            cond_number = None  # Prevents plotting issues
+            logger.warning("⚠️ Condition number could not be computed (singular matrix).")
 
-        # Solve system and measure time
-        start_time = time.time()
-        try:
-            U = solver_func(K_mod, F_mod)
-            solve_time = time.time() - start_time
-            log_file.write(f"✅ Solver completed in {solve_time:.6f} seconds\n")
-        except Exception as e:
-            solve_time = time.time() - start_time
-            log_file.write(f"❌ Solver failed after {solve_time:.6f} seconds\n")
-            log_file.write(f"⚠️ Error: {str(e)}\n")
-            return None  # Exit early on failure
+    # ⏳ Step 5: Solve System
+    start_time = time.time()
+    try:
+        U = solver_func(K_mod, F_mod)
+        solve_time = time.time() - start_time
+        logger.info(f"✅ Solver completed in {solve_time:.6f} seconds.")
+    except Exception as e:
+        solve_time = time.time() - start_time
+        logger.error(f"❌ Solver failed after {solve_time:.6f} seconds. Error: {e}")
+        return None  # Return None to indicate failure
 
-        # --- Iterative Solver Details ---
-        num_iterations = None
-        residual_norm = None
-        residuals = []
+    # 📈 Step 6: Extract Solver Metadata
+    num_iterations, residual_norm, residuals = extract_solver_metadata(U)
 
-        if hasattr(U, 'info'):  # Solvers returning iteration data
-            num_iterations = U.info
-        elif isinstance(U, tuple) and len(U) == 2:  # Solvers returning (U, info)
-            U, num_iterations = U
-        elif isinstance(U, tuple) and len(U) == 3:  # Solvers returning (U, info, residuals)
-            U, num_iterations, residuals = U
-            residual_norm = residuals[-1] if residuals else None
-
-        # Log iteration count if applicable
+    with open(log_filepath, 'a', encoding="utf-8") as log_file:
+        log_file.write(f"\n🔍 Solver Execution Summary:\n")
+        log_file.write(f"   - Solver Execution Time: {solve_time:.6f} sec\n")
         if num_iterations is not None:
-            log_file.write(f"🔄 Iterations: {num_iterations}\n")
-            if num_iterations > 1000:
-                log_file.write("⚠️  Warning: Solver required many iterations. Consider preconditioning.\n")
-        else:
-            log_file.write("ℹ️  Solver did not report iterations (direct solver assumed)\n")
-
-        # Log residual norm if available
+            log_file.write(f"   - Iterations: {num_iterations}\n")
         if residual_norm is not None:
-            log_file.write(f"📌 Final Residual Norm: {residual_norm:.4e}\n")
-            if residual_norm > 1e-6:
-                log_file.write("⚠️  Residual is large, check convergence criteria.\n")
+            log_file.write(f"   - Final Residual Norm: {residual_norm:.4e}\n")
 
-        # Log residual history for iterative solvers
-        if residuals:
-            log_file.write("📈 Residual History:\n")
-            for i, res in enumerate(residuals[:10]):  # Limit to first 10 residuals
-                log_file.write(f"   Iter {i+1}: {res:.4e}\n")
-            if len(residuals) > 10:
-                log_file.write(f"   ... ({len(residuals)} total iterations)\n")
+    # 📉 Step 7: Log Residual Drop Analysis (If iterative solver)
+    if residuals:
+        initial_residual = residuals[0]
+        final_residual = residuals[-1]
+        reduction_factor = final_residual / initial_residual
+        log_reduction = np.log10(reduction_factor) if reduction_factor > 0 else None
 
-        # Generate Performance Plots
-        plot_solver_performance(
-            solver_name, residuals, solve_time, cond_number, num_iterations, job_results_dir
-        )
+        with open(log_filepath, 'a', encoding="utf-8") as log_file:
+            log_file.write(f"\n🔍 Residual Convergence:\n")
+            log_file.write(f"   - Initial Residual: {initial_residual:.4e}\n")
+            log_file.write(f"   - Final Residual: {final_residual:.4e}\n")
+            if log_reduction:
+                log_file.write(f"   - Log Reduction: {log_reduction:.2f} orders of magnitude\n")
 
-        # Log successful completion
-        log_file.write("✅ Solver execution successful\n")
+    # 📊 Step 8: Generate Solver Diagnostic Plots
+    plot_solver_performance(solver_name, residuals, solve_time, cond_number, num_iterations, job_results_dir)
 
-        return U  # Return computed displacements
+    logger.info("✅ Solver execution successful.")
+    return U  # Return computed displacements
 
+def extract_solver_metadata(U):
+    """🔎 Extracts solver metadata like iteration count and residual norms if available."""
+    num_iterations = None
+    residual_norm = None
+    residuals = []
+
+    if hasattr(U, 'info'):
+        num_iterations = U.info
+    elif isinstance(U, tuple) and len(U) == 2:
+        U, num_iterations = U
+    elif isinstance(U, tuple) and len(U) == 3:
+        U, num_iterations, residuals = U
+        residual_norm = residuals[-1] if residuals else None
+
+    return num_iterations, residual_norm, residuals
 
 def plot_solver_performance(solver_name, residuals, solve_time, cond_number, num_iterations, job_results_dir):
     """
-    Generates and saves performance plots for solver convergence behavior.
-
-    Args:
-        solver_name (str): Name of the solver.
-        residuals (list): Residual values at each iteration.
-        solve_time (float): Solver execution time.
-        cond_number (float): Condition number of the matrix.
-        num_iterations (int or None): Iteration count (if applicable).
-        job_results_dir (str): Directory to save plots.
+    📊 Generates and saves performance plots for solver convergence behavior.
     """
 
-    # Residual History Plot (Only if iterative solver)
+    # 📈 Residual History Plot (If iterative solver)
     if residuals:
         plt.figure(figsize=(6, 4))
         plt.semilogy(range(1, len(residuals) + 1), residuals, marker="o", linestyle="-", color="blue")
@@ -141,11 +160,11 @@ def plot_solver_performance(solver_name, residuals, solve_time, cond_number, num
         plt.savefig(os.path.join(job_results_dir, "residual_history.png"))
         plt.close()
 
-    # Solver Performance Summary Plot
+    # 📊 Solver Performance Summary Plot
     plt.figure(figsize=(6, 4))
     metrics = ["Solve Time (s)", "Condition Number", "Iterations"]
     values = [solve_time, cond_number if cond_number else 0, num_iterations if num_iterations else 0]
-    
+
     plt.bar(metrics, values, color=["green", "red", "blue"])
     plt.ylabel("Value (log scale)")
     plt.yscale("log")

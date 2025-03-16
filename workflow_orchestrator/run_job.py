@@ -43,14 +43,13 @@ def configure_logging(log_file_path):
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
             logging.StreamHandler(),  # Print logs to the terminal
-            logging.FileHandler(log_file_path, mode="w")  # Overwrite logs in the file
+            logging.FileHandler(log_file_path, mode="w", encoding="utf-8")  # Use UTF-8 encoding
         ]
     )
     logger = logging.getLogger(__name__)
     logger.propagate = False  # Disable propagation to avoid duplicate logs
     return logger
 
-# Helper function to configure logging in child processes
 def configure_child_logging(job_results_dir):
     """
     Configures logging for a child process.
@@ -63,8 +62,8 @@ def configure_child_logging(job_results_dir):
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
 
-    # Add new handlers
-    file_handler = logging.FileHandler(log_file_path, mode="w")
+    # Add new handlers with UTF-8 encoding
+    file_handler = logging.FileHandler(log_file_path, mode="w", encoding="utf-8")
     file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
     logger.addHandler(file_handler)
 
@@ -162,14 +161,14 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
         # --- Element-Wise Computations ---
         # 1) Compute element stiffness matrices
         step_start = time.time()
-        vectorized_stiffness = np.vectorize(lambda elem: elem.element_stiffness_matrix() if elem else None, otypes=[object])
+        vectorized_stiffness = np.vectorize(lambda elem: elem.element_stiffness_matrix(job_results_dir) if elem else None, otypes=[object])  # Pass job_results_dir
         element_stiffness_matrices = vectorized_stiffness(all_elements)
         stiffness_time = time.time() - step_start
         performance_data.append(["Element Stiffness Computation", stiffness_time, *track_usage().values()])
 
         # 2) Compute element force vectors
         step_start = time.time()
-        vectorized_force = np.vectorize(lambda elem: elem.element_force_vector() if elem else None, otypes=[object])
+        vectorized_force = np.vectorize(lambda elem: elem.element_force_vector(job_results_dir) if elem else None, otypes=[object])  # Pass job_results_dir
         element_force_vectors = vectorized_force(all_elements)
         force_time = time.time() - step_start
         performance_data.append(["Element Force Computation", force_time, *track_usage().values()])

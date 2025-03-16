@@ -9,7 +9,9 @@ from scipy.sparse import coo_matrix
 # tensor manipulation
 from processing.static.assembly import assemble_global_matrices
 from processing.static.boundary_conditions import apply_boundary_conditions
-from processing.static.static_condensation import condensation, reconstruction
+from processing.static.condensation import condensation
+from processing.static.solver import solve_fem_system
+from processing.static.reconstruction import reconstruction
 from processing.static.disassembly import disassemble_global_matrices
 
 # solving and diagnostic logging
@@ -126,7 +128,7 @@ class StaticSimulationRunner:
     # -------------------------------------------------------------------------
     # 2) MODIFY GLOBAL MATRICES (BOUNDARY CONDITIONS)
     # -------------------------------------------------------------------------
-    
+
     def modify_global_matrices(self, K_global, F_global, job_results_dir):
         """
         Applies boundary conditions to the global system and logs diagnostics.
@@ -150,13 +152,13 @@ class StaticSimulationRunner:
         logger.info("🔒 Applying boundary conditions to global matrices...")
 
         try:
-            # Apply boundary conditions using the penalty method
-            K_mod, F_mod, bc_dofs = apply_boundary_conditions(K_global.copy(), F_global.copy())
+            # ✅ Apply boundary conditions with job_results_dir for logging
+            K_mod, F_mod, bc_dofs = apply_boundary_conditions(K_global.copy(), F_global.copy(), job_results_dir=job_results_dir)
 
-            # Ensure modified force vector is correctly formatted
+            # ✅ Ensure modified force vector is correctly formatted
             F_mod = np.asarray(F_mod).flatten()
 
-            # Log diagnostics after applying boundary conditions
+            # ✅ Log diagnostics after applying boundary conditions (only in .log file)
             log_system_diagnostics(K_mod, F_mod, bc_dofs=bc_dofs, job_results_dir=job_results_dir, label="Modified System")
 
             logger.info("✅ Boundary conditions successfully applied!")
@@ -192,10 +194,6 @@ class StaticSimulationRunner:
                 - K_cond: Condensed stiffness matrix after removing inactive DOFs.
                 - F_cond: Condensed force vector.
                 - U_cond: Solution of the condensed system.
-
-        Raises:
-            ValueError: If condensation leads to an empty system.
-            ValueError: If solver returns a zero displacement vector.
         """
 
         logger.info(f"🔹 Solving FEM system using static condensation with `{self.solver_name}`.")
@@ -203,13 +201,15 @@ class StaticSimulationRunner:
         # 1️⃣ **Perform Static Condensation**
         try:
             logger.info("🔹 Performing static condensation...")
-            active_dofs, inactive_dofs, K_cond, F_cond = condensation(K_mod, F_mod, fixed_dofs, tol=1e-12)
+        
+            # ✅ `condensation()` now accepts `job_results_dir`
+            active_dofs, inactive_dofs, K_cond, F_cond = condensation(K_mod, F_mod, fixed_dofs, job_results_dir, tol=1e-12)
 
             if K_cond.shape[0] == 0 or F_cond.shape[0] == 0:
                 logger.error("❌ Condensed system is empty! Possible over-constrained system.")
                 raise ValueError("❌ Condensed system is empty! Possible over-constrained system.")
 
-            # Log system diagnostics
+            # ✅ Log system diagnostics in .log file only
             log_system_diagnostics(K_cond, F_cond, bc_dofs=fixed_dofs, job_results_dir=job_results_dir, label="Condensed System")
 
         except Exception as e:
@@ -219,6 +219,8 @@ class StaticSimulationRunner:
         # 2️⃣ **Solve the Condensed System**
         try:
             logger.info("🔹 Solving the reduced system...")
+
+            # ✅ `solve_fem_system()` handles its own .log file
             U_cond = solve_fem_system(K_cond, F_cond, self.solver_name, job_results_dir)
 
             if U_cond is None or np.allclose(U_cond, 0, atol=1e-12):
@@ -232,8 +234,11 @@ class StaticSimulationRunner:
         # 3️⃣ **Reconstruct the Full Displacement Vector**
         try:
             logger.info("🔹 Reconstructing the full displacement vector...")
-            U_global = reconstruction(active_dofs, U_cond, K_mod.shape[0])
-            logger.info(f"✅ Displacement vector computed: {U_global}")
+
+            # ✅ `reconstruction()` now accepts `job_results_dir`
+            U_global = reconstruction(active_dofs, U_cond, K_mod.shape[0], job_results_dir)
+
+            logger.info("✅ Displacement vector computed.")
         except Exception as e:
             logger.error(f"❌ Error during displacement reconstruction: {e}")
 

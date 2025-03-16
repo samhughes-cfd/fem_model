@@ -1,167 +1,127 @@
-"""
-processing/assembly.py
-
-Assembles the global stiffness matrix and force vector for static FEM problems.
-"""
-
 import numpy as np
+import pandas as pd
 from scipy.sparse import coo_matrix, csr_matrix
 from typing import List, Tuple, Optional
 import logging
 import os
 
-# Configure logging at the module level
+# ✅ Configure Logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)  # Debug level logs go to `.log` file
 
-# Create a console handler to print logs to the terminal
+# ✅ Console Handler (Minimal terminal output)
 console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+console_handler.setLevel(logging.INFO)  # Terminal only shows key info/errors
+console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+console_handler.setFormatter(console_formatter)
 logger.addHandler(console_handler)
 
 def configure_assembly_logging(job_results_dir: Optional[str] = None):
-    """
-    Configures logging to write to a file if `job_results_dir` is provided.
+    """Configures logging to write detailed logs to a file while suppressing terminal output."""
+    logger = logging.getLogger(__name__)
+    logger.handlers.clear()  # Remove existing handlers to prevent duplicate logs
+    logger.setLevel(logging.DEBUG)  # Full logs go to file
 
-    Args:
-        job_results_dir (Optional[str]): Directory to save the assembly log file.
-    """
+    # ✅ File Handler (Detailed logs)
     if job_results_dir:
         assembly_log_path = os.path.join(job_results_dir, "assembly.log")
-        file_handler = logging.FileHandler(assembly_log_path, mode="w")
-        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        file_handler = logging.FileHandler(assembly_log_path, mode="w", encoding="utf-8")
+        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+        file_handler.setLevel(logging.DEBUG)  # Capture all logs in the file
         logger.addHandler(file_handler)
+
+    # ✅ Console Handler (Suppress detailed output)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.CRITICAL)  # Only show CRITICAL messages in the terminal
+    logger.addHandler(console_handler)
 
 def assemble_global_matrices(
     elements: List[object], 
     element_stiffness_matrices: Optional[List[coo_matrix]] = None, 
     element_force_vectors: Optional[List[np.ndarray]] = None, 
     total_dof: int = None,
-    job_results_dir: str = None  # Add job_results_dir as an optional argument
+    job_results_dir: str = None  
 ) -> Tuple[csr_matrix, np.ndarray]:
-    """
-    Assembles the global stiffness matrix (K_global) and force vector (F_global) for a static FEM problem.
+    """Assembles the global stiffness matrix and force vector while keeping terminal output minimal."""
 
-    Args:
-        elements (List[object]): 
-            List of element objects implementing `assemble_global_dof_indices()`, returning a NumPy array of DOF indices.
-        element_stiffness_matrices (Optional[List[coo_matrix]], default=None): 
-            List of sparse COO matrices for element stiffness.
-        element_force_vectors (Optional[List[np.ndarray]], default=None): 
-            List of 1D NumPy arrays for element force vectors.
-        total_dof (int): 
-            Total number of degrees of freedom in the system.
-        job_results_dir (str): 
-            Directory to save the assembly log file.
-
-    Returns:
-        Tuple[csr_matrix, np.ndarray]: 
-            - `K_global` (csr_matrix): Global stiffness matrix.
-            - `F_global` (np.ndarray): Global force vector.
-    """
-    # Configure logging to write to a file if `job_results_dir` is provided
     configure_assembly_logging(job_results_dir)
 
-    # Log input parameters
-    logger.info("🔧 Starting assembly of global matrices...")
-    logger.info(f"Number of elements: {len(elements)}")
-    logger.info(f"Total DOFs: {total_dof}")
-    logger.info(f"Element stiffness matrices provided: {element_stiffness_matrices is not None}")
-    logger.info(f"Element force vectors provided: {element_force_vectors is not None}")
+    logger.info("🔧 Starting global matrix assembly...")
+    logger.debug("This detailed log is written to the assembly.log file")
 
     if len(elements) == 0:
-        logger.error("❌ Error: elements list is empty, cannot assemble global matrices.")
-        raise ValueError("❌ Error: elements list is empty, cannot assemble global matrices.")
-    
+        logger.error("❌ No elements provided. Assembly aborted.")
+        raise ValueError("❌ Error: elements list is empty.")
+
     if total_dof is None:
-        logger.error("❌ Error: total_dof must be specified.")
+        logger.error("❌ total_dof must be specified. Assembly aborted.")
         raise ValueError("❌ Error: total_dof must be specified.")
 
-    # ✅ Create DOF mappings as a NumPy integer array
-    logger.info("🔧 Creating DOF mappings...")
-    dof_mappings = np.array(
-        [np.array(element.assemble_global_dof_indices(element.element_id), dtype=int) for element in elements]
-    )
+    logger.info(f"Total DOFs: {total_dof}, Elements count: {len(elements)}")
 
-    # Log DOF mappings
-    logger.info("DOF mappings for each element:")
-    for i, dof_map in enumerate(dof_mappings):
-        logger.info(f"Element {i}: DOF mapping = {dof_map}")
+    # ✅ Create DOF mappings
+    try:
+        dof_mappings = np.array([
+            np.array(element.assemble_global_dof_indices(element.element_id), dtype=int) for element in elements
+        ])
+    except AttributeError as e:
+        logger.error(f"❌ Invalid elements provided. {e}")
+        raise ValueError("Invalid elements list. Ensure each element has `assemble_global_dof_indices` method.") from e
 
-    if dof_mappings.size == 0:
-        logger.error("❌ Error: dof_mappings array is empty, no DOF indices available!")
-        raise ValueError("❌ Error: dof_mappings array is empty, no DOF indices available!")
+    # 🔍 Log DOF mappings (Only in `.log` file)
+    if job_results_dir:
+        log_file_logger = logging.getLogger(__name__)
+        for handler in log_file_logger.handlers:
+            if isinstance(handler, logging.FileHandler):
+                log_file_logger = handler
+                break
+        log_file_logger.setLevel(logging.DEBUG)
+        
+        log_file_logger.stream.write("\nDOF mappings per element:\n")
+        for i, dof_map in enumerate(dof_mappings):
+            log_file_logger.stream.write(f"Element {i}: DOF mapping = {dof_map}\n")
 
-    # ✅ Create stiffness matrix in sparse CSR format
+    # ✅ Assemble global stiffness matrix
+    K_global = csr_matrix((total_dof, total_dof))
     if element_stiffness_matrices is not None:
-        logger.info("🔧 Assembling global stiffness matrix (K_global)...")
+        logger.info("🔧 Assembling global stiffness matrix...")
         Ke_list = np.array(element_stiffness_matrices, dtype=object)
-        num_entries = sum(Ke.nnz for Ke in Ke_list)
-
-        K_row = np.zeros(num_entries, dtype=int)
-        K_col = np.zeros(num_entries, dtype=int)
-        K_data = np.zeros(num_entries, dtype=float)
-
-        offset = 0
+        
+        K_entries = []
         for i, Ke in enumerate(Ke_list):
-            nnz = Ke.nnz
             dof_map = dof_mappings[i]
-            assert isinstance(dof_map, np.ndarray), f"dof_mappings[{i}] is not a NumPy array!"
-            assert np.issubdtype(dof_map.dtype, np.integer), f"dof_mappings[{i}] contains non-integer values!"
+            K_entries.append((dof_map[Ke.row], dof_map[Ke.col], Ke.data))
 
-            # Log Ke and DOF mapping for debugging
-            logger.info(f"Processing element {i}:")
-            logger.info(f"  - DOF mapping: {dof_map}")
-            logger.info(f"  - Ke shape: {Ke.shape}")
-            logger.info(f"  - Ke non-zero entries: {Ke.nnz}")
-
-            K_row[offset:offset + nnz] = dof_map[Ke.row]
-            K_col[offset:offset + nnz] = dof_map[Ke.col]
-            K_data[offset:offset + nnz] = Ke.data
-            offset += nnz
-
-        # Log assembled K_global data
-        logger.info("Assembled K_global data:")
-        logger.info(f"  - K_row: {K_row}")
-        logger.info(f"  - K_col: {K_col}")
-        logger.info(f"  - K_data: {K_data}")
-
-        # ✅ Convert to CSR format directly for fast operations
+        K_row, K_col, K_data = map(np.hstack, zip(*K_entries))
         K_global = coo_matrix((K_data, (K_row, K_col)), shape=(total_dof, total_dof)).tocsr()
-        logger.info("✅ Global stiffness matrix (K_global) assembled successfully.")
-    else:
-        K_global = csr_matrix((total_dof, total_dof))
-        logger.info("✅ Empty global stiffness matrix (K_global) created.")
+        logger.info("✅ Stiffness matrix assembled.")
 
-    # ✅ Use a NumPy array for F_global to avoid SparseEfficiencyWarning
+    # ✅ Assemble force vector
     F_global = np.zeros(total_dof, dtype=np.float64)
-    logger.info(f"Initialized F_global with shape: {F_global.shape}")
+    logger.info("🔧 Assembling force vector...")
 
     if element_force_vectors is not None:
-        logger.info("🔧 Assembling global force vector (F_global)...")
         for i, Fe in enumerate(element_force_vectors):
             dof_map = dof_mappings[i]
-
-            # Log Fe and DOF mapping for debugging
-            logger.info(f"Processing element {i}:")
-            logger.info(f"  - DOF mapping: {dof_map}")
-            logger.info(f"  - Fe shape before flatten: {Fe.shape}")
-
-            # ✅ Ensure Fe is a 1D NumPy array
             Fe = np.array(Fe, dtype=np.float64).flatten()
-            logger.info(f"  - Fe shape after flatten: {Fe.shape}")
-
-            # ✅ Safe update operation: No shape mismatch
             F_global[dof_map] += Fe
-            logger.info(f"  - Updated F_global at DOFs: {dof_map}")
 
-        logger.info("✅ Global force vector (F_global) assembled successfully.")
+        logger.info("✅ Force vector assembled.")
 
-    # Log final K_global and F_global
-    logger.info("Final K_global and F_global:")
-    logger.info(f"K_global shape: {K_global.shape}")
-    logger.info(f"F_global shape: {F_global.shape}")
-    logger.info(f"K_global non-zero entries: {K_global.nnz}")
-    logger.info(f"F_global: {F_global}")
+    # ✅ Log structured outputs (Only in `.log` file)
+    if job_results_dir:
+        if total_dof <= 100:
+            df_K = pd.DataFrame(K_global.toarray(), index=range(total_dof), columns=range(total_dof))
+            df_F = pd.DataFrame(F_global, index=[f"DOF {i}" for i in range(total_dof)], columns=["Force"])
+            
+            # 🚀 Write full structured matrices to `.log`, NOT terminal!
+            log_file_logger.stream.write("\nFull K_global Matrix:\n" + df_K.to_string(float_format='%.4e') + "\n")
+            log_file_logger.stream.write("\nFull F_global Vector:\n" + df_F.to_string(float_format='%.4e') + "\n")
+        else:
+            # If large, log only non-zero entries
+            K_sparse_df = pd.DataFrame({'Row': K_global.row, 'Col': K_global.col, 'Value': K_global.data})
+            log_file_logger.stream.write("\nSparse K_global (DOF > 100):\n" + K_sparse_df.to_string(index=False) + "\n")
+
+    logger.info("✅ Assembly complete.")
 
     return K_global, F_global
