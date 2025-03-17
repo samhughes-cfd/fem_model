@@ -1,0 +1,198 @@
+2025-03-17 10:25:45,125 - DEBUG - 🔧 Beginning displacement reconstruction.
+2025-03-17 10:25:45,126 - DEBUG - 📌 Total DOFs in system: 66
+2025-03-17 10:25:45,126 - DEBUG - 📌 Condensed DOFs count: 60
+2025-03-17 10:25:45,127 - DEBUG - 📌 Active DOFs indices: [ 6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29
+ 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53
+ 54 55 56 57 58 59 60 61 62 63 64 65]
+2025-03-17 10:25:45,128 - DEBUG - 📐 Initialized global displacement array with zeros.
+2025-03-17 10:25:45,129 - DEBUG - Mapped condensed displacement U_cond[0] = 0.000000e+00 to global DOF 6.
+2025-03-17 10:25:45,129 - DEBUG - Mapped condensed displacement U_cond[1] = -2.245510e-10 to global DOF 7.
+2025-03-17 10:25:45,133 - DEBUG - Mapped condensed displacement U_cond[2] = 0.000000e+00 to global DOF 8.
+2025-03-17 10:25:45,134 - DEBUG - Mapped condensed displacement U_cond[3] = 0.000000e+00 to global DOF 9.
+2025-03-17 10:25:45,135 - DEBUG - Mapped condensed displacement U_cond[4] = -4.241518e-09 to global DOF 10.
+2025-03-17 10:25:45,135 - DEBUG - Mapped condensed displacement U_cond[5] = 0.000000e+00 to global DOF 11.
+2025-03-17 10:25:45,136 - DEBUG - Mapped condensed displacement U_cond[6] = 0.000000e+00 to global DOF 12.
+2025-03-17 10:25:45,137 - DEBUG - Mapped condensed displacement U_cond[7] = -7.035927e-10 to global DOF 13.
+2025-03-17 10:25:45,137 - DEBUG - Mapped condensed displacement U_cond[8] = 0.000000e+00 to global DOF 14.
+2025-03-17 10:25:45,138 - DEBUG - Mapped condensed displacement U_cond[9] = 0.000000e+00 to global DOF 15.
+2025-03-17 10:25:45,139 - DEBUG - Mapped condensed displacement U_cond[10] = -3.393208e-09 to global DOF 16.
+2025-03-17 10:25:45,139 - DEBUG - Mapped condensed displacement U_cond[11] = 0.000000e+00 to global DOF 17.
+2025-03-17 10:25:45,140 - DEBUG - Mapped condensed displacement U_cond[12] = 0.000000e+00 to global DOF 18.
+2025-03-17 10:25:45,140 - DEBUG - Mapped condensed displacement U_cond[13] = -1.131737e-09 to global DOF 19.
+2025-03-17 10:25:45,141 - DEBUG - Mapped condensed displacement U_cond[14] = 0.000000e+00 to global DOF 20.
+2025-03-17 10:25:45,142 - DEBUG - Mapped condensed displacement U_cond[15] = 0.000000e+00 to global DOF 21.
+2025-03-17 10:25:45,142 - DEBUG - Mapped condensed displacement U_cond[16] = -3.562903e-09 to global DOF 22.
+2025-03-17 10:25:45,143 - DEBUG - Mapped condensed displacement U_cond[17] = 0.000000e+00 to global DOF 23.
+2025-03-17 10:25:45,144 - DEBUG - Mapped condensed displacement U_cond[18] = 0.000000e+00 to global DOF 24.
+2025-03-17 10:25:45,145 - DEBUG - Mapped condensed displacement U_cond[19] = -1.570056e-09 to global DOF 25.
+2025-03-17 10:25:45,146 - DEBUG - Mapped condensed displacement U_cond[20] = 0.000000e+00 to global DOF 26.
+2025-03-17 10:25:45,147 - DEBUG - Mapped condensed displacement U_cond[21] = 0.000000e+00 to global DOF 27.
+2025-03-17 10:25:45,149 - DEBUG - Mapped condensed displacement U_cond[22] = -3.528799e-09 to global DOF 28.
+2025-03-17 10:25:45,149 - DEBUG - Mapped condensed displacement U_cond[23] = 0.000000e+00 to global DOF 29.
+2025-03-17 10:25:45,150 - DEBUG - Mapped condensed displacement U_cond[24] = 0.000000e+00 to global DOF 30.
+2025-03-17 10:25:45,151 - DEBUG - Mapped condensed displacement U_cond[25] = -2.006368e-09 to global DOF 31.
+2025-03-17 10:25:45,153 - DEBUG - Mapped condensed displacement U_cond[26] = 0.000000e+00 to global DOF 32.
+2025-03-17 10:25:45,154 - DEBUG - Mapped condensed displacement U_cond[27] = 0.000000e+00 to global DOF 33.
+2025-03-17 10:25:45,155 - DEBUG - Mapped condensed displacement U_cond[28] = -3.536444e-09 to global DOF 34.
+2025-03-17 10:25:45,156 - DEBUG - Mapped condensed displacement U_cond[29] = 0.000000e+00 to global DOF 35.
+2025-03-17 10:25:45,157 - DEBUG - Mapped condensed displacement U_cond[30] = 0.000000e+00 to global DOF 36.
+2025-03-17 10:25:45,158 - DEBUG - Mapped condensed displacement U_cond[31] = -2.442938e-09 to global DOF 37.
+2025-03-17 10:25:45,159 - DEBUG - Mapped condensed displacement U_cond[32] = 0.000000e+00 to global DOF 38.
+2025-03-17 10:25:45,161 - DEBUG - Mapped condensed displacement U_cond[33] = 0.000000e+00 to global DOF 39.
+2025-03-17 10:25:45,162 - DEBUG - Mapped condensed displacement U_cond[34] = -3.530795e-09 to global DOF 40.
+2025-03-17 10:25:45,163 - DEBUG - Mapped condensed displacement U_cond[35] = 0.000000e+00 to global DOF 41.
+2025-03-17 10:25:45,164 - DEBUG - Mapped condensed displacement U_cond[36] = 0.000000e+00 to global DOF 42.
+2025-03-17 10:25:45,165 - DEBUG - Mapped condensed displacement U_cond[37] = -2.880175e-09 to global DOF 43.
+2025-03-17 10:25:45,165 - DEBUG - Mapped condensed displacement U_cond[38] = 0.000000e+00 to global DOF 44.
+2025-03-17 10:25:45,166 - DEBUG - Mapped condensed displacement U_cond[39] = 0.000000e+00 to global DOF 45.
+2025-03-17 10:25:45,166 - DEBUG - Mapped condensed displacement U_cond[40] = -3.552524e-09 to global DOF 46.
+2025-03-17 10:25:45,168 - DEBUG - Mapped condensed displacement U_cond[41] = 0.000000e+00 to global DOF 47.
+2025-03-17 10:25:45,168 - DEBUG - Mapped condensed displacement U_cond[42] = 0.000000e+00 to global DOF 48.
+2025-03-17 10:25:45,169 - DEBUG - Mapped condensed displacement U_cond[43] = -3.313686e-09 to global DOF 49.
+2025-03-17 10:25:45,170 - DEBUG - Mapped condensed displacement U_cond[44] = 0.000000e+00 to global DOF 50.
+2025-03-17 10:25:45,171 - DEBUG - Mapped condensed displacement U_cond[45] = 0.000000e+00 to global DOF 51.
+2025-03-17 10:25:45,172 - DEBUG - Mapped condensed displacement U_cond[46] = -3.445184e-09 to global DOF 52.
+2025-03-17 10:25:45,172 - DEBUG - Mapped condensed displacement U_cond[47] = -0.000000e+00 to global DOF 53.
+2025-03-17 10:25:45,173 - DEBUG - Mapped condensed displacement U_cond[48] = 0.000000e+00 to global DOF 54.
+2025-03-17 10:25:45,174 - DEBUG - Mapped condensed displacement U_cond[49] = -3.765906e-09 to global DOF 55.
+2025-03-17 10:25:45,174 - DEBUG - Mapped condensed displacement U_cond[50] = 0.000000e+00 to global DOF 56.
+2025-03-17 10:25:45,175 - DEBUG - Mapped condensed displacement U_cond[51] = 0.000000e+00 to global DOF 57.
+2025-03-17 10:25:45,175 - DEBUG - Mapped condensed displacement U_cond[52] = -3.981622e-09 to global DOF 58.
+2025-03-17 10:25:45,176 - DEBUG - Mapped condensed displacement U_cond[53] = 0.000000e+00 to global DOF 59.
+2025-03-17 10:25:45,176 - DEBUG - Mapped condensed displacement U_cond[54] = 0.000000e+00 to global DOF 60.
+2025-03-17 10:25:45,177 - DEBUG - Mapped condensed displacement U_cond[55] = -4.124563e-09 to global DOF 61.
+2025-03-17 10:25:45,178 - DEBUG - Mapped condensed displacement U_cond[56] = -0.000000e+00 to global DOF 62.
+2025-03-17 10:25:45,178 - DEBUG - Mapped condensed displacement U_cond[57] = 0.000000e+00 to global DOF 63.
+2025-03-17 10:25:45,179 - DEBUG - Mapped condensed displacement U_cond[58] = -1.299484e-09 to global DOF 64.
+2025-03-17 10:25:45,179 - DEBUG - Mapped condensed displacement U_cond[59] = 0.000000e+00 to global DOF 65.
+2025-03-17 10:25:45,180 - INFO - ✅ Successfully mapped all condensed displacements back to global vector.
+2025-03-17 10:25:45,185 - DEBUG - 📝 Logged detailed DOF mapping.
+2025-03-17 10:25:45,191 - INFO - 📘 Reconstruction log updated with structured displacement data.
+10
+   2 →    8: 0.000000e+00
+   3 →    9: 0.000000e+00
+   4 →   10: -4.241518e-09
+   5 →   11: 0.000000e+00
+   6 →   12: 0.000000e+00
+   7 →   13: -7.035927e-10
+   8 →   14: 0.000000e+00
+   9 →   15: 0.000000e+00
+  10 →   16: -3.393208e-09
+  11 →   17: 0.000000e+00
+  12 →   18: 0.000000e+00
+  13 →   19: -1.131737e-09
+  14 →   20: 0.000000e+00
+  15 →   21: 0.000000e+00
+  16 →   22: -3.562903e-09
+  17 →   23: 0.000000e+00
+  18 →   24: 0.000000e+00
+  19 →   25: -1.570056e-09
+  20 →   26: 0.000000e+00
+  21 →   27: 0.000000e+00
+  22 →   28: -3.528799e-09
+  23 →   29: 0.000000e+00
+  24 →   30: 0.000000e+00
+  25 →   31: -2.006368e-09
+  26 →   32: 0.000000e+00
+  27 →   33: 0.000000e+00
+  28 →   34: -3.536444e-09
+  29 →   35: 0.000000e+00
+  30 →   36: 0.000000e+00
+  31 →   37: -2.442938e-09
+  32 →   38: 0.000000e+00
+  33 →   39: 0.000000e+00
+  34 →   40: -3.530795e-09
+  35 →   41: 0.000000e+00
+  36 →   42: 0.000000e+00
+  37 →   43: -2.880175e-09
+  38 →   44: 0.000000e+00
+  39 →   45: 0.000000e+00
+  40 →   46: -3.552524e-09
+  41 →   47: 0.000000e+00
+  42 →   48: 0.000000e+00
+  43 →   49: -3.313686e-09
+  44 →   50: 0.000000e+00
+  45 →   51: 0.000000e+00
+  46 →   52: -3.445184e-09
+  47 →   53: -0.000000e+00
+  48 →   54: 0.000000e+00
+  49 →   55: -3.765906e-09
+  50 →   56: 0.000000e+00
+  51 →   57: 0.000000e+00
+  52 →   58: -3.981622e-09
+  53 →   59: 0.000000e+00
+  54 →   60: 0.000000e+00
+  55 →   61: -4.124563e-09
+  56 →   62: -0.000000e+00
+  57 →   63: 0.000000e+00
+  58 →   64: -1.299484e-09
+  59 →   65: 0.000000e+00
+
+📊 Full reconstructed displacement vector:
+    Global DOF  Displacement
+0            0  0.000000e+00
+1            1  0.000000e+00
+2            2  0.000000e+00
+3            3  0.000000e+00
+4            4  0.000000e+00
+5            5  0.000000e+00
+6            6  0.000000e+00
+7            7 -2.245510e-10
+8            8  0.000000e+00
+9            9  0.000000e+00
+10          10 -4.241518e-09
+11          11  0.000000e+00
+12          12  0.000000e+00
+13          13 -7.035927e-10
+14          14  0.000000e+00
+15          15  0.000000e+00
+16          16 -3.393208e-09
+17          17  0.000000e+00
+18          18  0.000000e+00
+19          19 -1.131737e-09
+20          20  0.000000e+00
+21          21  0.000000e+00
+22          22 -3.562903e-09
+23          23  0.000000e+00
+24          24  0.000000e+00
+25          25 -1.570056e-09
+26          26  0.000000e+00
+27          27  0.000000e+00
+28          28 -3.528799e-09
+29          29  0.000000e+00
+30          30  0.000000e+00
+31          31 -2.006368e-09
+32          32  0.000000e+00
+33          33  0.000000e+00
+34          34 -3.536444e-09
+35          35  0.000000e+00
+36          36  0.000000e+00
+37          37 -2.442938e-09
+38          38  0.000000e+00
+39          39  0.000000e+00
+40          40 -3.530795e-09
+41          41  0.000000e+00
+42          42  0.000000e+00
+43          43 -2.880175e-09
+44          44  0.000000e+00
+45          45  0.000000e+00
+46          46 -3.552524e-09
+47          47  0.000000e+00
+48          48  0.000000e+00
+49          49 -3.313686e-09
+50          50  0.000000e+00
+51          51  0.000000e+00
+52          52 -3.445184e-09
+53          53 -0.000000e+00
+54          54  0.000000e+00
+55          55 -3.765906e-09
+56          56  0.000000e+00
+57          57  0.000000e+00
+58          58 -3.981622e-09
+59          59  0.000000e+00
+60          60  0.000000e+00
+61          61 -4.124563e-09
+62          62 -0.000000e+00
+63          63  0.000000e+00
+64          64 -1.299484e-09
+65          65  0.000000e+00
