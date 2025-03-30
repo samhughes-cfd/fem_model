@@ -111,6 +111,22 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         """
         Compute shape functions and derivatives for 3D Euler-Bernoulli beam.
 
+        ====================================================
+        Node	Index   DOF      SF      Mode
+        ====================================================
+        1       0	    u_x      N1      Axial
+        -       1	    u_y      N2      Bending (XY Plane)
+        -       2	    u_z      N3      Bending (XZ Plane)
+        -       3	    θ_x      N4      Torsional
+        -       4	    θ_y      N5      Bending (XZ Plane)
+        -       5	    θ_z      N6      Bending (XY Plane)
+        2       6	    u_x      N7      Axial
+        -       7	    u_y      N8      Bending (XY Plane)
+        -       8	    u_z      N9      Bending (XZPlane)
+        -       9	    θ_x      N10     Torsional
+        -       10	    θ_y      N11     Bending (XZ Plane)
+        -       11	    θ_z      N12     Bending (XY Plane)
+
         Args:
             xi: Natural coordinates in range [-1, 1]
 
@@ -123,30 +139,38 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         g = xi.shape[0]  # Number of Gauss points
         L = self.L  # Element length
 
-        # **1. Axial Shape Functions (Linear Lagrange)**
-        N1 = 0.5 * (1 - xi)
-        N7 = 0.5 * (1 + xi)
+        # --------------------------------------------
+        # 1. Axial Shape Functions (Linear Lagrange)
+        # --------------------------------------------
+
+        N1 = 0.5 * (1 - xi) # Node 1: u_x
+        N7 = 0.5 * (1 + xi) # Node 2: u_x
+
         dN1_dxi = -0.5 * np.ones(g)
         dN7_dxi = 0.5 * np.ones(g)
+
         d2N1_dxi2 = np.zeros(g)
         d2N7_dxi2 = np.zeros(g)
 
-        # **2. Bending in XY Plane (Hermite Cubic)**
-        N2 = 0.5 * (1 - 3 * xi**2 + 2 * xi**3)  # Displacement
-        N8 = 0.5 * (3 * xi**2 - 2 * xi**3 + 1)  # Displacement
-        N3 = 0.25 * L * (1 - xi - xi**2 + xi**3)  # Rotation
-        N9 = 0.25 * L * (1 + xi - xi**2 - xi**3)  # Rotation
+        # --------------------------------------------
+        # 2. Bending in XY Plane (Hermite Cubic)
+        # --------------------------------------------
 
-        # **Derivatives**
+        N2 = 0.5 * (1 - 3 * xi**2 + 2 * xi**3)  # Node 1: u_y
+        N8 = 0.5 * (3 * xi**2 - 2 * xi**3 + 1)  # Node 2: u_y
+
+        N3 = 0.25 * L * (1 - xi - xi**2 + xi**3)  # Node 1: θ_z
+        N9 = 0.25 * L * (1 + xi - xi**2 - xi**3)  # Node 2: θ_z
+
         dN2_dxi = -3 * xi + 2 * xi**2
         dN8_dxi = 3 * xi - 2 * xi**2
-        dN3_dxi = 0.25 * L * (1 - 4 * xi + 3 * xi**2)
-        dN9_dxi = 0.25 * L * (-2 * xi + 3 * xi**2)
+        dN3_dxi = 0.25 * L * (-1 - 2*xi + 3*xi**2)
+        dN9_dxi = 0.25 * L * (1 - 2*xi - 3*xi**2)
 
         d2N2_dxi2 = -3 + 4 * xi
         d2N8_dxi2 = 3 - 4 * xi
-        d2N3_dxi2 = 0.25 * L * (-4 + 6 * xi)
-        d2N9_dxi2 = 0.25 * L * (-2 + 6 * xi)
+        d2N3_dxi2 = 0.25 * L * (-2 + 6*xi)
+        d2N9_dxi2 = 0.25 * L * (-2 - 6*xi)
 
         # **3. Bending in XZ Plane (Reuse Hermite Cubic Functions)**
         N4, N10 = N2, N8  # Displacement

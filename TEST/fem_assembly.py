@@ -49,6 +49,9 @@ def assemble_global_system(elements_stiffness, elements_force, output_dir):
             end_dof = start_dof + 12
             global_F[start_dof:end_dof] += F
 
+    # Zero out numerical noise (robustness against near-zero terms)
+    global_K[np.abs(global_K) < 1e-14] = 0.0
+
     return global_K, global_F
 
 def apply_boundary_conditions(K, F, fixed_dofs, output_dir):

@@ -13,7 +13,7 @@ def read_stiffness_matrices(filename):
                 stiffness_matrix = np.zeros((12, 12))
                 while i < len(lines) and not lines[i].startswith("#"):
                     if lines[i].strip():
-                        row, col, value = map(float, lines[i].strip().split(','))
+                        row, col, value = map(float, map(str.strip, lines[i].strip().split(',')))
                         stiffness_matrix[int(row), int(col)] = value
                     i += 1
                 elements[element_id] = stiffness_matrix
