@@ -1,6 +1,7 @@
-# pre_processing\element_library\utilities\shape_function_library\euler_bernoulli_sf.py
+# pre_processing\element_library\euler_bernoulli\utilities\shape_functions_6DOF.py
 
 import numpy as np
+from typing import Tuple
 
 def shape_functions(self, xi: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
