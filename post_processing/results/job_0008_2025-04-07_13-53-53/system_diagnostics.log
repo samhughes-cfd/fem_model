@@ -1,0 +1,75 @@
+
+------------------------------------------------------------
+### Diagnostics for Global System
+Total DOFs: 18
+Independent Equations (nonzero rows): 18
+Boundary Condition DOFs: None
+⚠️ Matrix is NOT symmetric! Residual: 4
+⚠️ K is not positive definite. Possibly singular or indefinite.
+🔹 Approx. rank of K: 12/18
+🔹 Condition Number: 6.27e+18
+⚠️ DOFs with zero force: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]...
+Min Force = -1.0000e+05, Max Force = 0.0000e+00
+Sum of Forces = -1.0000e+05 (⚠️ Nonzero!)
+Top DOFs by force magnitude:
+  DOF 13, Force = -1.0000e+05
+  DOF 0, Force = 0.0000e+00
+  DOF 2, Force = 0.0000e+00
+  DOF 1, Force = 0.0000e+00
+  DOF 4, Force = 0.0000e+00
+  DOF 5, Force = 0.0000e+00
+  DOF 6, Force = 0.0000e+00
+  DOF 3, Force = 0.0000e+00
+  DOF 7, Force = 0.0000e+00
+  DOF 8, Force = 0.0000e+00
+
+
+------------------------------------------------------------
+### Diagnostics for Modified System
+Total DOFs: 18
+Independent Equations (nonzero rows): 18
+Boundary Condition DOFs: [0, 1, 2, 3, 4, 5]
+⚠️ Matrix is NOT symmetric! Residual: 2
+✅ K is positive definite.
+🔹 Approx. rank of K: 6/18
+🔹 Condition Number: 1.44e+28
+⚠️ DOFs with zero force: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]...
+Min Force = -1.0000e+05, Max Force = 0.0000e+00
+Sum of Forces = -1.0000e+05 (⚠️ Nonzero!)
+Top DOFs by force magnitude:
+  DOF 13, Force = -1.0000e+05
+  DOF 0, Force = 0.0000e+00
+  DOF 2, Force = 0.0000e+00
+  DOF 1, Force = 0.0000e+00
+  DOF 4, Force = 0.0000e+00
+  DOF 5, Force = 0.0000e+00
+  DOF 6, Force = 0.0000e+00
+  DOF 3, Force = 0.0000e+00
+  DOF 7, Force = 0.0000e+00
+  DOF 8, Force = 0.0000e+00
+
+
+------------------------------------------------------------
+### Diagnostics for Condensed System
+Total DOFs: 12
+Independent Equations (nonzero rows): 12
+Boundary Condition DOFs: [0, 1, 2, 3, 4, 5]
+⚠️ Matrix is NOT symmetric! Residual: 2
+✅ K is positive definite.
+🔹 Approx. rank of K: 12/12
+🔹 Condition Number: 1.04e+07
+⚠️ DOFs with zero force: [0, 1, 2, 3, 4, 5, 6, 8, 9, 10]...
+Min Force = -1.0000e+05, Max Force = 0.0000e+00
+Sum of Forces = -1.0000e+05 (⚠️ Nonzero!)
+Top DOFs by force magnitude:
+  DOF 7, Force = -1.0000e+05
+  DOF 0, Force = 0.0000e+00
+  DOF 2, Force = 0.0000e+00
+  DOF 1, Force = 0.0000e+00
+  DOF 3, Force = 0.0000e+00
+  DOF 4, Force = 0.0000e+00
+  DOF 5, Force = 0.0000e+00
+  DOF 6, Force = 0.0000e+00
+  DOF 8, Force = 0.0000e+00
+  DOF 9, Force = 0.0000e+00
+

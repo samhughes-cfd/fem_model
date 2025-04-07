@@ -120,8 +120,6 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
     def B_matrix(self, dN_dxi: np.ndarray, d2N_dxi2: np.ndarray):
         return B_matrix(dN_dxi, d2N_dxi2, self.L)
 
-
-
     # Tensor computations ------------------------------------------------------
     def element_stiffness_matrix(self, job_results_dir: str = None) -> np.ndarray:
         """
@@ -140,7 +138,7 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         # Configure detailed element-level logging
         self.configure_element_stiffness_logging(job_results_dir)
 
-        xi_points, weights = self.integration_points
+        xi, w = self.integration_points
         detJ = self.L / 2
         Ke = np.zeros((12, 12))
 
@@ -154,7 +152,7 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         self.logger.debug(np.array2string(D, precision=6, suppress_small=True))
 
         # Gauss Quadrature Integration
-        for g, (xi_g, w_g) in enumerate(zip(xi_points, weights)):
+        for g, (xi_g, w_g) in enumerate(zip(xi, w)):
         
             # Evaluate shape function derivatives at the current Gauss point
             _, dN_dxi, d2N_dxi2 = self.shape_functions(np.array([xi_g]))
@@ -167,7 +165,7 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
             Ke += Ke_contribution
 
             # ----- Granular Logging for Verification & Debugging -----
-            self.logger.debug(f"\n----- Gauss Point {g + 1}/{len(xi_points)} -----")
+            self.logger.debug(f"\n----- Gauss Point {g + 1}/{len(xi)} -----")
             self.logger.debug(f"Natural Coordinate (xi): {xi_g:.6e}, Gauss Weight: {w_g:.6e}")
 
             self.logger.debug("Shape Function First Derivatives (dN_dxi):")

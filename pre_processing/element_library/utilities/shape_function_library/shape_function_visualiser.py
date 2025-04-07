@@ -18,7 +18,7 @@ for path in sys.path:
 
 # Import shape functions with error handling
 try:
-    from pre_processing.element_library.utilities.shape_function_library.euler_bernoulli_sf import euler_bernoulli_shape_functions
+    from pre_processing.element_library.utilities.shape_function_library.eb_6DOF import shape_functions
     from pre_processing.element_library.utilities.shape_function_library.timoshenko_sf import timoshenko_shape_functions
 except ModuleNotFoundError as e:
     logging.error(f"Module import error: {e}")
@@ -39,7 +39,7 @@ def plot_shape_functions():
         L = 1.0  # Example element length
 
         # Compute Shape Functions
-        N_eb, dN_eb, d2N_eb = zip(*[euler_bernoulli_shape_functions(xi, L, poly_order=3) for xi in xi_values])
+        N_eb, dN_eb, d2N_eb = zip(*[shape_functions(xi, L, poly_order=3) for xi in xi_values])
         N_t, dN_t, d2N_t = zip(*[timoshenko_shape_functions(xi, L, poly_order=2) for xi in xi_values])
 
         # Convert to numpy arrays

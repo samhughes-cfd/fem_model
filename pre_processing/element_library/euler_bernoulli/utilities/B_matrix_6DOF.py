@@ -2,9 +2,9 @@
 
 import numpy as np
 
-def B_matrix(self, dN_dxi: np.ndarray, d2N_dxi2: np.ndarray) -> np.ndarray:
+def B_matrix(dN_dxi: np.ndarray, d2N_dxi2: np.ndarray, L: float) -> np.ndarray:
         """
-        Construct the strain-displacement B-matrix for each Gauss point.
+        Construct the strain-displacement B-matrix for each Gauss point for a 2-node 3D Euler-Bernoulli element.
 
         Args:
             dN_dxi (np.ndarray): First derivatives of shape functions, shape (g, 12, 6)
@@ -13,7 +13,6 @@ def B_matrix(self, dN_dxi: np.ndarray, d2N_dxi2: np.ndarray) -> np.ndarray:
         Returns:
             np.ndarray: Strain-displacement matrices at each Gauss point, shape (g, 4, 12)
         """
-        L = self.L
         detJ = L / 2
         g = dN_dxi.shape[0]
         B_matrix = np.zeros((g, 4, 12))

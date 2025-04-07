@@ -3,7 +3,7 @@
 import numpy as np
 from typing import Tuple
 
-def shape_functions(self, xi: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def shape_functions(xi: np.ndarray, L: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Compute shape functions and derivatives for 3D Euler-Bernoulli beam.
 
@@ -24,16 +24,17 @@ def shape_functions(self, xi: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.nd
         -       11	    θ_z      N12     Bending (XY Plane)
 
         Args:
-            xi: Natural coordinates in range [-1, 1]
+            xi (np.ndarray): Natural coordinates in range [-1, 1], shape (g,).
+            L  (float)     : Element length in the global x-direction.
 
         Returns:
-            - N_matrix (g, 12, 6): Shape functions for translation and rotation DOFs
-            - dN_dxi_matrix (g, 12, 6): First derivatives
-            - d2N_dxi2_matrix (g, 12, 6): Second derivatives
+            Tuple containing:
+            - N_matrix      (g, 12, 6): Shape functions for translation & rotation DOFs
+            - dN_dxi_matrix (g, 12, 6): First derivatives wrt ξ
+            - d2N_dxi2_matrix (g, 12, 6): Second derivatives wrt ξ
         """
         xi = np.atleast_1d(xi)
         g = xi.shape[0]  # no. of gauss points
-        L = self.L  # element length (x_end - x_start)
 
         # ====================================================================
         #                            SHAPE FUNCTIONS           

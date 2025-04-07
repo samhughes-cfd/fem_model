@@ -394,10 +394,10 @@ def main():
     I = 2.67e-7       # [m^4]
 
     # Single load magnitude for point load
-    P = 1000.0  # [N]
+    P = 100000  # [N]
 
     # Single distributed load magnitude
-    w = 1000.0  # [N/m]
+    w = 100000  # [N/m]
 
     # job -> loadtype mapping
     job_to_loadtype = {
@@ -411,12 +411,12 @@ def main():
 
     # Example job_files
     job_files = [
-        "post_processing/results/job_0001_2025-03-03_12-54-11/primary_results/job_0001_static_global_U_global_2025-03-03_12-54-12.txt",
-        "post_processing/results/job_0002_2025-03-03_12-54-11/primary_results/job_0002_static_global_U_global_2025-03-03_12-54-12.txt",
-        "post_processing/results/job_0003_2025-03-03_12-54-11/primary_results/job_0003_static_global_U_global_2025-03-03_12-54-12.txt",
-        "post_processing/results/job_0004_2025-03-03_12-54-11/primary_results/job_0004_static_global_U_global_2025-03-03_12-54-12.txt",
-        "post_processing/results/job_0005_2025-03-03_12-54-11/primary_results/job_0005_static_global_U_global_2025-03-03_12-54-12.txt",
-        "post_processing/results/job_0006_2025-03-03_12-54-11/primary_results/job_0006_static_global_U_global_2025-03-03_12-54-12.txt",
+        "post_processing/results/job_0001_2025-04-07_13-53-52/primary_results/job_0001_static_global_U_global_2025-04-07_13-53-55.txt",
+        "post_processing/results/job_0002_2025-04-07_13-53-52/primary_results/job_0002_static_global_U_global_2025-04-07_13-53-55.txt",
+        "post_processing/results/job_0003_2025-04-07_13-53-52/primary_results/job_0003_static_global_U_global_2025-04-07_13-53-56.txt",
+        "post_processing/results/job_0004_2025-04-07_13-53-52/primary_results/job_0004_static_global_U_global_2025-04-07_13-53-59.txt",
+        "post_processing/results/job_0005_2025-04-07_13-53-52/primary_results/job_0005_static_global_U_global_2025-04-07_13-53-58.txt",
+        "post_processing/results/job_0006_2025-04-07_13-53-52/primary_results/job_0006_static_global_U_global_2025-04-07_13-53-58.txt",
     ]
 
     # 1) Extract raw FEA data
