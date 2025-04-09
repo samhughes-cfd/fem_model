@@ -139,7 +139,7 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         self.configure_element_stiffness_logging(job_results_dir)
 
         xi, w = self.integration_points
-        detJ = self.L / 2
+        detJ = self.L / 2 # applied in B-matrix externally, calculated in Ke procedure simply for logging
         Ke = np.zeros((12, 12))
 
         # Assemble material stiffness matrix (D)
@@ -161,7 +161,7 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
             B = self.B_matrix(dN_dxi, d2N_dxi2)[0]
 
             # Compute stiffness contribution at current Gauss point
-            Ke_contribution = B.T @ D @ B * w_g * detJ
+            Ke_contribution = B.T @ D @ B * w_g
             Ke += Ke_contribution
 
             # ----- Granular Logging for Verification & Debugging -----

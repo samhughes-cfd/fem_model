@@ -1,17 +1,17 @@
 # jobs\base\geometry.txt
 
 [Geometry]
-[L]                                2.000e+0              # Beam length, aligned with the +ve x-axis direction where x = [0, L] (m)         
+[L]                                0.70                  # Beam length, aligned with the +ve x-axis direction where x = [0, L] (m)         
 
 [Section]
-[A]                                9.110e-4              # Cross-sectional area (m^2)
-[I_x]                              3.314e-3              # Moment of inertia about x-axis (m^4)
-[I_y]                              1.004e+0              # Moment of inertia about y-axis (m^4)
-[I_z]                              1.002e+0              # Moment of inertia about z-axis (m^4)
-[J]                                1.007e+0              # Polar moment of inertia (m^4)
-[J_t]                              1.165e-8              # Torsional constant (m^4)
+[A]                                1                     # Cross-sectional area (m^2)
+[I_x]                              1                     # Moment of inertia about x-axis (m^4)
+[I_y]                              1                     # Moment of inertia about y-axis (m^4)
+[I_z]                              1                     # Moment of inertia about z-axis (m^4)
+[J]                                1                     # Polar moment of inertia (m^4)
+[J_t]                              1                     # Torsional constant (m^4)
 [I_w]                              0.0                   # Warping moment of inertia (m^6)
-[c_x]                              1.000e+0              # x-axis position of centroid (m)
+[c_x]                              0.35                  # x-axis position of centroid (m)
 [c_y]                              0.0                   # y-axis position of centroid (m)
 [c_z]                              0.0                   # z-axis position of centroid (m)
 [s_x]                              0.0                   # Static moment about x-axis (m^3)
