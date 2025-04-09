@@ -389,9 +389,9 @@ def plot_comparison_distributed_loads(dist_jobs, job_results, L, E, I, w, all_jo
 # -------------------------------------------------------------------------
 def main():
     # Beam parameters
-    L = 8.0           # [m]
+    L = 2           # [m]
     E = 2.0e11        # [Pa]
-    I = 2.67e-7       # [m^4]
+    I = 1.002e+0       # [m^4]
 
     # Single load magnitude for point load
     P = 100000  # [N]
@@ -411,12 +411,12 @@ def main():
 
     # Example job_files
     job_files = [
-        "post_processing/results/job_0001_2025-04-07_13-53-52/primary_results/job_0001_static_global_U_global_2025-04-07_13-53-55.txt",
-        "post_processing/results/job_0002_2025-04-07_13-53-52/primary_results/job_0002_static_global_U_global_2025-04-07_13-53-55.txt",
-        "post_processing/results/job_0003_2025-04-07_13-53-52/primary_results/job_0003_static_global_U_global_2025-04-07_13-53-56.txt",
-        "post_processing/results/job_0004_2025-04-07_13-53-52/primary_results/job_0004_static_global_U_global_2025-04-07_13-53-59.txt",
-        "post_processing/results/job_0005_2025-04-07_13-53-52/primary_results/job_0005_static_global_U_global_2025-04-07_13-53-58.txt",
-        "post_processing/results/job_0006_2025-04-07_13-53-52/primary_results/job_0006_static_global_U_global_2025-04-07_13-53-58.txt",
+        "post_processing/results/job_0001_2025-04-08_17-27-09/primary_results/job_0001_static_global_U_global_2025-04-08_17-27-12.txt",
+        "post_processing/results/job_0002_2025-04-08_17-27-09/primary_results/job_0002_static_global_U_global_2025-04-08_17-27-12.txt",
+        "post_processing/results/job_0003_2025-04-08_17-27-09/primary_results/job_0003_static_global_U_global_2025-04-08_17-27-12.txt",
+        "post_processing/results/job_0004_2025-04-08_17-27-09/primary_results/job_0004_static_global_U_global_2025-04-08_17-27-13.txt",
+        "post_processing/results/job_0005_2025-04-08_17-27-14/primary_results/job_0005_static_global_U_global_2025-04-08_17-27-16.txt",
+        "post_processing/results/job_0006_2025-04-08_17-27-14/primary_results/job_0006_static_global_U_global_2025-04-08_17-27-16.txt",
     ]
 
     # 1) Extract raw FEA data

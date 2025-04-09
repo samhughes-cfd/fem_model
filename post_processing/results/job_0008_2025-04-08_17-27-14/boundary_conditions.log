@@ -1,0 +1,6 @@
+2025-04-08 17:27:15,776 - processing.static.boundary_conditions - INFO - 🔧 Applying fixed boundary conditions...
+2025-04-08 17:27:15,777 - processing.static.boundary_conditions - INFO - 🔍 Fixed DOFs: [0 1 2 3 4 5]
+2025-04-08 17:27:15,782 - processing.static.boundary_conditions - INFO - ✅ Fixed boundary conditions applied successfully.
+2025-04-08 17:27:16,306 - processing.static.boundary_conditions - INFO - 🔧 Applying fixed boundary conditions...
+2025-04-08 17:27:16,307 - processing.static.boundary_conditions - INFO - 🔍 Fixed DOFs: [0 1 2 3 4 5]
+2025-04-08 17:27:16,309 - processing.static.boundary_conditions - INFO - ✅ Fixed boundary conditions applied successfully.

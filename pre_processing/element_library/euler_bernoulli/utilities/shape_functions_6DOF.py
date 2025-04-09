@@ -46,14 +46,14 @@ def shape_functions(xi: np.ndarray, L: float) -> Tuple[np.ndarray, np.ndarray, n
 
         # Translation shape functions (u_x --> N1, N7)
 
-        N1 = 0.5 * (1 - xi)                            # Node 1: u_x
-        N7 = 0.5 * (1 + xi)                            # Node 2: u_x
+        N1 = 0.5 * (1 - xi)                             # Node 1: u_x
+        N7 = 0.5 * (1 + xi)                             # Node 2: u_x
 
-        dN1_dxi = -0.5 * np.ones(g)                    # Node 1: d(u_x)/dx
-        dN7_dxi = 0.5 * np.ones(g)                     # Node 2: d(u_x)/ dx
+        dN1_dxi = -0.5 * np.ones(g)                     # Node 1: d(u_x)/dx
+        dN7_dxi = 0.5 * np.ones(g)                      # Node 2: d(u_x)/ dx
  
-        d2N1_dxi2 = np.zeros(g)                        # Node 1: d2(u_x)/ dx2
-        d2N7_dxi2 = np.zeros(g)                        # Node 2: d2(u_x)/ dx2
+        d2N1_dxi2 = np.zeros(g)                         # Node 1: d2(u_x)/ dx2
+        d2N7_dxi2 = np.zeros(g)                         # Node 2: d2(u_x)/ dx2
 
         # ====================================================================
         # 2. Bending in XY Plane (Hermite Cubic Functions)
@@ -61,25 +61,25 @@ def shape_functions(xi: np.ndarray, L: float) -> Tuple[np.ndarray, np.ndarray, n
 
         # Translation shape functions (u_y --> N2, N8)
 
-        N2  = 1 - 3 * xi**2 + 2 * xi**3                # Node 1: u_y
-        N8  = 3 * xi**2 - 2 * xi**3                    # Node 2: u_y
+        N2  = 1 - 3 * xi**2 + 2 * xi**3                 # Node 1: u_y
+        N8  = 3 * xi**2 - 2 * xi**3                     # Node 2: u_y
 
-        dN2_dxi  = (-6 * xi + 6 * xi**2)               # Node 1: d(u_y)/dxi
-        dN8_dxi  = (6 * xi - 6 * xi**2)                # Node 2: d(u_y)/dxi
+        dN2_dxi  = (-6 * xi + 6 * xi**2)                # Node 1: d(u_y)/dxi
+        dN8_dxi  = (6 * xi - 6 * xi**2)                 # Node 2: d(u_y)/dxi
 
-        d2N2_dxi2 = -6 + 12 * xi                       # Node 1: d²(u_y)/dxi²
-        d2N8_dxi2 = 6 - 12 * xi                        # Node 2: d²(u_y)/dxi²
+        d2N2_dxi2 = -6 + 12 * xi                        # Node 1: d²(u_y)/dxi²
+        d2N8_dxi2 = 6 - 12 * xi                         # Node 2: d²(u_y)/dxi²
 
         # Rotation shape functions (θ_z --> N6, N12)
 
-        N6  = (L / 2) * (xi - 2 * xi**2 + xi**3)       # Node 1: θ_z
-        N12 = (L / 2) * (-xi**2 + xi**3)               # Node 2: θ_z
+        N6  = xi - 2 * xi**2 + xi**3                    # Node 1: θ_z
+        N12 = -xi**2 + xi**3                            # Node 2: θ_z
 
-        dN6_dxi  = (L / 2) * (1 - 4 * xi + 3 * xi**2)  # Node 1: d(θ_z)/dxi
-        dN12_dxi = (L / 2) * (-2 * xi + 3 * xi**2)     # Node 2: d(θ_z)/dxi
+        dN6_dxi  = 1 - 4 * xi + 3 * xi**2               # Node 1: d(θ_z)/dxi
+        dN12_dxi = -2 * xi + 3 * xi**2                  # Node 2: d(θ_z)/dxi
 
-        d2N6_dxi2 = (L / 2) * (-4 + 6 * xi)            # Node 1: d²(θ_z)/dxi²
-        d2N12_dxi2 = (L / 2) * (-2 + 6 * xi)           # Node 2: d²(θ_z)/dxi²
+        d2N6_dxi2  = -4 + 6 * xi                        # Node 1: d²(θ_z)/dxi²
+        d2N12_dxi2 = -2 + 6 * xi                        # Node 2: d²(θ_z)/dxi²
 
         # ===================================================================
         # 3. Bending in XZ Plane (Hermite Cubic Functions)
@@ -87,40 +87,40 @@ def shape_functions(xi: np.ndarray, L: float) -> Tuple[np.ndarray, np.ndarray, n
 
         # Translation shape functions (u_z --> N3, N9)
 
-        N3  = 1 - 3 * xi**2 + 2 * xi**3             # Node 1: u_z
-        N9  = 3 * xi**2 - 2 * xi**3                 # Node 2: u_z
+        N3  = 1 - 3 * xi**2 + 2 * xi**3                 # Node 1: u_z
+        N9  = 3 * xi**2 - 2 * xi**3                     # Node 2: u_z
 
-        dN3_dxi  = (-6 * xi + 6 * xi**2)            # Node 1: d(u_z)/dxi
-        dN9_dxi  = (6 * xi - 6 * xi**2)             # Node 2: d(u_z)/dxi
+        dN3_dxi  = (-6 * xi + 6 * xi**2)                # Node 1: d(u_z)/dxi
+        dN9_dxi  = (6 * xi - 6 * xi**2)                 # Node 2: d(u_z)/dxi
 
-        d2N3_dxi2 = -6 + 12 * xi                    # Node 1: d²(u_z)/dxi²
-        d2N9_dxi2 = 6 - 12 * xi                     # Node 2: d²(u_z)/dxi²
+        d2N3_dxi2 = -6 + 12 * xi                        # Node 1: d²(u_z)/dxi²
+        d2N9_dxi2 = 6 - 12 * xi                         # Node 2: d²(u_z)/dxi²
 
         # Rotation shape functions (θ_y --> N5, N11)
 
-        N5  = -(L / 2) * (xi - 2 * xi**2 + xi**3)   # Node 1: θ_y (negative due to rotation direction)
-        N11 = -(L / 2) * (-xi**2 + xi**3)           # Node 2: θ_y (negative due to rotation direction)
+        N5  = -xi - 2 * xi**2 + xi**3                   # Node 1: θ_y (negative due to rotation direction)
+        N11 = -(-xi**2 + xi**3)                         # Node 2: θ_y (negative due to rotation direction)
 
-        dN5_dxi  = -(L / 2) * (1 - 4 * xi + 3 * xi**2)  # Node 1: d(θ_y)/dxi
-        dN11_dxi = -(L / 2) * (-2 * xi + 3 * xi**2)     # Node 2: d(θ_y)/dxi
+        dN5_dxi  = -(1 - 4 * xi + 3 * xi**2)            # Node 1: d(θ_y)/dxi
+        dN11_dxi = -(-2 * xi + 3 * xi**2)               # Node 2: d(θ_y)/dxi
 
-        d2N5_dxi2 = -(L / 2) * (-4 + 6 * xi)        # Node 1: d²(θ_y)/dxi²
-        d2N11_dxi2 = -(L / 2) * (-2 + 6 * xi)       # Node 2: d²(θ_y)/dxi²
+        d2N5_dxi2  = -(-4 + 6 * xi)                     # Node 1: d²(θ_y)/dxi²
+        d2N11_dxi2 = -(-2 + 6 * xi)                     # Node 2: d²(θ_y)/dxi²
 
         # ===================================================================
         # 4. Torsion Shape Functions (Linear Interpolation Functions)
         # ===================================================================
 
-        # Rotation shape functions (θ_y --> N5, N11)
+        # Rotation shape functions (θ_x --> N4, N10)
 
-        N4 = 0.5 * (1 - xi)                            # Node 1: θ_x
-        N10 = 0.5 * (1 + xi)                           # Node 2: θ_x
+        N4 = 0.5 * (1 - xi)                             # Node 1: θ_x
+        N10 = 0.5 * (1 + xi)                            # Node 2: θ_x
 
-        dN4_dxi = -0.5 * np.ones(g)                    # Node 1: d(θ_x)/dxi
-        dN10_dxi = 0.5 * np.ones(g)                    # Node 2: d(θ_x)/dxi
+        dN4_dxi = -0.5 * np.ones(g)                     # Node 1: d(θ_x)/dxi
+        dN10_dxi = 0.5 * np.ones(g)                     # Node 2: d(θ_x)/dxi
  
-        d2N4_dxi2 = np.zeros(g)                        # Node 1: d²(θ_x)/dxi²
-        d2N10_dxi2 = np.zeros(g)                       # Node 2: d²(θ_x)/dxi²
+        d2N4_dxi2 = np.zeros(g)                         # Node 1: d²(θ_x)/dxi²
+        d2N10_dxi2 = np.zeros(g)                        # Node 2: d²(θ_x)/dxi²
 
         # ===================================================================
         #               ASSEMBLE SHAPE FUNCTION MATRICES                 
