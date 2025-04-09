@@ -277,15 +277,15 @@ def main():
     using normal `plot()` calls for the point-load spike (no `stem()`).
     """
     # Beam parameters
-    L = 8.0           # [m]
+    L = 2             # [m]
     E = 2.0e11        # [Pa]
-    I = 2.67e-7       # [m^4]
+    I = 1.002e+0      # [m^4]
 
     # Point load [N]
-    P = 1000.0
+    P = 100000.0
 
     # Distributed load [N/m]
-    w = 1000.0
+    w = 100000.0
 
     plot_load_intensities(L, E, I, P, w)
 

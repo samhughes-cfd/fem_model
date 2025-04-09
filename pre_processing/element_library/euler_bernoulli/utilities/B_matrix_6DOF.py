@@ -20,7 +20,7 @@ def B_matrix(dN_dxi: np.ndarray, d2N_dxi2: np.ndarray, L: float) -> np.ndarray:
         for i in range(g):
             B = np.zeros((4, 12))
 
-            # Axial strain εₓ = duₓ/dx
+            # Axial strain ε_x = d(u_x)/dx
             B[0, 0] = dN_dxi[i, 0, 0] 
             B[0, 6] = dN_dxi[i, 6, 0]
 
@@ -40,7 +40,7 @@ def B_matrix(dN_dxi: np.ndarray, d2N_dxi2: np.ndarray, L: float) -> np.ndarray:
                 d2N_dxi2[i, 10, 4]   # θ_y node 2
             ]
 
-            # Torsional strain γₓ = dθₓ/dx
+            # Torsional strain γ_x = d(θ_x)/dx
             B[3, 3] = dN_dxi[i, 3, 3]
             B[3, 9] = dN_dxi[i, 9, 3]
 
