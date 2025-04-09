@@ -113,13 +113,14 @@ def assemble_global_matrices(
         if total_dof <= 100:
             df_K = pd.DataFrame(K_global.toarray(), index=range(total_dof), columns=range(total_dof))
             df_F = pd.DataFrame(F_global, index=[f"DOF {i}" for i in range(total_dof)], columns=["Force"])
-            
+        
             # 🚀 Write full structured matrices to `.log`, NOT terminal!
             log_file_logger.stream.write("\nFull K_global Matrix:\n" + df_K.to_string(float_format='%.4e') + "\n")
             log_file_logger.stream.write("\nFull F_global Vector:\n" + df_F.to_string(float_format='%.4e') + "\n")
         else:
-            # If large, log only non-zero entries
-            K_sparse_df = pd.DataFrame({'Row': K_global.row, 'Col': K_global.col, 'Value': K_global.data})
+            # Convert to COO for row/col access
+            K_coo = K_global.tocoo()
+            K_sparse_df = pd.DataFrame({'Row': K_coo.row, 'Col': K_coo.col, 'Value': K_coo.data})
             log_file_logger.stream.write("\nSparse K_global (DOF > 100):\n" + K_sparse_df.to_string(index=False) + "\n")
 
     logger.info("✅ Assembly complete.")

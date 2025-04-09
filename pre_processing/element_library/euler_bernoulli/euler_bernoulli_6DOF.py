@@ -157,10 +157,10 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
             # Evaluate shape function derivatives at the current Gauss point
             _, dN_dxi, d2N_dxi2 = self.shape_functions(np.array([xi_g]))
         
-            # Compute the strain-displacement B-matrix (corrected external call)
-            B = self.B_matrix(dN_dxi, d2N_dxi2)[0]
+            # Compute the strain-displacement B-matrix
+            B = self.B_matrix(dN_dxi, d2N_dxi2)[0] # B-matrix handles all Jacobian scaling
 
-            # Compute stiffness contribution at current Gauss point
+            # Compute stiffness contribution at current Gauss point, Bᵀ D B is already in physical coordinates
             Ke_contribution = B.T @ D @ B * w_g
             Ke += Ke_contribution
 
@@ -189,7 +189,6 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         self.logger.debug(np.array2string(Ke, precision=6, suppress_small=True))
 
         return Ke
-
 
     def element_force_vector(self, job_results_dir: str = None) -> np.ndarray:
         """Compute the element force vector with improved robustness and detailed logging."""
