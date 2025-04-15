@@ -1,8 +1,8 @@
 # jobs\base\material.txt
 
 [Material]
-[E]                                1                     # Young's Moudlus (Pa)
-[G]                                1                     # Shear Modulus (Pa)
+[E]                                2e11                  # Young's Moudlus (Pa)
+[G]                                7.6923e10             # Shear Modulus (Pa)
 [nu]                               0.3                   # Poisson's Ratio (-)
 [rho]                              7850                  # Density (kg/m^3)
 
