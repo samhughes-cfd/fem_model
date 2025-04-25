@@ -80,9 +80,9 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         return self.geometry_array[0, 1]
     
     @property
-    def I_x(self) -> float:
-        """Torsional moment of inertia (m⁴)"""
-        return self.geometry_array[0, 2]
+    def E(self) -> float:
+        """Young's modulus (Pa)"""
+        return self.material_array[0, 0]
     
     @property
     def I_y(self) -> float:
@@ -95,14 +95,14 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         return self.geometry_array[0, 4]
     
     @property
-    def E(self) -> float:
-        """Young's modulus (Pa)"""
-        return self.material_array[0, 0]
-    
-    @property
     def G(self) -> float:
         """Shear modulus (Pa)"""
         return self.material_array[0, 1]
+    
+    @property
+    def J_t(self) -> float:
+        """Torsional moment of inertia (m⁴)"""
+        return self.geometry_array[0, 6]
     
     @property
     def integration_points(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -115,7 +115,7 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         return shape_functions(xi, self.L)
 
     def D_matrix(self):
-        return D_matrix(self.E, self.G, self.A, self.I_y, self.I_z, self.I_x)
+        return D_matrix(self.A, self.E, self.I_y, self.I_z, self.G, self.J_t)
 
     def B_matrix(self, dN_dxi: np.ndarray, d2N_dxi2: np.ndarray):
         return B_matrix(dN_dxi, d2N_dxi2, self.L)
@@ -123,18 +123,31 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
     # Tensor computations ------------------------------------------------------
     def element_stiffness_matrix(self, job_results_dir: str = None) -> np.ndarray:
         """
-        Compute the Euler-Bernoulli 3D Beam Element stiffness matrix.
-    
+        Compute the Euler-Bernoulli 3D Beam Element stiffness matrix using Gauss quadrature.
+
+        This function performs numerical integration of the elemental stiffness formulation:
+
+            K_e = ∫ Bᵀ D B dx ≈ ∑ Bᵀ(ξ) D B(ξ) · w(ξ) · detJ
+
+        where:
+        - B is the strain-displacement matrix (with shape function derivatives already transformed to physical coordinates),
+        - D is the material stiffness matrix (diagonal for uncoupled axial, bending, torsion modes),
+        - detJ = L/2 is the Jacobian determinant for transformation from natural to physical domain.
+
+        🔁 Note: All coordinate transformation of shape function derivatives (from ξ → x) occurs *within* the B-matrix.
+        Only the *Jacobian determinant* (detJ) remains explicitly in the integration rule to scale Gauss weights correctly.
+
         Features:
-        - Modular clarity with external utilities (B_matrix, D_matrix, shape_functions)
-        - Detailed per-Gauss-point logging for debugging and verification purposes
-    
+        - Modular clarity via external shape_function, B_matrix, and D_matrix utilities
+        - Per-Gauss-point diagnostic logging for validation and debugging
+
         Args:
-            job_results_dir (str, optional): Directory path for logging outputs.
-    
+            job_results_dir (str, optional): Path to store optional per-element debug logs
+
         Returns:
-            np.ndarray: Element stiffness matrix [12x12].
+            np.ndarray: Element stiffness matrix of shape (12, 12)
         """
+
         # Configure detailed element-level logging
         self.configure_element_stiffness_logging(job_results_dir)
 
@@ -161,7 +174,7 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
             B = self.B_matrix(dN_dxi, d2N_dxi2)[0] # B-matrix handles all Jacobian scaling
 
             # Compute stiffness contribution at current Gauss point, Bᵀ D B is already in physical coordinates
-            Ke_contribution = B.T @ D @ B * w_g
+            Ke_contribution = B.T @ D @ B * w_g * detJ
             Ke += Ke_contribution
 
             # ----- Granular Logging for Verification & Debugging -----
