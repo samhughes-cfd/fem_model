@@ -1,0 +1,32 @@
+2025-04-30 18:05:45,430 [INFO] (condensation:35) - 🔧 Starting static condensation process.
+2025-04-30 18:05:45,430 [DEBUG] (condensation:38) - 🔍 Total DOFs in initial system: 12
+2025-04-30 18:05:45,431 [DEBUG] (condensation:42) - 🚫 Explicitly Fixed DOFs: [0 1 2 3 4 5]
+2025-04-30 18:05:45,432 [DEBUG] (condensation:43) - ✅ Active DOFs after removing fixed: [ 6  7  8  9 10 11]
+2025-04-30 18:05:45,433 [DEBUG] (condensation:48) - 🟢 Intermediate K matrix shape: (6, 6)
+2025-04-30 18:05:45,434 [INFO] (condensation:53) - 🔍 DOFs removed due to zero rows/columns: 0
+2025-04-30 18:05:45,435 [DEBUG] (condensation:54) - ✅ Fully active DOFs post zero check: [ 6  7  8  9 10 11]
+2025-04-30 18:05:45,436 [DEBUG] (condensation:62) - 🟠 Secondary inactive DOFs removed: []
+2025-04-30 18:05:45,438 [DEBUG] (condensation:85) - 📜 Condensed K matrix:
+                  Cond 0 (Orig 6)  Cond 1 (Orig 7)  Cond 2 (Orig 8)  Cond 3 (Orig 9)  Cond 4 (Orig 10)  Cond 5 (Orig 11)
+Cond 0 (Orig 6)        9.1100e+07       0.0000e+00       0.0000e+00       0.0000e+00        0.0000e+00        0.0000e+00
+Cond 1 (Orig 7)        0.0000e+00       3.3667e+13       0.0000e+00       0.0000e+00        0.0000e+00       -1.4429e+13
+Cond 2 (Orig 8)        0.0000e+00       0.0000e+00       3.3734e+13       0.0000e+00        1.4458e+13        0.0000e+00
+Cond 3 (Orig 9)        0.0000e+00       0.0000e+00       0.0000e+00       4.4808e+02        0.0000e+00        0.0000e+00
+Cond 4 (Orig 10)       0.0000e+00       0.0000e+00       1.4458e+13       0.0000e+00        6.4256e+12        0.0000e+00
+Cond 5 (Orig 11)       0.0000e+00      -1.4429e+13       0.0000e+00       0.0000e+00        0.0000e+00        6.4128e+12
+2025-04-30 18:05:45,440 [DEBUG] (condensation:86) - 📄 Condensed F vector:
+                      F_cond
+Cond 0 (Orig 6)   0.0000e+00
+Cond 1 (Orig 7)  -1.0000e+05
+Cond 2 (Orig 8)   0.0000e+00
+Cond 3 (Orig 9)   0.0000e+00
+Cond 4 (Orig 10)  0.0000e+00
+Cond 5 (Orig 11)  0.0000e+00
+2025-04-30 18:05:45,440 [INFO] (condensation:89) - 🔗 DOF Mapping (Condensed → Original):
+2025-04-30 18:05:45,441 [DEBUG] (condensation:91) - Condensed 0 → Original 6
+2025-04-30 18:05:45,442 [DEBUG] (condensation:91) - Condensed 1 → Original 7
+2025-04-30 18:05:45,443 [DEBUG] (condensation:91) - Condensed 2 → Original 8
+2025-04-30 18:05:45,444 [DEBUG] (condensation:91) - Condensed 3 → Original 9
+2025-04-30 18:05:45,445 [DEBUG] (condensation:91) - Condensed 4 → Original 10
+2025-04-30 18:05:45,446 [DEBUG] (condensation:91) - Condensed 5 → Original 11
+2025-04-30 18:05:45,447 [INFO] (condensation:93) - ✅ Static condensation completed successfully.

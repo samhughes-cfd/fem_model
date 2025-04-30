@@ -8,7 +8,7 @@ from typing import Tuple
 from pre_processing.element_library.element_1D_base import Element1DBase
 from pre_processing.element_library.euler_bernoulli.utilities.shape_functions_6DOF import shape_functions
 from pre_processing.element_library.euler_bernoulli.utilities.D_matrix_6DOF import D_matrix
-from pre_processing.element_library.euler_bernoulli.utilities.B_matrix_6DOF import B_matrix
+from pre_processing.element_library.euler_bernoulli.utilities.B_matrix_6DOF_new import B_matrix
 from pre_processing.element_library.utilities.interpolate_loads import interpolate_loads
 
 class EulerBernoulliBeamElement6DOF(Element1DBase):

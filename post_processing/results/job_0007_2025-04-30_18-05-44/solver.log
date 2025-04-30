@@ -1,0 +1,5 @@
+2025-04-30 18:05:45,457 - INFO - 🔹 Solving FEM system using `direct_solver_sparse`...
+2025-04-30 18:05:45,462 - INFO - 📊 Condition Number: 8.92e+10
+2025-04-30 18:05:45,469 - INFO - ✅ Solver completed in 0.002711 seconds.
+2025-04-30 18:05:45,797 - INFO - ✅ Solver execution successful.
+711 sec
