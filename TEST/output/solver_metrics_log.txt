@@ -1,6 +1,0 @@
-# Solver Performance Metrics Log
-
-Solver execution time: 0.000000 seconds
-Residual norm: 5.997720e-09
-Condition number: 1106506261.4351351
-
