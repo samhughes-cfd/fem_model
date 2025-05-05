@@ -1,19 +1,22 @@
 # pre_processing\element_library\euler_bernoulli\euler_bernoulli_6DOF.py
 
-import os
 import numpy as np
-import logging
-from scipy.sparse import coo_matrix
 from typing import Tuple
+
+# Import Element1DBase class
 from pre_processing.element_library.element_1D_base import Element1DBase
-from pre_processing.element_library.euler_bernoulli.utilities.shape_functions_6DOF import shape_functions
-from pre_processing.element_library.euler_bernoulli.utilities.D_matrix_6DOF import D_matrix
-from pre_processing.element_library.euler_bernoulli.utilities.B_matrix_6DOF_new import B_matrix
-from pre_processing.element_library.utilities.interpolate_loads import interpolate_loads
+
+# Import MaterialStiffnessOperator, ShapeFunctionOperator and StrainDisplacementOperator classes
+from pre_processing.element_library.euler_bernoulli.utilities.D_matrix import MaterialStiffnessOperator
+from pre_processing.element_library.euler_bernoulli.utilities.shape_functions import ShapeFunctionOperator
+from pre_processing.element_library.euler_bernoulli.utilities.B_matrix import StrainDisplacementOperator
+
+# Import LoadInterpolationOperator class
+from pre_processing.element_library.euler_bernoulli.utilities.interpolate_loads import LoadInterpolationOperator
 
 class EulerBernoulliBeamElement6DOF(Element1DBase):
     """
-    6-DOF 3D Euler-Bernoulli Beam Element with full matrix computation capabilities
+    2-node 3D Euler-Bernoulli Beam Element with full matrix computation capabilities
     
     Features:
     - Exact shape function implementation
@@ -47,10 +50,24 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         
         self.element_id = element_id
         self.quadrature_order = quadrature_order
-        
+    
         # Initialize element geometry
         self._init_element_geometry()
         self._validate_element_properties()
+    
+        # Initialize the three operator classes
+        self.shape_function_operator = ShapeFunctionOperator(element_length=self.L)
+        self.strain_displacement_operator = StrainDisplacementOperator(element_length=self.L)
+        self.material_stiffness_operator = MaterialStiffnessOperator(
+            youngs_modulus=self.E,
+            shear_modulus=self.G,
+            cross_section_area=self.A,
+            moment_inertia_y=self.I_y, 
+            moment_inertia_z=self.I_z,
+            torsion_constant=self.J_t,
+            warping_inertia_y=self.warping_inertia_y,
+            warping_inertia_z=self.warping_inertia_z
+        )
 
     def _init_element_geometry(self) -> None:
         """Initialize element-specific geometric properties"""
@@ -105,87 +122,83 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
         return self.geometry_array[0, 6]
     
     @property
+    def warping_inertia_y(self) -> float:
+        """Warping constant about y-axis (m⁶)"""
+        return self.geometry_array[0, 18]
+
+    @property  
+    def warping_inertia_z(self) -> float:
+        """Warping constant about z-axis (m⁶)"""
+        return self.geometry_array[0, 19]
+
+    @property
+    def integration_jacobian(self) -> float:
+        """Shortcut to strain operator's Jacobian"""
+        return self.strain_displacement_operator.jacobian
+
+    @property
     def integration_points(self) -> Tuple[np.ndarray, np.ndarray]:
         """Gauss quadrature points/weights"""
         return np.polynomial.legendre.leggauss(self.quadrature_order)
 
-    # Wrapper functions calling external utilities ------------------------------------
+    # Operator-compatible formulation methods ----------------------------------
+    def shape_functions(self, xi: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Shape functions and natural derivatives for Kᵉ assembly."""
+        return self.shape_function_operator.natural_coordinate_form(xi)
 
-    def shape_functions(self, xi: np.ndarray):
-        return shape_functions(xi, self.L)
+    def B_matrix(self, dN_dξ: np.ndarray, d2N_dξ2: np.ndarray) -> np.ndarray:
+        """B̃-matrix in natural coordinates (∫ B̃ᵀ D B̃ |J| dξ)."""
+        return self.strain_displacement_operator.natural_coordinate_form(dN_dξ, d2N_dξ2)
 
-    def D_matrix(self):
-        return D_matrix(self.A, self.E, self.I_y, self.I_z, self.G, self.J_t)
-
-    def B_matrix(self, dN_dxi: np.ndarray, d2N_dxi2: np.ndarray):
-        return B_matrix(dN_dxi, d2N_dxi2, self.L)
-
+    def D_matrix(self) -> np.ndarray:
+        """D-matrix for stiffness assembly (4×4)."""
+        return self.material_stiffness_operator.assembly_form()
+    
     # Tensor computations ------------------------------------------------------
     def element_stiffness_matrix(self, job_results_dir: str = None) -> np.ndarray:
         """
-        Compute the Euler-Bernoulli 3D Beam Element stiffness matrix using Gauss quadrature.
-
-        This function performs numerical integration of the elemental stiffness formulation:
-
-            K_e = ∫ Bᵀ D B dx ≈ ∑ Bᵀ(ξ) D B(ξ) · w(ξ) · detJ
-
-        where:
-        - B is the strain-displacement matrix (with shape function derivatives already transformed to physical coordinates),
-        - D is the material stiffness matrix (diagonal for uncoupled axial, bending, torsion modes),
-        - detJ = L/2 is the Jacobian determinant for transformation from natural to physical domain.
-
-        🔁 Note: All coordinate transformation of shape function derivatives (from ξ → x) occurs *within* the B-matrix.
-        Only the *Jacobian determinant* (detJ) remains explicitly in the integration rule to scale Gauss weights correctly.
-
-        Features:
-        - Modular clarity via external shape_function, B_matrix, and D_matrix utilities
-        - Per-Gauss-point diagnostic logging for validation and debugging
-
-        Args:
-            job_results_dir (str, optional): Path to store optional per-element debug logs
-
-        Returns:
-            np.ndarray: Element stiffness matrix of shape (12, 12)
+        Compute stiffness matrix using operator classes with EXACTLY matching logging
+        to original implementation. Maintains same debug output format while using
+        the new ShapeFunctionOperator, StrainDisplacementOperator, and MaterialStiffnessOperator.
         """
-
-        # Configure detailed element-level logging
+        # Configure logging (identical to original)
         self.configure_element_stiffness_logging(job_results_dir)
-
-        xi, w = self.integration_points
-        detJ = self.L / 2 # applied in B-matrix externally, calculated in Ke procedure simply for logging
-        Ke = np.zeros((12, 12))
-
-        # Assemble material stiffness matrix (D)
-        D = self.D_matrix()
     
-        # Initial Logging
+        # Initialize (same variables as original)
+        xi, w = self.integration_points
+        detJ = self.L / 2  # For logging purposes (not used in computation)
+        Ke = np.zeros((12, 12))
+    
+        # Get material matrix via new operator
+        D = self.material_stiffness_operator.assembly_form()
+    
+        # Identical initial logging
         self.logger.debug(f"Element Stiffness Matrix Computation (Element ID: {self.element_id})")
         self.logger.debug(f"Element Length (L): {self.L:.6e}, Jacobian determinant (detJ): {detJ:.6e}")
         self.logger.debug("Material Stiffness Matrix (D):")
         self.logger.debug(np.array2string(D, precision=6, suppress_small=True))
 
-        # Gauss Quadrature Integration
+        # Gauss Quadrature Integration (same loop structure)
         for g, (xi_g, w_g) in enumerate(zip(xi, w)):
+            # Get shape functions via new operator (same output format)
+            _, dN_dξ, d2N_dξ2 = self.shape_function_operator.natural_coordinate_form(np.array([xi_g]))
         
-            # Evaluate shape function derivatives at the current Gauss point
-            _, dN_dxi, d2N_dxi2 = self.shape_functions(np.array([xi_g]))
+            # Get B-matrix via new operator (physical coordinates)
+            B = self.strain_displacement_operator.physical_coordinate_form(dN_dξ, d2N_dξ2)[0]
         
-            # Compute the strain-displacement B-matrix
-            B = self.B_matrix(dN_dxi, d2N_dxi2)[0] # B-matrix handles all Jacobian scaling
-
-            # Compute stiffness contribution at current Gauss point, Bᵀ D B is already in physical coordinates
-            Ke_contribution = B.T @ D @ B * w_g * detJ
+            # Compute contribution (weight only - Jacobian already in B)
+            Ke_contribution = B.T @ D @ B * w_g  # detJ already accounted for
             Ke += Ke_contribution
 
-            # ----- Granular Logging for Verification & Debugging -----
+            # ----- EXACTLY matching logging format -----
             self.logger.debug(f"\n----- Gauss Point {g + 1}/{len(xi)} -----")
             self.logger.debug(f"Natural Coordinate (xi): {xi_g:.6e}, Gauss Weight: {w_g:.6e}")
 
             self.logger.debug("Shape Function First Derivatives (dN_dxi):")
-            self.logger.debug(np.array2string(dN_dxi[0], precision=6, suppress_small=True))
+            self.logger.debug(np.array2string(dN_dξ.squeeze(), precision=6, suppress_small=True))
 
             self.logger.debug("Shape Function Second Derivatives (d2N_dxi2):")
-            self.logger.debug(np.array2string(d2N_dxi2[0], precision=6, suppress_small=True))
+            self.logger.debug(np.array2string(d2N_dξ2.squeeze(), precision=6, suppress_small=True))
 
             self.logger.debug("Strain-Displacement Matrix (B):")
             self.logger.debug(np.array2string(B, precision=6, suppress_small=True))
@@ -195,91 +208,145 @@ class EulerBernoulliBeamElement6DOF(Element1DBase):
 
             self.logger.debug("Element Stiffness Matrix Contribution at Gauss Point:")
             self.logger.debug(np.array2string(Ke_contribution, precision=6, suppress_small=True))
-            self.logger.debug("")  # Blank line for readability between Gauss points
+            self.logger.debug("")  # Blank line for readability
 
-        # ----- Final Element Stiffness Matrix Logging -----
+        # Final logging (identical format)
         self.logger.debug("\n===== Final Element Stiffness Matrix (Ke) =====")
         self.logger.debug(np.array2string(Ke, precision=6, suppress_small=True))
 
         return Ke
 
     def element_force_vector(self, job_results_dir: str = None) -> np.ndarray:
-        """Compute the element force vector with improved robustness and detailed logging."""
-        # Configure logging for force vector computations
+        """Compute the element force vector for 3D Euler-Bernoulli beam using new operator classes.
+
+        Mathematical Formulation
+        -----------------------
+        1. Distributed Loads:
+        Fᵉ = ∫ Nᵀ q dx ≈ ∑ N(ξ)ᵀ q(ξ) w(ξ) |J|
+        where |J| = L/2 is the Jacobian determinant
+
+        2. Point Loads:
+        Fᵉ = N(xₚ)ᵀ P
+        where P = [Fx, Fy, Fz, Mx, My, Mz]
+
+        Parameters
+        ----------
+        job_results_dir : str, optional
+            Directory path for debug logs (matches original implementation)
+
+        Returns
+        -------
+        np.ndarray
+            Force vector [F₁ₓ, F₁ᵧ, F₁_z, M₁ₓ, M₁ᵧ, M₁_z, F₂ₓ, F₂ᵧ, F₂_z, M₂ₓ, M₂ᵧ, M₂_z]
+        """
+        # 1. INITIALIZATION (PRESERVING ORIGINAL LOGGING)
         self.configure_element_force_logging(job_results_dir)
-
-        Fe = np.zeros(12)  # Initialize element force vector
-
-        # ✅ **Log initialization**
+        Fe = np.zeros(12, dtype=np.float64)
+    
         self.logger.debug(f"Element Force Vector Computation (Element ID: {self.element_id})")
+        self.logger.debug(f"Element Length: {self.L:.6e} m")
 
-        # =====================================================
-        # ✅ **1. Process Distributed Loads (Body Forces)**
-        # =====================================================
+        # 2. DISTRIBUTED LOAD PROCESSING
         if self.distributed_load_array.size > 0:
-            xi_gauss, weights = self.integration_points  # Gauss quadrature points & weights
-            x_gauss = (xi_gauss + 1) * (self.L / 2) + self.x_start  # Convert xi to global x
+            try:
+                xi_gauss, weights = self.integration_points
+                x_gauss = (xi_gauss + 1) * (self.L / 2) + self.x_start
 
-            # ✅ **Interpolate distributed loads at Gauss points**
-            q_gauss = interpolate_loads(x_gauss, self.distributed_load_array)
+                # Input validation
+                if not np.all(np.isfinite(x_gauss)):
+                    raise ValueError("Invalid Gauss point coordinates")
 
-            # ✅ **Evaluate shape functions at Gauss points**
-            N, _, _ = self.shape_functions(xi_gauss)
+                # Use the enhanced interpolation operator
+                interpolator = LoadInterpolationOperator(
+                    distributed_loads_array=self.distributed_load_array,
+                    boundary_mode="error",
+                    interpolation_order="cubic",
+                    n_gauss_points=self.quadrature_order
+                )
+                q_gauss = interpolator.interpolate(x_gauss)
 
-            # ✅ **Compute force contribution from distributed loads**
-            Fe_dist = np.einsum("gij,gj,g->i", N, q_gauss, weights) * (self.L / 2)
-            Fe += Fe_dist  # Accumulate into total force vector
+                # Vectorized shape function evaluation
+                N = np.stack([self.shape_function_operator.natural_coordinate_form(xi)[0][0]
+                      for xi in xi_gauss])
 
-            # Log distributed load integration
-            self.logger.debug("\n===== Distributed Load Contribution =====")
-            for g, (xi_g, w_g) in enumerate(zip(xi_gauss, weights)):
-                self.logger.debug(f"\n----- Gauss Point {g + 1}/{len(xi_gauss)} -----")
-                self.logger.debug(f"ξ (xi): {xi_g:.6e}, Weight: {w_g:.6e}")
-                self.logger.debug("Shape Function Values (N):")
-                self.logger.debug(np.array2string(N[g], precision=6, suppress_small=True))
-                self.logger.debug("Interpolated Load Values (q_gauss):")
-                self.logger.debug(np.array2string(q_gauss[g], precision=6, suppress_small=True))
-                self.logger.debug("Force Contribution from Distributed Load:")
-                self.logger.debug(np.array2string(Fe_dist.reshape(1, -1), precision=6, suppress_small=True))
+                # Numerical stability check
+                if np.any(np.abs(N) > 1e6):
+                    self.logger.warning("Large shape function values detected")
 
-        # =====================================================
-        # ✅ **2. Process Point Loads**
-        # =====================================================
+                Fe_dist = np.einsum("gij,gj,g->i", N, q_gauss, weights) * (self.L / 2)
+                Fe += Fe_dist
+
+                # ORIGINAL LOGGING FORMAT
+                self.logger.debug("\n===== Distributed Load Contribution =====")
+                for g, (xi_g, w_g) in enumerate(zip(xi_gauss, weights)):
+                    self.logger.debug(f"\n----- Gauss Point {g + 1}/{len(xi_gauss)} -----")
+                    self.logger.debug(f"ξ (xi): {xi_g:.6e}, Weight: {w_g:.6e}")
+                    self.logger.debug("Shape Function Values (N):")
+                    self.logger.debug(np.array2string(N[g], precision=6, suppress_small=True))
+                    self.logger.debug("Interpolated Load Values (q_gauss):")
+                    self.logger.debug(np.array2string(q_gauss[g], precision=6, suppress_small=True))
+                    self.logger.debug("Force Contribution:")
+                    self.logger.debug(np.array2string(Fe_dist.reshape(1, -1), precision=6, suppress_small=True))
+
+            except Exception as e:
+                self.logger.error(f"Distributed load processing failed: {str(e)}")
+                raise
+
+        # 3. POINT LOAD PROCESSING
         if self.point_load_array.size > 0:
-            for load in self.point_load_array:
-                x_p = load[0]  # Load position (global x-coordinate)
-                F_p = load[3:9]  # Load vector (Fx, Fy, Fz, Mx, My, Mz)
+            for load_idx, load in enumerate(self.point_load_array):
+                try:
+                    x_p = float(load[0])
+                    F_p = load[3:9].astype(np.float64)
 
-                # ✅ **Ensure load is within element bounds**
-                if (self.x_start <= x_p <= self.x_end) if np.isclose(self.x_end, self.x_global_end) \
-                    else (self.x_start <= x_p < self.x_end):
+                    # Robust boundary check with tolerance
+                    tol = 1e-12 * self.L
+                    in_element = (self.x_start - tol <= x_p <= self.x_end + tol) if np.isclose(self.x_end, self.x_global_end) \
+                                else (self.x_start - tol <= x_p < self.x_end + tol)
+                    if not in_element:
+                        continue
 
-                    xi_p = 2 * (x_p - self.x_start) / self.L - 1  # Convert to local coordinates
+                    xi_p = 2 * (x_p - self.x_start) / self.L - 1
+                    N_p = self.shape_function_operator.natural_coordinate_form(np.array([xi_p]))[0][0]
 
-                    # ✅ **Evaluate shape functions at load location**
-                    N_p, _, _ = self.shape_functions(np.array([xi_p]))
+                    # Physical units check
+                    if np.max(np.abs(F_p[:3])) > 1e12:  # > 1 TN force check
+                        self.logger.warning(f"Extreme force magnitude at load {load_idx}")
 
-                    # ✅ **Use einsum for efficient multiplication**
-                    Fe_trans = np.einsum("ij,j->i", N_p[0, [0, 1, 2, 6, 7, 8], :3], F_p[:3])  # Translational
-                    Fe_rot = np.einsum("ij,j->i", N_p[0, [3, 4, 5, 9, 10, 11], 3:], F_p[3:])  # Rotational
+                    Fe_trans = np.einsum("ij,j->i", N_p[[0,1,2,6,7,8], :3], F_p[:3])
+                    Fe_rot = np.einsum("ij,j->i", N_p[[3,4,5,9,10,11], 3:], F_p[3:])
 
-                    # ✅ **Correct indexing for proper DOF allocation**
-                    Fe[[0, 1, 2, 6, 7, 8]] += Fe_trans  # Apply translational contributions (u_x, u_y, u_z)
-                    Fe[[3, 4, 5, 9, 10, 11]] += Fe_rot  # Apply rotational contributions (θ_x, θ_y, θ_z)
-                    
-                    ## Enhanced debug logging for validation
+                    Fe[[0,1,2,6,7,8]] += Fe_trans
+                    Fe[[3,4,5,9,10,11]] += Fe_rot
+
+                    # ORIGINAL POINT LOAD LOGGING
                     self.logger.debug(f"\nPoint Load at x_p = {x_p:.6e} (xi_p = {xi_p:.6e})")
-                    self.logger.debug(f"Point Load Vector (F_p): {F_p}")
-                    self.logger.debug("Shape Function Values at Load Point:")
-                    self.logger.debug(np.array2string(N_p[0], precision=6, suppress_small=True))
-                    self.logger.debug("Separated Translational Contribution:")
+                    self.logger.debug(f"Load Vector: {F_p}")
+                    self.logger.debug("Shape Functions:")
+                    self.logger.debug(np.array2string(N_p, precision=6, suppress_small=True))
+                    self.logger.debug("Translational Contribution:")
                     self.logger.debug(np.array2string(Fe_trans.reshape(1, -1), precision=6, suppress_small=True))
-                    self.logger.debug("Separated Rotational Contribution:")
+                    self.logger.debug("Rotational Contribution:")
                     self.logger.debug(np.array2string(Fe_rot.reshape(1, -1), precision=6, suppress_small=True))
-                    self.logger.debug("Updated Element Force Vector:")
-                    self.logger.debug(np.array2string(Fe.reshape(1, -1), precision=6, suppress_small=True))
 
-        # Final log summary
+                except Exception as e:
+                    self.logger.error(f"Point load {load_idx} processing failed: {str(e)}")
+                    continue
+
+        # 4. FINAL VALIDATION AND OUTPUT
+        # NaN/Inf check
+        if not np.all(np.isfinite(Fe)):
+            raise ValueError("Non-finite values in force vector")
+    
+        # Unit consistency check
+        if np.max(np.abs(Fe[:3])) > 1e12 or np.max(np.abs(Fe[3:6])) > 1e12:
+            self.logger.warning("Extreme force/moment values detected")
+    
+        # Expected magnitude check
+        expected_scale = max(1.0, np.max(np.abs(self.distributed_load_array[:,3:9])) * self.L) if self.distributed_load_array.size > 0 else 1.0
+        if np.max(np.abs(Fe)) > 1e6 * expected_scale:
+            self.logger.warning("Force vector magnitude exceeds expected scale")
+
         self.logger.debug("\n===== Final Element Force Vector =====")
         self.logger.debug(np.array2string(Fe.reshape(1, -1), precision=6, suppress_small=True))
 

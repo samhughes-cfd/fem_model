@@ -1,0 +1,3 @@
+2025-05-05 18:10:05,944 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 0)
+2025-05-05 18:10:05,949 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:05,956 - pre_processing.element_library.element_1D_base - ERROR - Distributed load processing failed: Non-monotonic positions persist along y-axis after sorting.

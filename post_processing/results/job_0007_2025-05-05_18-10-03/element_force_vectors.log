@@ -1,0 +1,26 @@
+2025-05-05 18:10:04,227 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 0)
+2025-05-05 18:10:04,229 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e+00 m
+2025-05-05 18:10:04,230 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 2.000000e+00 (xi_p = 1.000000e+00)
+2025-05-05 18:10:04,236 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:04,238 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:04,239 - pre_processing.element_library.element_1D_base - DEBUG - [[ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 1.  0.  0.  0.  0.  0.]
+ [ 0.  1.  0.  0.  0.  0.]
+ [ 0.  0.  1.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]]
+2025-05-05 18:10:04,246 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:04,248 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0. -100000.       0.]]
+2025-05-05 18:10:04,249 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:04,251 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:04,254 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:04,255 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0.       0.       0.       0. -100000.
+        0.       0.       0.       0.]]

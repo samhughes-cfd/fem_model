@@ -1,0 +1,197 @@
+2025-05-05 18:10:07,701 - DEBUG - 🔧 Beginning displacement reconstruction.
+2025-05-05 18:10:07,703 - DEBUG - 📌 Total DOFs in system: 66
+2025-05-05 18:10:07,704 - DEBUG - 📌 Condensed DOFs count: 60
+2025-05-05 18:10:07,704 - DEBUG - 📌 Active DOFs indices: [ 6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29
+ 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53
+ 54 55 56 57 58 59 60 61 62 63 64 65]
+2025-05-05 18:10:07,705 - DEBUG - 📐 Initialized global displacement array with zeros.
+2025-05-05 18:10:07,706 - DEBUG - Mapped condensed displacement U_cond[0] = nan to global DOF 6.
+2025-05-05 18:10:07,707 - DEBUG - Mapped condensed displacement U_cond[1] = nan to global DOF 7.
+2025-05-05 18:10:07,709 - DEBUG - Mapped condensed displacement U_cond[2] = nan to global DOF 8.
+2025-05-05 18:10:07,710 - DEBUG - Mapped condensed displacement U_cond[3] = nan to global DOF 9.
+2025-05-05 18:10:07,710 - DEBUG - Mapped condensed displacement U_cond[4] = nan to global DOF 10.
+2025-05-05 18:10:07,711 - DEBUG - Mapped condensed displacement U_cond[5] = nan to global DOF 11.
+2025-05-05 18:10:07,712 - DEBUG - Mapped condensed displacement U_cond[6] = nan to global DOF 12.
+2025-05-05 18:10:07,712 - DEBUG - Mapped condensed displacement U_cond[7] = nan to global DOF 13.
+2025-05-05 18:10:07,713 - DEBUG - Mapped condensed displacement U_cond[8] = nan to global DOF 14.
+2025-05-05 18:10:07,715 - DEBUG - Mapped condensed displacement U_cond[9] = nan to global DOF 15.
+2025-05-05 18:10:07,716 - DEBUG - Mapped condensed displacement U_cond[10] = nan to global DOF 16.
+2025-05-05 18:10:07,717 - DEBUG - Mapped condensed displacement U_cond[11] = nan to global DOF 17.
+2025-05-05 18:10:07,718 - DEBUG - Mapped condensed displacement U_cond[12] = nan to global DOF 18.
+2025-05-05 18:10:07,718 - DEBUG - Mapped condensed displacement U_cond[13] = nan to global DOF 19.
+2025-05-05 18:10:07,719 - DEBUG - Mapped condensed displacement U_cond[14] = nan to global DOF 20.
+2025-05-05 18:10:07,720 - DEBUG - Mapped condensed displacement U_cond[15] = nan to global DOF 21.
+2025-05-05 18:10:07,721 - DEBUG - Mapped condensed displacement U_cond[16] = nan to global DOF 22.
+2025-05-05 18:10:07,721 - DEBUG - Mapped condensed displacement U_cond[17] = nan to global DOF 23.
+2025-05-05 18:10:07,723 - DEBUG - Mapped condensed displacement U_cond[18] = nan to global DOF 24.
+2025-05-05 18:10:07,723 - DEBUG - Mapped condensed displacement U_cond[19] = nan to global DOF 25.
+2025-05-05 18:10:07,725 - DEBUG - Mapped condensed displacement U_cond[20] = nan to global DOF 26.
+2025-05-05 18:10:07,726 - DEBUG - Mapped condensed displacement U_cond[21] = nan to global DOF 27.
+2025-05-05 18:10:07,727 - DEBUG - Mapped condensed displacement U_cond[22] = nan to global DOF 28.
+2025-05-05 18:10:07,727 - DEBUG - Mapped condensed displacement U_cond[23] = nan to global DOF 29.
+2025-05-05 18:10:07,728 - DEBUG - Mapped condensed displacement U_cond[24] = nan to global DOF 30.
+2025-05-05 18:10:07,729 - DEBUG - Mapped condensed displacement U_cond[25] = nan to global DOF 31.
+2025-05-05 18:10:07,730 - DEBUG - Mapped condensed displacement U_cond[26] = nan to global DOF 32.
+2025-05-05 18:10:07,731 - DEBUG - Mapped condensed displacement U_cond[27] = nan to global DOF 33.
+2025-05-05 18:10:07,733 - DEBUG - Mapped condensed displacement U_cond[28] = nan to global DOF 34.
+2025-05-05 18:10:07,734 - DEBUG - Mapped condensed displacement U_cond[29] = nan to global DOF 35.
+2025-05-05 18:10:07,736 - DEBUG - Mapped condensed displacement U_cond[30] = nan to global DOF 36.
+2025-05-05 18:10:07,738 - DEBUG - Mapped condensed displacement U_cond[31] = nan to global DOF 37.
+2025-05-05 18:10:07,740 - DEBUG - Mapped condensed displacement U_cond[32] = nan to global DOF 38.
+2025-05-05 18:10:07,740 - DEBUG - Mapped condensed displacement U_cond[33] = nan to global DOF 39.
+2025-05-05 18:10:07,740 - DEBUG - Mapped condensed displacement U_cond[34] = nan to global DOF 40.
+2025-05-05 18:10:07,743 - DEBUG - Mapped condensed displacement U_cond[35] = nan to global DOF 41.
+2025-05-05 18:10:07,744 - DEBUG - Mapped condensed displacement U_cond[36] = nan to global DOF 42.
+2025-05-05 18:10:07,745 - DEBUG - Mapped condensed displacement U_cond[37] = nan to global DOF 43.
+2025-05-05 18:10:07,745 - DEBUG - Mapped condensed displacement U_cond[38] = nan to global DOF 44.
+2025-05-05 18:10:07,746 - DEBUG - Mapped condensed displacement U_cond[39] = nan to global DOF 45.
+2025-05-05 18:10:07,747 - DEBUG - Mapped condensed displacement U_cond[40] = nan to global DOF 46.
+2025-05-05 18:10:07,747 - DEBUG - Mapped condensed displacement U_cond[41] = nan to global DOF 47.
+2025-05-05 18:10:07,748 - DEBUG - Mapped condensed displacement U_cond[42] = nan to global DOF 48.
+2025-05-05 18:10:07,748 - DEBUG - Mapped condensed displacement U_cond[43] = nan to global DOF 49.
+2025-05-05 18:10:07,749 - DEBUG - Mapped condensed displacement U_cond[44] = nan to global DOF 50.
+2025-05-05 18:10:07,750 - DEBUG - Mapped condensed displacement U_cond[45] = nan to global DOF 51.
+2025-05-05 18:10:07,750 - DEBUG - Mapped condensed displacement U_cond[46] = nan to global DOF 52.
+2025-05-05 18:10:07,751 - DEBUG - Mapped condensed displacement U_cond[47] = nan to global DOF 53.
+2025-05-05 18:10:07,751 - DEBUG - Mapped condensed displacement U_cond[48] = nan to global DOF 54.
+2025-05-05 18:10:07,752 - DEBUG - Mapped condensed displacement U_cond[49] = nan to global DOF 55.
+2025-05-05 18:10:07,753 - DEBUG - Mapped condensed displacement U_cond[50] = nan to global DOF 56.
+2025-05-05 18:10:07,754 - DEBUG - Mapped condensed displacement U_cond[51] = nan to global DOF 57.
+2025-05-05 18:10:07,755 - DEBUG - Mapped condensed displacement U_cond[52] = nan to global DOF 58.
+2025-05-05 18:10:07,755 - DEBUG - Mapped condensed displacement U_cond[53] = nan to global DOF 59.
+2025-05-05 18:10:07,756 - DEBUG - Mapped condensed displacement U_cond[54] = nan to global DOF 60.
+2025-05-05 18:10:07,756 - DEBUG - Mapped condensed displacement U_cond[55] = nan to global DOF 61.
+2025-05-05 18:10:07,757 - DEBUG - Mapped condensed displacement U_cond[56] = nan to global DOF 62.
+2025-05-05 18:10:07,758 - DEBUG - Mapped condensed displacement U_cond[57] = nan to global DOF 63.
+2025-05-05 18:10:07,759 - DEBUG - Mapped condensed displacement U_cond[58] = nan to global DOF 64.
+2025-05-05 18:10:07,760 - DEBUG - Mapped condensed displacement U_cond[59] = nan to global DOF 65.
+2025-05-05 18:10:07,761 - INFO - ✅ Successfully mapped all condensed displacements back to global vector.
+2025-05-05 18:10:07,767 - DEBUG - 📝 Logged detailed DOF mapping.
+2025-05-05 18:10:07,777 - INFO - 📘 Reconstruction log updated with structured displacement data.
+nan
+   3 →    9: nan
+   4 →   10: nan
+   5 →   11: nan
+   6 →   12: nan
+   7 →   13: nan
+   8 →   14: nan
+   9 →   15: nan
+  10 →   16: nan
+  11 →   17: nan
+  12 →   18: nan
+  13 →   19: nan
+  14 →   20: nan
+  15 →   21: nan
+  16 →   22: nan
+  17 →   23: nan
+  18 →   24: nan
+  19 →   25: nan
+  20 →   26: nan
+  21 →   27: nan
+  22 →   28: nan
+  23 →   29: nan
+  24 →   30: nan
+  25 →   31: nan
+  26 →   32: nan
+  27 →   33: nan
+  28 →   34: nan
+  29 →   35: nan
+  30 →   36: nan
+  31 →   37: nan
+  32 →   38: nan
+  33 →   39: nan
+  34 →   40: nan
+  35 →   41: nan
+  36 →   42: nan
+  37 →   43: nan
+  38 →   44: nan
+  39 →   45: nan
+  40 →   46: nan
+  41 →   47: nan
+  42 →   48: nan
+  43 →   49: nan
+  44 →   50: nan
+  45 →   51: nan
+  46 →   52: nan
+  47 →   53: nan
+  48 →   54: nan
+  49 →   55: nan
+  50 →   56: nan
+  51 →   57: nan
+  52 →   58: nan
+  53 →   59: nan
+  54 →   60: nan
+  55 →   61: nan
+  56 →   62: nan
+  57 →   63: nan
+  58 →   64: nan
+  59 →   65: nan
+
+📊 Full reconstructed displacement vector:
+    Global DOF  Displacement
+0            0  0.000000e+00
+1            1  0.000000e+00
+2            2  0.000000e+00
+3            3  0.000000e+00
+4            4  0.000000e+00
+5            5  0.000000e+00
+6            6           NaN
+7            7           NaN
+8            8           NaN
+9            9           NaN
+10          10           NaN
+11          11           NaN
+12          12           NaN
+13          13           NaN
+14          14           NaN
+15          15           NaN
+16          16           NaN
+17          17           NaN
+18          18           NaN
+19          19           NaN
+20          20           NaN
+21          21           NaN
+22          22           NaN
+23          23           NaN
+24          24           NaN
+25          25           NaN
+26          26           NaN
+27          27           NaN
+28          28           NaN
+29          29           NaN
+30          30           NaN
+31          31           NaN
+32          32           NaN
+33          33           NaN
+34          34           NaN
+35          35           NaN
+36          36           NaN
+37          37           NaN
+38          38           NaN
+39          39           NaN
+40          40           NaN
+41          41           NaN
+42          42           NaN
+43          43           NaN
+44          44           NaN
+45          45           NaN
+46          46           NaN
+47          47           NaN
+48          48           NaN
+49          49           NaN
+50          50           NaN
+51          51           NaN
+52          52           NaN
+53          53           NaN
+54          54           NaN
+55          55           NaN
+56          56           NaN
+57          57           NaN
+58          58           NaN
+59          59           NaN
+60          60           NaN
+61          61           NaN
+62          62           NaN
+63          63           NaN
+64          64           NaN
+65          65           NaN

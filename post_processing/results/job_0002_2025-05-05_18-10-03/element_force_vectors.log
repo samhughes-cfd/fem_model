@@ -1,0 +1,506 @@
+2025-05-05 18:10:06,013 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 0)
+2025-05-05 18:10:06,031 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,037 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,047 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,062 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 1)
+2025-05-05 18:10:06,062 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 1)
+2025-05-05 18:10:06,070 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,070 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,085 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,085 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,099 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,099 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,113 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 2)
+2025-05-05 18:10:06,113 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 2)
+2025-05-05 18:10:06,113 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 2)
+2025-05-05 18:10:06,123 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,123 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,123 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,133 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,133 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,133 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,147 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,147 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,147 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,160 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 3)
+2025-05-05 18:10:06,160 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 3)
+2025-05-05 18:10:06,160 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 3)
+2025-05-05 18:10:06,160 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 3)
+2025-05-05 18:10:06,170 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,170 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,170 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,170 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,185 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,185 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,185 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,185 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,199 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,199 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,199 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,199 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,214 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 4)
+2025-05-05 18:10:06,214 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 4)
+2025-05-05 18:10:06,214 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 4)
+2025-05-05 18:10:06,214 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 4)
+2025-05-05 18:10:06,214 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 4)
+2025-05-05 18:10:06,222 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,222 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,222 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,222 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,222 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,231 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = 1.000000e+00)
+2025-05-05 18:10:06,231 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = 1.000000e+00)
+2025-05-05 18:10:06,231 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = 1.000000e+00)
+2025-05-05 18:10:06,231 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = 1.000000e+00)
+2025-05-05 18:10:06,231 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = 1.000000e+00)
+2025-05-05 18:10:06,243 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,243 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,243 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,243 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,243 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,256 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,256 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,256 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,256 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,256 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,274 - pre_processing.element_library.element_1D_base - DEBUG - [[ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 1.  0.  0.  0.  0.  0.]
+ [ 0.  1.  0.  0.  0.  0.]
+ [ 0.  0.  1.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]]
+2025-05-05 18:10:06,274 - pre_processing.element_library.element_1D_base - DEBUG - [[ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 1.  0.  0.  0.  0.  0.]
+ [ 0.  1.  0.  0.  0.  0.]
+ [ 0.  0.  1.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]]
+2025-05-05 18:10:06,274 - pre_processing.element_library.element_1D_base - DEBUG - [[ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 1.  0.  0.  0.  0.  0.]
+ [ 0.  1.  0.  0.  0.  0.]
+ [ 0.  0.  1.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]]
+2025-05-05 18:10:06,274 - pre_processing.element_library.element_1D_base - DEBUG - [[ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 1.  0.  0.  0.  0.  0.]
+ [ 0.  1.  0.  0.  0.  0.]
+ [ 0.  0.  1.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]]
+2025-05-05 18:10:06,274 - pre_processing.element_library.element_1D_base - DEBUG - [[ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 1.  0.  0.  0.  0.  0.]
+ [ 0.  1.  0.  0.  0.  0.]
+ [ 0.  0.  1.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0. -0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]]
+2025-05-05 18:10:06,289 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,289 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,289 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,289 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,289 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,301 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0. -100000.       0.]]
+2025-05-05 18:10:06,301 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0. -100000.       0.]]
+2025-05-05 18:10:06,301 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0. -100000.       0.]]
+2025-05-05 18:10:06,301 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0. -100000.       0.]]
+2025-05-05 18:10:06,301 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0. -100000.       0.]]
+2025-05-05 18:10:06,310 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,310 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,310 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,310 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,310 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,322 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,322 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,322 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,322 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,322 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,332 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,332 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,332 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,332 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,332 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,343 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0.       0.       0.       0. -100000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,343 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0.       0.       0.       0. -100000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,343 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0.       0.       0.       0. -100000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,343 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0.       0.       0.       0. -100000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,343 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.       0.       0.       0.       0.       0.       0. -100000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,358 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 5)
+2025-05-05 18:10:06,358 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 5)
+2025-05-05 18:10:06,358 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 5)
+2025-05-05 18:10:06,358 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 5)
+2025-05-05 18:10:06,358 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 5)
+2025-05-05 18:10:06,358 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 5)
+2025-05-05 18:10:06,369 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,369 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,369 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,369 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,369 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,369 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,382 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = -1.000000e+00)
+2025-05-05 18:10:06,382 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = -1.000000e+00)
+2025-05-05 18:10:06,382 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = -1.000000e+00)
+2025-05-05 18:10:06,382 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = -1.000000e+00)
+2025-05-05 18:10:06,382 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = -1.000000e+00)
+2025-05-05 18:10:06,382 - pre_processing.element_library.element_1D_base - DEBUG - 
+Point Load at x_p = 1.000000e+00 (xi_p = -1.000000e+00)
+2025-05-05 18:10:06,392 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,392 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,392 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,392 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,392 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,392 - pre_processing.element_library.element_1D_base - DEBUG - Load Vector: [      0. -100000.       0.       0.       0.       0.]
+2025-05-05 18:10:06,403 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,403 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,403 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,403 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,403 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,403 - pre_processing.element_library.element_1D_base - DEBUG - Shape Functions:
+2025-05-05 18:10:06,413 - pre_processing.element_library.element_1D_base - DEBUG - [[ 1.  0.  0.  0.  0.  0.]
+ [ 0. -4.  0.  0.  0.  0.]
+ [ 0.  0. -4.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0.  4.  0.]
+ [ 0.  0.  0.  0.  0. -4.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  5.  0.  0.  0.  0.]
+ [ 0.  0.  5.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  2.  0.]
+ [ 0.  0.  0.  0.  0. -2.]]
+2025-05-05 18:10:06,413 - pre_processing.element_library.element_1D_base - DEBUG - [[ 1.  0.  0.  0.  0.  0.]
+ [ 0. -4.  0.  0.  0.  0.]
+ [ 0.  0. -4.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0.  4.  0.]
+ [ 0.  0.  0.  0.  0. -4.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  5.  0.  0.  0.  0.]
+ [ 0.  0.  5.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  2.  0.]
+ [ 0.  0.  0.  0.  0. -2.]]
+2025-05-05 18:10:06,413 - pre_processing.element_library.element_1D_base - DEBUG - [[ 1.  0.  0.  0.  0.  0.]
+ [ 0. -4.  0.  0.  0.  0.]
+ [ 0.  0. -4.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0.  4.  0.]
+ [ 0.  0.  0.  0.  0. -4.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  5.  0.  0.  0.  0.]
+ [ 0.  0.  5.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  2.  0.]
+ [ 0.  0.  0.  0.  0. -2.]]
+2025-05-05 18:10:06,413 - pre_processing.element_library.element_1D_base - DEBUG - [[ 1.  0.  0.  0.  0.  0.]
+ [ 0. -4.  0.  0.  0.  0.]
+ [ 0.  0. -4.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0.  4.  0.]
+ [ 0.  0.  0.  0.  0. -4.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  5.  0.  0.  0.  0.]
+ [ 0.  0.  5.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  2.  0.]
+ [ 0.  0.  0.  0.  0. -2.]]
+2025-05-05 18:10:06,413 - pre_processing.element_library.element_1D_base - DEBUG - [[ 1.  0.  0.  0.  0.  0.]
+ [ 0. -4.  0.  0.  0.  0.]
+ [ 0.  0. -4.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0.  4.  0.]
+ [ 0.  0.  0.  0.  0. -4.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  5.  0.  0.  0.  0.]
+ [ 0.  0.  5.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  2.  0.]
+ [ 0.  0.  0.  0.  0. -2.]]
+2025-05-05 18:10:06,413 - pre_processing.element_library.element_1D_base - DEBUG - [[ 1.  0.  0.  0.  0.  0.]
+ [ 0. -4.  0.  0.  0.  0.]
+ [ 0.  0. -4.  0.  0.  0.]
+ [ 0.  0.  0.  1.  0.  0.]
+ [ 0.  0.  0.  0.  4.  0.]
+ [ 0.  0.  0.  0.  0. -4.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  5.  0.  0.  0.  0.]
+ [ 0.  0.  5.  0.  0.  0.]
+ [ 0.  0.  0.  0.  0.  0.]
+ [ 0.  0.  0.  0.  2.  0.]
+ [ 0.  0.  0.  0.  0. -2.]]
+2025-05-05 18:10:06,425 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,425 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,425 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,425 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,425 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,425 - pre_processing.element_library.element_1D_base - DEBUG - Translational Contribution:
+2025-05-05 18:10:06,436 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0. -500000.       0.]]
+2025-05-05 18:10:06,436 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0. -500000.       0.]]
+2025-05-05 18:10:06,436 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0. -500000.       0.]]
+2025-05-05 18:10:06,436 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0. -500000.       0.]]
+2025-05-05 18:10:06,436 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0. -500000.       0.]]
+2025-05-05 18:10:06,436 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0. -500000.       0.]]
+2025-05-05 18:10:06,453 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,453 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,453 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,453 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,453 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,453 - pre_processing.element_library.element_1D_base - DEBUG - Rotational Contribution:
+2025-05-05 18:10:06,464 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,464 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,464 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,464 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,464 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,464 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,480 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,480 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,480 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,480 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,480 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,480 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,504 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0.       0.       0.       0. -500000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,504 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0.       0.       0.       0. -500000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,504 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0.       0.       0.       0. -500000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,504 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0.       0.       0.       0. -500000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,504 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0.       0.       0.       0. -500000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,504 - pre_processing.element_library.element_1D_base - DEBUG - [[      0.  400000.       0.       0.       0.       0.       0. -500000.
+        0.       0.       0.       0.]]
+2025-05-05 18:10:06,522 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 6)
+2025-05-05 18:10:06,522 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 6)
+2025-05-05 18:10:06,522 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 6)
+2025-05-05 18:10:06,522 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 6)
+2025-05-05 18:10:06,522 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 6)
+2025-05-05 18:10:06,522 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 6)
+2025-05-05 18:10:06,522 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 6)
+2025-05-05 18:10:06,543 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,543 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,543 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,543 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,543 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,543 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,543 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,563 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,563 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,563 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,563 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,563 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,563 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,563 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,582 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,582 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,582 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,582 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,582 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,582 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,582 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,605 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 7)
+2025-05-05 18:10:06,605 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 7)
+2025-05-05 18:10:06,605 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 7)
+2025-05-05 18:10:06,605 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 7)
+2025-05-05 18:10:06,605 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 7)
+2025-05-05 18:10:06,605 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 7)
+2025-05-05 18:10:06,605 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 7)
+2025-05-05 18:10:06,605 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 7)
+2025-05-05 18:10:06,636 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,636 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,636 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,636 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,636 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,636 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,636 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,636 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,650 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,650 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,650 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,650 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,650 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,650 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,650 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,650 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,661 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,661 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,661 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,661 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,661 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,661 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,661 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,661 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,677 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 8)
+2025-05-05 18:10:06,677 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 8)
+2025-05-05 18:10:06,677 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 8)
+2025-05-05 18:10:06,677 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 8)
+2025-05-05 18:10:06,677 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 8)
+2025-05-05 18:10:06,677 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 8)
+2025-05-05 18:10:06,677 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 8)
+2025-05-05 18:10:06,677 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 8)
+2025-05-05 18:10:06,677 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 8)
+2025-05-05 18:10:06,690 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,690 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,690 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,690 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,690 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,690 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,690 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,690 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,690 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,703 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,703 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,703 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,703 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,703 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,703 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,703 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,703 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,703 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,716 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,716 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,716 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,716 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,716 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,716 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,716 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,716 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,716 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,731 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 9)
+2025-05-05 18:10:06,731 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 9)
+2025-05-05 18:10:06,731 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 9)
+2025-05-05 18:10:06,731 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 9)
+2025-05-05 18:10:06,731 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 9)
+2025-05-05 18:10:06,731 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 9)
+2025-05-05 18:10:06,731 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 9)
+2025-05-05 18:10:06,731 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 9)
+2025-05-05 18:10:06,731 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 9)
+2025-05-05 18:10:06,731 - pre_processing.element_library.element_1D_base - DEBUG - Element Force Vector Computation (Element ID: 9)
+2025-05-05 18:10:06,751 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,751 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,751 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,751 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,751 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,751 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,751 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,751 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,751 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,751 - pre_processing.element_library.element_1D_base - DEBUG - Element Length: 2.000000e-01 m
+2025-05-05 18:10:06,766 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,766 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,766 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,766 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,766 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,766 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,766 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,766 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,766 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,766 - pre_processing.element_library.element_1D_base - DEBUG - 
+===== Final Element Force Vector =====
+2025-05-05 18:10:06,797 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,797 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,797 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,797 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,797 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,797 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,797 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,797 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,797 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
+2025-05-05 18:10:06,797 - pre_processing.element_library.element_1D_base - DEBUG - [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]]
