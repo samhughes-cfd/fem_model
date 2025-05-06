@@ -1,5 +1,0 @@
-2025-05-05 18:10:04,964 - INFO - 🔹 Solving FEM system using `direct_solver_sparse`...
-2025-05-05 18:10:04,970 - WARNING - ⚠️ Condition number could not be computed (singular matrix).
-2025-05-05 18:10:04,973 - INFO - ✅ Solver completed in 0.003009 seconds.
-2025-05-05 18:10:05,260 - INFO - ✅ Solver execution successful.
-009 sec

@@ -1,0 +1,52 @@
+2025-05-06 15:47:55,135 - DEBUG - 🔧 Beginning displacement reconstruction.
+2025-05-06 15:47:55,136 - DEBUG - 📌 Total DOFs in system: 18
+2025-05-06 15:47:55,137 - DEBUG - 📌 Condensed DOFs count: 12
+2025-05-06 15:47:55,137 - DEBUG - 📌 Active DOFs indices: [ 6  7  8  9 10 11 12 13 14 15 16 17]
+2025-05-06 15:47:55,138 - DEBUG - 📐 Initialized global displacement array with zeros.
+2025-05-06 15:47:55,138 - DEBUG - Mapped condensed displacement U_cond[0] = 0.000000e+00 to global DOF 6.
+2025-05-06 15:47:55,140 - DEBUG - Mapped condensed displacement U_cond[1] = -2.539050e-04 to global DOF 7.
+2025-05-06 15:47:55,141 - DEBUG - Mapped condensed displacement U_cond[2] = 0.000000e+00 to global DOF 8.
+2025-05-06 15:47:55,146 - DEBUG - Mapped condensed displacement U_cond[3] = 0.000000e+00 to global DOF 9.
+2025-05-06 15:47:55,147 - DEBUG - Mapped condensed displacement U_cond[4] = 0.000000e+00 to global DOF 10.
+2025-05-06 15:47:55,148 - DEBUG - Mapped condensed displacement U_cond[5] = -5.859346e-04 to global DOF 11.
+2025-05-06 15:47:55,149 - DEBUG - Mapped condensed displacement U_cond[6] = 0.000000e+00 to global DOF 12.
+2025-05-06 15:47:55,150 - DEBUG - Mapped condensed displacement U_cond[7] = -9.179642e-04 to global DOF 13.
+2025-05-06 15:47:55,152 - DEBUG - Mapped condensed displacement U_cond[8] = 0.000000e+00 to global DOF 14.
+2025-05-06 15:47:55,153 - DEBUG - Mapped condensed displacement U_cond[9] = 0.000000e+00 to global DOF 15.
+2025-05-06 15:47:55,154 - DEBUG - Mapped condensed displacement U_cond[10] = 0.000000e+00 to global DOF 16.
+2025-05-06 15:47:55,155 - DEBUG - Mapped condensed displacement U_cond[11] = -7.617149e-04 to global DOF 17.
+2025-05-06 15:47:55,156 - INFO - ✅ Successfully mapped all condensed displacements back to global vector.
+2025-05-06 15:47:55,163 - DEBUG - 📝 Logged detailed DOF mapping.
+2025-05-06 15:47:55,171 - INFO - 📘 Reconstruction log updated with structured displacement data.
+04
+   2 →    8: 0.000000e+00
+   3 →    9: 0.000000e+00
+   4 →   10: 0.000000e+00
+   5 →   11: -5.859346e-04
+   6 →   12: 0.000000e+00
+   7 →   13: -9.179642e-04
+   8 →   14: 0.000000e+00
+   9 →   15: 0.000000e+00
+  10 →   16: 0.000000e+00
+  11 →   17: -7.617149e-04
+
+📊 Full reconstructed displacement vector:
+    Global DOF  Displacement
+0            0  0.000000e+00
+1            1  0.000000e+00
+2            2  0.000000e+00
+3            3  0.000000e+00
+4            4  0.000000e+00
+5            5  0.000000e+00
+6            6  0.000000e+00
+7            7 -2.539050e-04
+8            8  0.000000e+00
+9            9  0.000000e+00
+10          10  0.000000e+00
+11          11 -5.859346e-04
+12          12  0.000000e+00
+13          13 -9.179642e-04
+14          14  0.000000e+00
+15          15  0.000000e+00
+16          16  0.000000e+00
+17          17 -7.617149e-04

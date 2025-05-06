@@ -1,0 +1,50 @@
+2025-05-06 15:47:54,808 [INFO] (condensation:35) - 🔧 Starting static condensation process.
+2025-05-06 15:47:54,809 [DEBUG] (condensation:38) - 🔍 Total DOFs in initial system: 18
+2025-05-06 15:47:54,810 [DEBUG] (condensation:42) - 🚫 Explicitly Fixed DOFs: [0 1 2 3 4 5]
+2025-05-06 15:47:54,811 [DEBUG] (condensation:43) - ✅ Active DOFs after removing fixed: [ 6  7  8  9 10 11 12 13 14 15 16 17]
+2025-05-06 15:47:54,811 [DEBUG] (condensation:48) - 🟢 Intermediate K matrix shape: (12, 12)
+2025-05-06 15:47:54,812 [INFO] (condensation:53) - 🔍 DOFs removed due to zero rows/columns: 0
+2025-05-06 15:47:54,813 [DEBUG] (condensation:54) - ✅ Fully active DOFs post zero check: [ 6  7  8  9 10 11 12 13 14 15 16 17]
+2025-05-06 15:47:54,815 [DEBUG] (condensation:62) - 🟠 Secondary inactive DOFs removed: []
+2025-05-06 15:47:54,818 [DEBUG] (condensation:85) - 📜 Condensed K matrix:
+                   Cond 0 (Orig 6)  Cond 1 (Orig 7)  Cond 2 (Orig 8)  Cond 3 (Orig 9)  Cond 4 (Orig 10)  Cond 5 (Orig 11)  Cond 6 (Orig 12)  Cond 7 (Orig 13)  Cond 8 (Orig 14)  Cond 9 (Orig 15)  Cond 10 (Orig 16)  Cond 11 (Orig 17)
+Cond 0 (Orig 6)         1.6000e+10       0.0000e+00       0.0000e+00       0.0000e+00        0.0000e+00        0.0000e+00       -8.0000e+09        0.0000e+00        0.0000e+00        0.0000e+00         0.0000e+00         0.0000e+00
+Cond 1 (Orig 7)         0.0000e+00       7.1680e+10       0.0000e+00       0.0000e+00        0.0000e+00        5.1200e+09        0.0000e+00       -3.5840e+10        0.0000e+00        0.0000e+00         0.0000e+00         1.5360e+10
+Cond 2 (Orig 8)         0.0000e+00       0.0000e+00       1.7920e+10       0.0000e+00       -1.2800e+09        0.0000e+00        0.0000e+00        0.0000e+00       -8.9602e+09        0.0000e+00        -3.8401e+09         0.0000e+00
+Cond 3 (Orig 9)         0.0000e+00       0.0000e+00       0.0000e+00       5.2523e+06        0.0000e+00        0.0000e+00        0.0000e+00        0.0000e+00        0.0000e+00       -2.6262e+06         0.0000e+00         0.0000e+00
+Cond 4 (Orig 10)        0.0000e+00       0.0000e+00      -1.2800e+09       0.0000e+00        4.6934e+09        0.0000e+00        0.0000e+00        0.0000e+00        5.1201e+09        0.0000e+00         2.1334e+09         0.0000e+00
+Cond 5 (Orig 11)        0.0000e+00       5.1200e+09       0.0000e+00       0.0000e+00        0.0000e+00        1.8773e+10        0.0000e+00       -2.0480e+10        0.0000e+00        0.0000e+00         0.0000e+00         8.5334e+09
+Cond 6 (Orig 12)       -8.0000e+09       0.0000e+00       0.0000e+00       0.0000e+00        0.0000e+00        0.0000e+00        8.0000e+09        0.0000e+00        0.0000e+00        0.0000e+00         0.0000e+00         0.0000e+00
+Cond 7 (Orig 13)        0.0000e+00      -3.5840e+10       0.0000e+00       0.0000e+00        0.0000e+00       -2.0480e+10        0.0000e+00        3.5840e+10        0.0000e+00        0.0000e+00         0.0000e+00        -1.5360e+10
+Cond 8 (Orig 14)        0.0000e+00       0.0000e+00      -8.9602e+09       0.0000e+00        5.1201e+09        0.0000e+00        0.0000e+00        0.0000e+00        8.9602e+09        0.0000e+00         3.8401e+09         0.0000e+00
+Cond 9 (Orig 15)        0.0000e+00       0.0000e+00       0.0000e+00      -2.6262e+06        0.0000e+00        0.0000e+00        0.0000e+00        0.0000e+00        0.0000e+00        2.6262e+06         0.0000e+00         0.0000e+00
+Cond 10 (Orig 16)       0.0000e+00       0.0000e+00      -3.8401e+09       0.0000e+00        2.1334e+09        0.0000e+00        0.0000e+00        0.0000e+00        3.8401e+09        0.0000e+00         1.7067e+09         0.0000e+00
+Cond 11 (Orig 17)       0.0000e+00       1.5360e+10       0.0000e+00       0.0000e+00        0.0000e+00        8.5334e+09        0.0000e+00       -1.5360e+10        0.0000e+00        0.0000e+00         0.0000e+00         6.8267e+09
+2025-05-06 15:47:54,819 [DEBUG] (condensation:86) - 📄 Condensed F vector:
+                       F_cond
+Cond 0 (Orig 6)    0.0000e+00
+Cond 1 (Orig 7)    0.0000e+00
+Cond 2 (Orig 8)    0.0000e+00
+Cond 3 (Orig 9)    0.0000e+00
+Cond 4 (Orig 10)   0.0000e+00
+Cond 5 (Orig 11)   0.0000e+00
+Cond 6 (Orig 12)   0.0000e+00
+Cond 7 (Orig 13)  -1.0000e+05
+Cond 8 (Orig 14)   0.0000e+00
+Cond 9 (Orig 15)   0.0000e+00
+Cond 10 (Orig 16)  0.0000e+00
+Cond 11 (Orig 17)  0.0000e+00
+2025-05-06 15:47:54,820 [INFO] (condensation:89) - 🔗 DOF Mapping (Condensed → Original):
+2025-05-06 15:47:54,821 [DEBUG] (condensation:91) - Condensed 0 → Original 6
+2025-05-06 15:47:54,821 [DEBUG] (condensation:91) - Condensed 1 → Original 7
+2025-05-06 15:47:54,822 [DEBUG] (condensation:91) - Condensed 2 → Original 8
+2025-05-06 15:47:54,822 [DEBUG] (condensation:91) - Condensed 3 → Original 9
+2025-05-06 15:47:54,823 [DEBUG] (condensation:91) - Condensed 4 → Original 10
+2025-05-06 15:47:54,823 [DEBUG] (condensation:91) - Condensed 5 → Original 11
+2025-05-06 15:47:54,824 [DEBUG] (condensation:91) - Condensed 6 → Original 12
+2025-05-06 15:47:54,825 [DEBUG] (condensation:91) - Condensed 7 → Original 13
+2025-05-06 15:47:54,828 [DEBUG] (condensation:91) - Condensed 8 → Original 14
+2025-05-06 15:47:54,829 [DEBUG] (condensation:91) - Condensed 9 → Original 15
+2025-05-06 15:47:54,830 [DEBUG] (condensation:91) - Condensed 10 → Original 16
+2025-05-06 15:47:54,832 [DEBUG] (condensation:91) - Condensed 11 → Original 17
+2025-05-06 15:47:54,832 [INFO] (condensation:93) - ✅ Static condensation completed successfully.

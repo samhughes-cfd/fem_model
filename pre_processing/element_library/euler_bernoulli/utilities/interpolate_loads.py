@@ -102,17 +102,16 @@ class LoadInterpolationOperator:
 
     def _ensure_monotonic_positions(self) -> None:
         """
-        Ensure strictly increasing positions in x, y, z columns.
-        Sorting is performed along the first non-monotonic axis.
+        Ensure strictly increasing positions in the x-axis (interpolation domain).
+        Sorting is performed if necessary.
         """
-        for dim, axis in enumerate(['x', 'y', 'z']):
-            coords = self.distributed_loads_array[:, dim]
-            if not np.all(np.diff(coords) > 0):
-                sort_idx = np.argsort(coords)
-                sorted_array = self.distributed_loads_array[sort_idx]
-                object.__setattr__(self, 'distributed_loads_array', sorted_array)
-                if not np.all(np.diff(sorted_array[:, dim]) > 0):
-                    raise ValueError(f"Non-monotonic positions persist along {axis}-axis after sorting.")
+        x = self.distributed_loads_array[:, 0]
+        if not np.all(np.diff(x) > 0):
+            sort_idx = np.argsort(x)
+            sorted_array = self.distributed_loads_array[sort_idx]
+            object.__setattr__(self, 'distributed_loads_array', sorted_array)
+            if not np.all(np.diff(sorted_array[:, 0]) > 0):
+                raise ValueError("Non-monotonic x-coordinates persist after sorting.")
 
     def _identify_active_components(self) -> None:
         """Mark which of Fx, Fy, Fz, Mx, My, Mz are non-zero in the data."""

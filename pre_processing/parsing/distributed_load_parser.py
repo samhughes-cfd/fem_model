@@ -89,7 +89,7 @@ def parse_distributed_load(file_path):
 
 # Standalone execution for testing
 if __name__ == "__main__":
-    test_file = r"jobs\job_0006\distributed_load.txt"  # Use raw string for Windows paths
+    test_file = r"jobs\job_0004\distributed_load.txt"  # Use raw string for Windows paths
     if not os.path.exists(test_file):
         logging.error(f"Test file '{test_file}' not found. Make sure it exists before running.")
     else:
