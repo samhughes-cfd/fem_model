@@ -1,82 +1,100 @@
-# pre_processing\element_library\element_1D_base.py
+# pre_processing/element_library/element_1D_base.py
 
 import logging
 import numpy as np
 from scipy.sparse import coo_matrix
-from typing import Optional
+from typing import Optional, List, Dict
 import os
 from pre_processing.element_library.element_factory import create_elements_batch
+from pre_processing.element_library.base_logger_operator import BaseLoggerOperator
 
-# Configure Logger
+# Configure module-level logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)  # Debug level logs go to `.log` file
+logger.setLevel(logging.DEBUG)
 
-# Console Handler (Minimal terminal output)
+# Console handler for real-time monitoring
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)  # Terminal only shows key info/errors
-console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+console_handler.setLevel(logging.INFO)
+console_formatter = logging.Formatter(
+    "%(asctime)s - %(levelname)s - %(message)s")
 console_handler.setFormatter(console_formatter)
 logger.addHandler(console_handler)
 
 
 class Element1DBase:
-    """
-    Base class for 1D finite elements.
+    """Abstract base class for 1D structural finite elements with hierarchical logging."""
 
-    Responsibilities:
-    - Stores geometry, material, and mesh data.
-    - Requests element instantiation from `element_factory.py`.
-    - Computes element stiffness and force matrices.
-    - Precomputes Jacobians to optimize matrix calculations.
-    """
-
-    def __init__(self, geometry_array, material_array, mesh_dictionary, point_load_array, distributed_load_array, dof_per_node=6):
-        """
-        Initializes the base 1D finite element system.
-
-        Args:
-            geometry_array (np.ndarray): Geometry properties.
-            material_array (np.ndarray): Material properties.
-            mesh_dictionary (dict): Mesh data including connectivity, element types, and node coordinates.
-            point_load_array (np.ndarray): Point loads applied to the system.
-            distributed_load_array (np.ndarray): Distributed loads applied to the system.
-            dof_per_node (int, optional): Degrees of freedom per node (default: 6).
-        """
-        self.logger = logger  # Make the logger accessible to child classes
-        logger.info("Initializing Element1DBase...")
-
+    def __init__(
+        self,
+        geometry_array: np.ndarray,
+        material_array: np.ndarray,
+        mesh_dictionary: dict,
+        point_load_array: np.ndarray,
+        distributed_load_array: np.ndarray,
+        dof_per_node: int = 6,
+        job_results_dir: Optional[str] = None,  # Added parameter
+        element_id: Optional[int] = None  # Added parameter
+    ):
+        """Initialize base finite element system with enhanced logging support."""
+        self.logger = logger
         self.geometry_array = geometry_array
         self.material_array = material_array
         self.mesh_dictionary = mesh_dictionary
         self.point_load_array = point_load_array
         self.distributed_load_array = distributed_load_array
         self.dof_per_node = dof_per_node
-        self.elements_instances = None
+        self.elements_instances: List[Element1DBase] = []
+        self.job_results_dir = job_results_dir  # Direct storage
+        self.element_id = element_id  # Store element ID
+        self.logger_operator: Optional[BaseLoggerOperator] = None
 
-    def configure_element_stiffness_logging(self, job_results_dir: Optional[str] = None):
-        """Configures logging for element stiffness matrix computations."""
-        if job_results_dir:
-            stiffness_log_path = os.path.join(job_results_dir, "element_stiffness_matrices.log")
-            file_handler = logging.FileHandler(stiffness_log_path, mode="a", encoding="utf-8")  # Append mode
-            file_handler.setLevel(logging.DEBUG)  # Full debugging goes here
-            file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            file_handler.setFormatter(file_formatter)
-            logger.addHandler(file_handler)
+        # Initialize logger operator if directory provided
+        if self.job_results_dir and self.element_id is not None:
+            self.logger_operator = BaseLoggerOperator(self.element_id, self.job_results_dir)
+            self._validate_logging_directories()
 
-    def configure_element_force_logging(self, job_results_dir: Optional[str] = None):
-        """Configures logging for element force vector computations."""
-        if job_results_dir:
-            force_log_path = os.path.join(job_results_dir, "element_force_vectors.log")
-            file_handler = logging.FileHandler(force_log_path, mode="a", encoding="utf-8")  # Append mode
-            file_handler.setLevel(logging.DEBUG)  # Full debugging goes here
-            file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-            file_handler.setFormatter(file_formatter)
-            logger.addHandler(file_handler)
+    def set_logging_directory(self, job_results_dir: str):
+        """Configure and validate hierarchical logging output directory."""
+        self.job_results_dir = job_results_dir
+        
+        # Create required subdirectories
+        required_dirs = [
+            os.path.join(job_results_dir, "element_stiffness_matrices"),
+            os.path.join(job_results_dir, "element_force_vectors")
+        ]
+        for d in required_dirs:
+            os.makedirs(d, exist_ok=True)
+        
+        self._validate_logging_directories()
+        logger.info(f"Logging directory configured: {job_results_dir}")
 
-    def _instantiate_elements(self):
-        """Updated element factory interface with proper parameters"""
-        if hasattr(self, 'elements_instances'):
-            logger.warning("Skipping element instantiation to prevent recursion.")
+    def _validate_logging_directories(self):
+        """Ensure required logging directories exist."""
+        required_dirs = [
+            os.path.join(self.job_results_dir, "element_stiffness_matrices"),
+            os.path.join(self.job_results_dir, "element_force_vectors")
+        ]
+        for d in required_dirs:
+            if not os.path.exists(d):
+                raise FileNotFoundError(f"Missing required logging directory: {d}")
+
+    def init_element_logger(self, element_id: int) -> BaseLoggerOperator:
+        """Initialize element-specific logging operator with validation."""
+        if not self.job_results_dir:
+            raise ValueError("Job results directory must be set before initializing element loggers")
+        
+        logger_op = BaseLoggerOperator(element_id, self.job_results_dir)
+        
+        # Verify directories were created
+        if not os.path.exists(logger_op._get_log_path("stiffness")):
+            raise RuntimeError(f"Failed to initialize logging for element {element_id}")
+            
+        return logger_op
+
+    def _instantiate_elements(self) -> List['Element1DBase']:
+        """Batch instantiate elements with proper logging configuration."""
+        if self.elements_instances:
+            logger.warning("Element instances already exist - returning cached instances")
             return self.elements_instances
 
         params_list = np.array([{
@@ -85,73 +103,251 @@ class Element1DBase:
             "mesh_dictionary": self.mesh_dictionary,
             "point_load_array": self.point_load_array,
             "distributed_load_array": self.distributed_load_array,
-            "element_id": elem_id  # Critical addition
+            "element_id": elem_id,
+            "job_results_dir": self.job_results_dir,  # Critical addition
+            "logger_operator": self.init_element_logger(elem_id)
         } for elem_id in self.mesh_dictionary["element_ids"]], dtype=object)
 
-        elements = create_elements_batch(self.mesh_dictionary, params_list)
+        self.elements_instances = create_elements_batch(self.mesh_dictionary, params_list)
+        self._validate_element_creation()
+        self._validate_logging_setup()
+        return self.elements_instances
 
-        # Validation remains unchanged
-        if any(el is None for el in elements):
-            missing_indices = [i for i, el in enumerate(elements) if el is None]
-            logger.warning(f"Missing elements at indices: {missing_indices}")
+    def _validate_element_creation(self):
+        """Validate element instantiation and logging setup."""
+        missing = [i for i, el in enumerate(self.elements_instances) if el is None]
+        if missing:
+            logger.error(f"Critical error: Failed to create {len(missing)} elements")
+            raise RuntimeError(f"Element creation failed at indices: {missing}")
 
-        return elements
+        # Verify logging operators are initialized
+        for idx, element in enumerate(self.elements_instances):
+            if not element.logger_operator:
+                raise ValueError(f"Element {idx} missing logger operator")
 
-    def _compute_stiffness_matrices_vectorized(self):
-        """Handle sparse matrix conversion"""
-        stiffness_matrices = super()._compute_stiffness_matrices_vectorized()
-        return [mat.tocsr() for mat in stiffness_matrices]  # Convert to CSR for assembly
+    def _validate_logging_setup(self):
+        """Post-instantiation validation of logging infrastructure."""
+        if self.job_results_dir:
+            # Check for required directories
+            required_dirs = [
+                os.path.join(self.job_results_dir, "element_stiffness_matrices"),
+                os.path.join(self.job_results_dir, "element_force_vectors")
+            ]
+            for d in required_dirs:
+                if not os.path.isdir(d):
+                    raise FileNotFoundError(f"Missing logging directory: {d}")
 
-    def _compute_force_vectors_vectorized(self):
-        """Ensure force vector consistency"""
-        vectors = super()._compute_force_vectors_vectorized()
-        return np.array([v.flatten() for v in vectors], dtype=np.float64)
+    # Logging wrappers for BaseLoggingOperator interface ------------------------------
+    
+    def log_matrix(self, category: str, matrix: np.ndarray, metadata: Dict = None):
+        """Log numerical matrix with structural metadata.
 
-    def assemble_global_dof_indices(self, element_id):
+        Parameters
+        ----------
+        category : str
+            Logging category ('stiffness' or 'force')
+        matrix : np.ndarray
+            Numerical matrix to log
+        metadata : Dict, optional
+            Additional metadata fields:
+            - 'name': Matrix description
+            - 'precision': Display precision
+            - 'max_line_width': Formatting width
+
+        Notes
+        -----
+        Buffers data for batch writing. Actual I/O occurs during flush_logs().
         """
-        Constructs the global DOF indices for an element.
+        if self.logger_operator:
+            self.logger_operator.log_matrix(category, matrix, metadata)
 
-        Args:
-            element_id (int): The ID of the element.
+    def log_text(self, category: str, message: str):
+        """Log textual information to category-specific stream.
 
-        Returns:
-            list: A list of global DOF indices associated with the element.
+        Parameters
+        ----------
+        category : str
+            Logging category ('stiffness' or 'force')
+        message : str
+            Textual message to log
+        """
+        if self.logger_operator:
+            self.logger_operator.log_text(category, message)
+
+    def flush_logs(self, category: Optional[str] = None):
+        """Flush logged data to persistent storage.
+
+        Parameters
+        ----------
+        category : Optional[str], optional
+            Specific category to flush, by default flushes all
+
+        Notes
+        -----
+        Critical for I/O performance in large-scale systems. Batch writing
+        reduces filesystem operations by 2-3 orders of magnitude vs per-write.
+        """
+        if self.logger_operator:
+            if category:
+                self.logger_operator.flush(category)
+            else:
+                self.logger_operator.flush_all()
+
+    # Core finite element operations -------------------------------------------
+    def _compute_stiffness_matrices_vectorized(self) -> List[coo_matrix]:
+        """Compute element stiffness matrices in vectorized form.
+
+        Returns
+        -------
+        List[coo_matrix]
+            List of stiffness matrices in COOrdinate sparse format
+
+        Raises
+        ------
+        NotImplementedError
+            Must be implemented in concrete subclasses
+
+        Notes
+        -----
+        Expected matrix dimensions: (2*dof_per_node, 2*dof_per_node)
+        COO format preferred for assembly efficiency.
+        """
+        raise NotImplementedError("Stiffness matrix computation not implemented")
+
+    def _compute_force_vectors_vectorized(self) -> np.ndarray:
+        """Compute element force vectors in vectorized form.
+
+        Returns
+        -------
+        np.ndarray
+            Force vectors array of shape (n_elements, 2*dof_per_node)
+
+        Raises
+        ------
+        NotImplementedError
+            Must be implemented in concrete subclasses
+        """
+        raise NotImplementedError("Force vector computation not implemented")
+
+    def assemble_global_dof_indices(self, element_id: int) -> np.ndarray:
+        """Compute global DOF indices for element assembly.
+
+        Parameters
+        ----------
+        element_id : int
+            Target element identifier
+
+        Returns
+        -------
+        np.ndarray
+            Global DOF indices array of shape (2*dof_per_node,)
+
+        Raises
+        ------
+        ValueError
+            For invalid element_id or negative node indices
+
+        Notes
+        -----
+        Assumes consecutive node numbering and fixed dof_per_node.
+        Index mapping formula: global_dof = node_id * dof_per_node + local_dof
         """
         if element_id not in self.mesh_dictionary["element_ids"]:
             raise ValueError(f"Invalid element_id: {element_id}")
 
-        element_index = np.where(self.mesh_dictionary["element_ids"] == element_id)[0][0]
-        node_ids = self.mesh_dictionary["connectivity"][element_index]
+        element_idx = np.where(self.mesh_dictionary["element_ids"] == element_id)[0][0]
+        node_ids = self.mesh_dictionary["connectivity"][element_idx]
 
-        global_dof_indices = []
-        for node_id in node_ids:
-            if node_id < 0:  # Node ID should never be negative
-                raise ValueError(f"Invalid node ID detected: {node_id} in element {element_id}")
+        dof_indices = []
+        for nid in node_ids:
+            if nid < 0:
+                raise ValueError(f"Invalid node ID {nid} in element {element_id}")
+            start_dof = nid * self.dof_per_node
+            dof_indices.extend(range(start_dof, start_dof + self.dof_per_node))
 
-            start_dof = node_id * self.dof_per_node
-            dof_indices = list(range(start_dof, start_dof + self.dof_per_node))
-            global_dof_indices.extend(dof_indices)
-
-        return np.asarray(global_dof_indices, dtype=int)  # Returns a NumPy int array
+        return np.array(dof_indices, dtype=int)
 
     def validate_matrices(self):
-        """Updated validation for sparse matrices"""
+        """Validate element matrix dimensions and properties.
+
+        Checks:
+        1. Stiffness matrix (Ke) is square with proper dimensions
+        2. Force vector (Fe) has matching dimension
+        3. Stiffness matrix symmetry (warning only)
+        4. Positive definiteness of Ke (warning only)
+
+        Notes
+        -----
+        Logs validation failures to both console and category-specific log files.
+        """
         expected_Ke_shape = (self.dof_per_node * 2, self.dof_per_node * 2)
         expected_Fe_shape = (self.dof_per_node * 2,)
 
         for idx, element in enumerate(self.elements_instances):
-            if element is None:
-                logger.error(f"Null element at index {idx}")
+            if not element:
+                self._log_validation_error(idx, "system", "Null element instance")
                 continue
 
-            # Handle sparse matrices
-            Ke = element.Ke.toarray() if isinstance(element.Ke, coo_matrix) else element.Ke
-            Fe = element.Fe  # Force vectors remain dense
-
+            # Stiffness matrix checks
             if Ke.shape != expected_Ke_shape:
-                logger.error(f"Element {idx}: Invalid Ke shape {Ke.shape}")
+                self._log_validation_error(idx, "stiffness", 
+                    f"Shape {Ke.shape} vs {expected_Ke_shape}")
 
+            # Force vector checks
+            Fe = element.Fe
             if Fe.shape != expected_Fe_shape:
-                logger.error(f"Element {idx}: Invalid Fe shape {Fe.shape}")
+                self._log_validation_error(idx, "force",
+                    f"Shape {Fe.shape} vs {expected_Fe_shape}")
 
-        logger.info("Matrix validation completed")
+            # Advanced property checks
+            if not np.allclose(Ke, Ke.T, atol=1e-6):
+                self.log_text("stiffness",
+                    f"Element {idx}: Stiffness matrix asymmetry detected")
+                
+            try:
+                np.linalg.cholesky(Ke)
+            except np.linalg.LinAlgError:
+                self.log_text("stiffness",
+                    f"Element {idx}: Stiffness matrix not positive definite")
+
+        logger.info("Matrix validation completed with %d elements checked",
+                    len(self.elements_instances))
+
+    def _log_validation_error(self, idx: int, category: str, message: str):
+        """Unified validation error logging."""
+        full_msg = f"Element {idx} validation error ({category}): {message}"
+        logger.error(full_msg)
+        self.log_text(category, full_msg)
+
+    # System lifecycle management ----------------------------------------------
+    def finalize_system(self):
+        """Finalize system processing and ensure data persistence."""
+        self._flush_all_element_logs()
+        logger.info("System finalized. Results in: %s", self.job_results_dir)
+        self._verify_log_integrity()
+
+    def _verify_log_integrity(self):
+        """Verify all expected log files were created."""
+        if not self.job_results_dir:
+            return
+
+        expected_logs = []
+        for element in self.elements_instances:
+            expected_logs.extend([
+                os.path.join(self.job_results_dir, "element_stiffness_matrices", 
+                           f"stiffness_element_{element.element_id}.log"),
+                os.path.join(self.job_results_dir, "element_force_vectors", 
+                           f"force_element_{element.element_id}.log")
+            ])
+
+        missing_logs = [log for log in expected_logs if not os.path.exists(log)]
+        if missing_logs:
+            logger.error(f"Missing {len(missing_logs)} log files")
+            raise FileNotFoundError(f"Missing log files: {missing_logs[:3]}...")
+
+    def _flush_all_element_logs(self):
+        """Ensure all element logs are persisted to disk."""
+        for element in self.elements_instances:
+            if element and element.logger_operator:
+                element.logger_operator.flush_all()
+        logger.debug("Flushed logs for %d elements", len(self.elements_instances))
