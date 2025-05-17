@@ -5,7 +5,6 @@ import numpy as np
 from scipy.sparse import coo_matrix
 from typing import Optional, List, Dict
 import os
-from pre_processing.element_library.element_factory import create_elements_batch
 from pre_processing.element_library.base_logger_operator import BaseLoggerOperator
 
 # Configure module-level logger
@@ -31,45 +30,48 @@ class Element1DBase:
         mesh_dictionary: dict,
         point_load_array: np.ndarray,
         distributed_load_array: np.ndarray,
+        job_results_dir: str,  # Changed to non-optional
+        element_id: int,        # Changed to non-optional
         dof_per_node: int = 6,
-        job_results_dir: Optional[str] = None,  # Added parameter
-        element_id: Optional[int] = None  # Added parameter
     ):
         """Initialize base finite element system with enhanced logging support."""
+        # Validate critical parameters first
+        if not isinstance(job_results_dir, str):
+            raise TypeError("job_results_dir must be a string")
+        if not isinstance(element_id, int):
+            raise TypeError("element_id must be an integer")
+
         self.logger = logger
         self.geometry_array = geometry_array
         self.material_array = material_array
         self.mesh_dictionary = mesh_dictionary
         self.point_load_array = point_load_array
         self.distributed_load_array = distributed_load_array
+        self.job_results_dir = job_results_dir
+        self.element_id = element_id
         self.dof_per_node = dof_per_node
-        self.elements_instances: List[Element1DBase] = []
-        self.job_results_dir = job_results_dir  # Direct storage
-        self.element_id = element_id  # Store element ID
-        self.logger_operator: Optional[BaseLoggerOperator] = None
 
-        # Initialize logger operator if directory provided
-        if self.job_results_dir and self.element_id is not None:
-            self.logger_operator = BaseLoggerOperator(self.element_id, self.job_results_dir)
-            self._validate_logging_directories()
+        self.elements_instances: List[Element1DBase] = []
+        
+        # Initialize logger operator immediately
+        self.logger_operator = BaseLoggerOperator(
+            element_id=self.element_id,
+            job_results_dir=self.job_results_dir
+        )
+        self._validate_logging_directories()
 
     def set_logging_directory(self, job_results_dir: str):
-        """Configure and validate hierarchical logging output directory."""
+        """Update logging directory for all elements"""
         self.job_results_dir = job_results_dir
-        
-        # Create required subdirectories
-        required_dirs = [
-            os.path.join(job_results_dir, "element_stiffness_matrices"),
-            os.path.join(job_results_dir, "element_force_vectors")
-        ]
-        for d in required_dirs:
-            os.makedirs(d, exist_ok=True)
-        
+        self.logger_operator = BaseLoggerOperator(
+            element_id=self.element_id,
+            job_results_dir=job_results_dir
+        )
         self._validate_logging_directories()
-        logger.info(f"Logging directory configured: {job_results_dir}")
+        logger.info(f"Logging directory updated: {job_results_dir}")
 
     def _validate_logging_directories(self):
-        """Ensure required logging directories exist."""
+        """Ensure required logging directories exist"""
         required_dirs = [
             os.path.join(self.job_results_dir, "element_stiffness_matrices"),
             os.path.join(self.job_results_dir, "element_force_vectors")
@@ -77,40 +79,33 @@ class Element1DBase:
         for d in required_dirs:
             if not os.path.exists(d):
                 raise FileNotFoundError(f"Missing required logging directory: {d}")
-
-    def init_element_logger(self, element_id: int) -> BaseLoggerOperator:
-        """Initialize element-specific logging operator with validation."""
-        if not self.job_results_dir:
-            raise ValueError("Job results directory must be set before initializing element loggers")
-        
-        logger_op = BaseLoggerOperator(element_id, self.job_results_dir)
-        
-        # Verify directories were created
-        if not os.path.exists(logger_op._get_log_path("stiffness")):
-            raise RuntimeError(f"Failed to initialize logging for element {element_id}")
-            
-        return logger_op
+            if not os.access(d, os.W_OK):
+                raise PermissionError(f"Write access denied for: {d}")
 
     def _instantiate_elements(self) -> List['Element1DBase']:
         """Batch instantiate elements with proper logging configuration."""
+        from pre_processing.element_library.element_factory import create_elements_batch
+
         if self.elements_instances:
-            logger.warning("Element instances already exist - returning cached instances")
             return self.elements_instances
 
+        # REMOVED logger_operator from params_list
         params_list = np.array([{
             "geometry_array": self.geometry_array,
             "material_array": self.material_array,
             "mesh_dictionary": self.mesh_dictionary,
             "point_load_array": self.point_load_array,
             "distributed_load_array": self.distributed_load_array,
+            "job_results_dir": self.job_results_dir,
             "element_id": elem_id,
-            "job_results_dir": self.job_results_dir,  # Critical addition
-            "logger_operator": self.init_element_logger(elem_id)
+            "dof_per_node": self.dof_per_node,
         } for elem_id in self.mesh_dictionary["element_ids"]], dtype=object)
 
-        self.elements_instances = create_elements_batch(self.mesh_dictionary, params_list)
+        self.elements_instances = create_elements_batch(
+            self.mesh_dictionary, 
+            params_list
+        )
         self._validate_element_creation()
-        self._validate_logging_setup()
         return self.elements_instances
 
     def _validate_element_creation(self):
@@ -288,13 +283,16 @@ class Element1DBase:
                 self._log_validation_error(idx, "system", "Null element instance")
                 continue
 
+            # Get matrices from element instance
+            Ke = element.Ke  # Access element's stiffness matrix
+            Fe = element.Fe  # Access element's force vector
+
             # Stiffness matrix checks
             if Ke.shape != expected_Ke_shape:
                 self._log_validation_error(idx, "stiffness", 
                     f"Shape {Ke.shape} vs {expected_Ke_shape}")
 
             # Force vector checks
-            Fe = element.Fe
             if Fe.shape != expected_Fe_shape:
                 self._log_validation_error(idx, "force",
                     f"Shape {Fe.shape} vs {expected_Fe_shape}")
@@ -303,7 +301,7 @@ class Element1DBase:
             if not np.allclose(Ke, Ke.T, atol=1e-6):
                 self.log_text("stiffness",
                     f"Element {idx}: Stiffness matrix asymmetry detected")
-                
+            
             try:
                 np.linalg.cholesky(Ke)
             except np.linalg.LinAlgError:
@@ -312,7 +310,7 @@ class Element1DBase:
 
         logger.info("Matrix validation completed with %d elements checked",
                     len(self.elements_instances))
-
+    
     def _log_validation_error(self, idx: int, category: str, message: str):
         """Unified validation error logging."""
         full_msg = f"Element {idx} validation error ({category}): {message}"

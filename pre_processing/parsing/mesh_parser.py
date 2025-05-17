@@ -1,30 +1,38 @@
-# pre_processing\parsing\mesh_parser.py
-
-import logging
-import numpy as np
-import os
-import re  # Import the regex module
-
-# Configure logging
-logging.basicConfig(
-    level=logging.WARNING,  # Set to DEBUG for detailed logs
-    format='%(levelname)s: %(message)s'
-)
-# For more detailed logs during troubleshooting, uncomment one of the following:
-# logging.getLogger().setLevel(logging.INFO)
-# logging.getLogger().setLevel(logging.DEBUG)
+# pre_processing/parsing/mesh_parser.py
 
 import logging
 import numpy as np
 import os
 import re
+import sys
+import traceback
+from typing import Dict, Tuple, List, Set
+from textwrap import dedent
 
 # Configure logging
-logging.basicConfig(level=logging.WARNING, format='%(levelname)s: %(message)s')
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(levelname)s: %(message)s'
+)
 
-def parse_mesh(mesh_file_path):
+# Element type registry with validation support
+_ELEMENT_REGISTRY = {
+    'EulerBernoulliBeamElement3D',
+    'TimoshenkoBeamElement3D', 
+    'LevinsonBeamElement3D'
+}
+
+# Strict header pattern matching
+_HEADER_PATTERN = re.compile(
+    r'\[node_ids\][\s\t]+\[x\][\s\t]+\[y\][\s\t]+\[z\][\s\t]+\[connectivity\][\s\t]+\[element_type\]',
+    re.IGNORECASE
+)
+
+def parse_mesh(mesh_file_path: str, 
+              element_registry: Set[str] = None,
+              strict_element_check: bool = True) -> Dict:
     """
-    Parses a structured mesh file and ensures all indices use 0-based indexing.
+    Parses a structured mesh file with strict format validation and type checking.
 
     =============================
     Mesh Properties Mapping
@@ -39,333 +47,334 @@ def parse_mesh(mesh_file_path):
     Element Lengths      `element_lengths`        `np.ndarray[float]`    (M,)      0-based      [m] 
     Element Types        `element_types`          `np.ndarray[str]`      (M,)      0-based      -   
 
-    The function reads mesh data, extracts node positions, and computes 
-    element lengths using the Euclidean distance formula. Empty lines and 
-    comments (#) are ignored.
-
     Parameters
     ----------
     mesh_file_path : str
-        Path to the structured mesh file.
+        Path to structured mesh file with required header format:
+        Line 1: [Mesh]
+        Line 2: [node_ids]     [x]            [y]         [z]         [connectivity]      [element_type]
+    element_registry : Set[str], optional
+        Custom element type registry (default: built-in beam elements)
+    strict_element_check : bool, optional
+        Whether to raise errors for unknown element types (default: True)
 
     Returns
     -------
     dict
-        Dictionary "mesh_dictionary" with the following keys:
-            - 'node_ids': np.ndarray[int]         (0-based indexing)
-            - 'node_coordinates': np.ndarray[float]  (0-based indexing)
-            - 'connectivity': np.ndarray[int]     (0-based indexing)
-            - 'element_ids': np.ndarray[int]      (0-based indexing)
-            - 'element_lengths': np.ndarray[float]  (0-based indexing)
-            - 'element_types': np.ndarray[str]    (0-based indexing)
+        Dictionary containing:
+        - 'node_ids': np.ndarray[int64] of original node IDs (1-based from file)
+        - 'node_coordinates': np.ndarray[float64] of XYZ coordinates (N×3)
+        - 'connectivity': np.ndarray[int64] of element connections (M×2)
+        - 'element_ids': np.ndarray[int64] of generated element IDs (0-based)
+        - 'element_lengths': np.ndarray[float64] of element lengths
+        - 'element_types': np.ndarray[object] of element type strings
 
     Raises
     ------
     FileNotFoundError
-        If the mesh file does not exist.
+        If mesh file doesn't exist
     ValueError
-        If node coordinates or connectivity data cannot be parsed.
-
-    Warnings
-    --------
-    Logs a warning if an invalid node or connectivity entry is encountered.
-
-    Example
-    -------
-    >>> mesh_dictionary = parse_mesh("mesh.txt")
-    >>> print(mesh_dictionary['element_ids'])
-    array([0, 1, 2, ...])
-
-    Notes
-    -----
-    - Nodes must be formatted as `ID X Y Z (Node1,Node2) ElementType`, where connectivity is optional.
-    - If connectivity is missing, `-` is used as a placeholder.
-    - Inline comments (#) are ignored.
+        For header/format issues, duplicate nodes, invalid connectivity, or unknown elements (strict mode)
+    TypeError
+        If numeric conversions fail
     """
+    
+    # Validate file existence and headers first
+    _validate_file_exists(mesh_file_path)
+    _validate_header_structure(mesh_file_path)
 
-    if not os.path.exists(mesh_file_path):
-        logging.error(f"[Mesh] File not found: {mesh_file_path}")
-        raise FileNotFoundError(f"{mesh_file_path} not found")
+    # Set up element registry
+    element_registry = element_registry or _ELEMENT_REGISTRY
 
-    node_ids = []
-    node_coordinates = []
-    connectivity_list = []
-    element_types = []
-
-    current_section = None
-    found_mesh_section = False
-
-    mesh_line_pattern = re.compile(
-        r'^\s*(\d+)\s+'                 # Node ID (1-based)
-        r'([\d\.eE+-]+)\s+'             # X-coordinate
-        r'([\d\.eE+-]+)\s+'             # Y-coordinate
-        r'([\d\.eE+-]+)\s+'             # Z-coordinate
-        r'(\((\d+),(\d+)\)|-)\s+'       # Connectivity (1-based)
-        r'(.*)$'                        # Element Type
+    # Two-pass parsing
+    node_id_map, node_coords = _parse_nodes(mesh_file_path)
+    connectivity, element_types = _process_connectivity(
+        mesh_file_path,
+        node_id_map,
+        element_registry,
+        strict_element_check
     )
 
-    with open(mesh_file_path, 'r') as f:
-        for line_number, raw_line in enumerate(f, 1):
-            line = raw_line.split("#")[0].strip()
-            logging.debug(f"[Mesh] Line {line_number}: '{raw_line.strip()}'")
+    return _finalize_mesh_data(node_id_map, node_coords, connectivity, element_types)
 
-            if not line:
+def _validate_file_exists(path: str) -> None:
+    """Ensure target file exists and is readable."""
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Mesh file not found: {path}")
+    if not os.access(path, os.R_OK):
+        raise PermissionError(f"Insufficient permissions to read: {path}")
+
+def _validate_header_structure(path: str) -> None:
+    """Validate mandatory header lines with strict formatting."""
+    with open(path, 'r') as f:
+        # Validate first line
+        first_line = f.readline().strip()
+        if not re.match(r'^\[mesh\]$', first_line, re.IGNORECASE):
+            raise ValueError("First line must be exactly '[Mesh]' (case-insensitive)")
+        
+        # Validate second line
+        second_line = f.readline().strip()
+        if not _HEADER_PATTERN.fullmatch(second_line):
+            raise ValueError(
+                "Invalid header format. Second line must be:\n"
+                "[node_ids]     [x]            [y]         [z]         [connectivity]      [element_type]"
+            )
+
+def _parse_nodes(path: str) -> Tuple[Dict[int, int], List[List[float]]]:
+    """First pass: Parse all node definitions with validation."""
+    node_id_map = {}
+    node_coords = []
+    
+    with open(path, 'r') as f:
+        # Skip headers
+        f.readline(), f.readline()
+        
+        for line_num, line in enumerate(f, start=3):
+            clean_line = re.sub(r'#.*', '', line).strip()
+            if not clean_line:
                 continue
 
-            if line.lower() == "[mesh]":
-                current_section = "mesh"
-                found_mesh_section = True
+            # Parse node line
+            parts = re.split(r'\s+', clean_line, maxsplit=4)
+            if len(parts) < 4:
+                logging.warning(f"Skipping invalid node format at line {line_num}")
                 continue
 
-            if current_section == "mesh":
-                headers = ["node_ids", "x", "y", "z", "connectivity", "element_type"]
-                if all(header in line.lower() for header in headers):
-                    continue
+            try:
+                node_id = int(parts[0])
+                if node_id in node_id_map:
+                    raise ValueError(f"Duplicate node ID {node_id} at line {line_num}")
+                
+                # Convert coordinates to float64
+                coords = [
+                    float(parts[1]),
+                    float(parts[2]),
+                    float(parts[3])
+                ]
+                if not all(np.isfinite(coords)):
+                    raise ValueError(f"Non-finite coordinate at line {line_num}")
 
-                match = mesh_line_pattern.match(line)
-                if not match:
-                    logging.warning(f"[Mesh] Line {line_number}: Invalid format. Skipping.")
-                    continue
+                node_id_map[node_id] = len(node_coords)
+                node_coords.append(coords)
 
-                node_id = int(match.group(1)) - 1  # Convert to 0-based indexing
-                x, y, z = float(match.group(2)), float(match.group(3)), float(match.group(4))
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"Invalid node data at line {line_num}") from e
 
-                node_ids.append(node_id)
-                node_coordinates.append((x, y, z))
+    return node_id_map, node_coords
 
-                if match.group(5) != "-":
-                    start_node = int(match.group(6)) - 1  # Convert to 0-based
-                    end_node = int(match.group(7)) - 1    # Convert to 0-based
-                    connectivity_list.append((start_node, end_node))
-                    element_types.append(match.group(8).strip())
+def _process_connectivity(path: str,
+                         node_id_map: Dict[int, int],
+                         element_registry: Set[str],
+                         strict_mode: bool) -> Tuple[np.ndarray, List[str]]:
+    """Second pass: Process connectivity and element types."""
+    connectivity = []
+    element_types = []
+    
+    with open(path, 'r') as f:
+        # Skip headers
+        f.readline(), f.readline()
+        
+        for line_num, line in enumerate(f, start=3):
+            clean_line = re.sub(r'#.*', '', line).strip()
+            if not clean_line:
+                continue
 
-    if not found_mesh_section:
-        logging.error(f"[Mesh] No [mesh] section found in '{mesh_file_path}'. Returning empty data.")
-        return {
-            'node_ids': np.empty((0,), dtype=int),
-            'node_coordinates': np.empty((0, 3), dtype=float),
-            'connectivity': np.empty((0, 2), dtype=int),
-            'element_lengths': np.empty((0,), dtype=float),
-            'element_ids': np.empty((0,), dtype=int),
-            'element_types': np.empty((0,), dtype=str)
-        }
+            # Extract connectivity and element type
+            conn_match = re.search(r'\((\d+)\s*,\s*(\d+)\)', clean_line)
+            if not conn_match:
+                continue  # Skip lines without connectivity
 
-    # Convert lists to NumPy arrays
-    node_ids_array = np.array(node_ids, dtype=int)
-    node_coordinates_array = np.array(node_coordinates, dtype=float)
-    connectivity_array = np.array(connectivity_list, dtype=int) if connectivity_list else np.empty((0, 2), dtype=int)
-    element_types_array = np.array(element_types, dtype=str) if element_types else np.empty((0,), dtype=str)
+            # Extract element type from end of line
+            elem_type = 'Unknown'
+            type_part = clean_line.split(')')[-1].strip()
+            if type_part:
+                elem_type = re.split(r'\s+', type_part)[0]
 
-    # Compute element lengths
-    element_lengths_array = compute_element_lengths(connectivity_array, node_coordinates_array, node_ids_array)
+            # Validate element type
+            if elem_type not in element_registry:
+                msg = f"Unknown element type '{elem_type}' at line {line_num}"
+                if strict_mode:
+                    raise ValueError(f"{msg}\nValid types: {sorted(element_registry)}")
+                logging.warning(msg)
 
-    # Convert element IDs to 0-based
-    element_ids_array = np.arange(connectivity_array.shape[0], dtype=int)
+            # Process connectivity
+            try:
+                start_id = int(conn_match.group(1))
+                end_id = int(conn_match.group(2))
+                
+                start_idx = node_id_map[start_id]
+                end_idx = node_id_map[end_id]
+                
+                connectivity.append((start_idx, end_idx))
+                element_types.append(elem_type)
 
-    mesh_dictionary = {
-        'node_ids': node_ids_array, # 0-based
-        'node_coordinates': node_coordinates_array,
-        'connectivity': connectivity_array,
-        'element_ids': element_ids_array,  # 0-based
-        'element_lengths': element_lengths_array,
-        'element_types': element_types_array
+            except KeyError as e:
+                missing = int(e.args[0])
+                raise ValueError(
+                    f"Undefined node {missing} in connectivity at line {line_num}"
+                ) from None
+            except ValueError as e:
+                raise ValueError(f"Invalid connectivity format at line {line_num}") from e
+
+    return np.array(connectivity, dtype=np.int64), np.array(element_types, dtype=object)
+
+def _finalize_mesh_data(node_id_map: Dict[int, int],
+                       node_coords: List[List[float]],
+                       connectivity: np.ndarray,
+                       element_types: np.ndarray) -> Dict:
+    """Validate and structure final mesh data with numpy arrays."""
+    # Convert to numpy arrays with explicit types
+    node_ids = np.array(list(node_id_map.keys()), dtype=np.int64)
+    node_coords_array = np.array(node_coords, dtype=np.float64)
+    
+    # Validate connectivity indices
+    max_node_idx = len(node_ids) - 1
+    if connectivity.size > 0:
+        invalid_mask = (connectivity < 0) | (connectivity > max_node_idx)
+        if np.any(invalid_mask):
+            invalid_nodes = np.unique(connectivity[invalid_mask])
+            raise ValueError(
+                f"Invalid node indices in connectivity: {invalid_nodes.tolist()}\n"
+                f"Valid node indices: 0-{max_node_idx}"
+            )
+
+    return {
+        'node_ids': node_ids,
+        'node_coordinates': node_coords_array,
+        'connectivity': connectivity,
+        'element_ids': np.arange(len(connectivity), dtype=np.int64),
+        'element_lengths': _compute_element_lengths(connectivity, node_coords_array),
+        'element_types': element_types
     }
 
-    logging.info(f"[Mesh] Parsed {len(element_types_array)} elements from {len(node_ids_array)} nodes.")
-    return mesh_dictionary
-
-def compute_element_lengths(connectivity_array, node_coordinates_array, node_ids_array):
-    """
-    Computes element lengths using NumPy vectorization.
-
-    Parameters
-    ----------
-    connectivity_array : np.ndarray[int]
-        Shape (M, 2) - Each row contains [start_node_index, end_node_index] (0-based).
-    node_coordinates_array : np.ndarray[float]
-        Shape (N, 3) - Each row contains [x, y, z] coordinates for a node.
-    node_ids_array : np.ndarray[int]
-        Shape (N,) - Unique node indices in the mesh.
-
-    Returns
-    -------
-    np.ndarray[float]
-        Shape (M,) - Lengths of each element.
+def _compute_element_lengths(connectivity: np.ndarray,
+                            node_coords: np.ndarray) -> np.ndarray:
+    """Compute element lengths using vectorized Euclidean distance."""
+    if connectivity.size == 0:
+        return np.empty(0, dtype=np.float64)
     
-    Raises
-    ------
-    ValueError
-        If a node index in connectivity is out of bounds.
-    """
-
-    if connectivity_array.size == 0:
-        logging.debug("[Mesh] No connectivity data provided. Returning empty element lengths array.")
-        return np.empty((0,), dtype=float)
-
-    start_coords = node_coordinates_array[connectivity_array[:, 0]]
-    end_coords = node_coordinates_array[connectivity_array[:, 1]]
-
-    element_lengths = np.linalg.norm(end_coords - start_coords, axis=1)
-
-    logging.debug(f"[Mesh] Computed element lengths: {element_lengths}")
-
-    return element_lengths
-
-def print_array_details(name, arr, index_range=None, is_coordinates=False, pair=False, one_based=False):
-    """
-    Enhanced function to print array details with indexing flexibility.
-    
-    Parameters
-    ----------
-    name : str
-        Name of the array to be displayed.
-    arr : np.ndarray
-        The array whose details need to be printed.
-    index_range : int, optional
-        Expected range of indices for validation.
-    is_coordinates : bool, optional
-        Whether the array contains coordinate data.
-    pair : bool, optional
-        Whether the array contains paired connectivity data.
-    one_based : bool, optional
-        If True, displays indices in 1-based format (adjusted for printing only).
-    """
-    print(f"\n📌 len({name}) = {len(arr)}")
-
-    if len(arr) == 0:
-        print(f"❌ {name}: No data found.")
-        return
-
-    # Min and Max Values
-    if is_coordinates and arr.ndim == 2 and arr.shape[1] >= 3:
-        x_min, y_min, z_min = np.min(arr[:, :3], axis=0)
-        x_max, y_max, z_max = np.max(arr[:, :3], axis=0)
-        print(f"🔹 Min Value: ({x_min:.4f}, {y_min:.4f}, {z_min:.4f}), Max Value: ({x_max:.4f}, {y_max:.4f}, {z_max:.4f})")
-    elif pair and arr.ndim == 2:
-        min_pair = arr.min(axis=0)
-        max_pair = arr.max(axis=0)
-        print(f"🔹 Min Entry: {min_pair}, Max Entry: {max_pair}")
-    elif np.issubdtype(arr.dtype, np.number):
-        min_val = np.min(arr)
-        max_val = np.max(arr)
-        print(f"🔹 Min Value: {min_val}, Max Value: {max_val}")
-    elif arr.dtype.kind in {'U', 'S', 'O'}:  # Handles string types
-        unique_values = np.unique(arr)
-        print(f"🔹 Unique Values ({len(unique_values)} total): {unique_values[:5]}{'...' if len(unique_values) > 5 else ''}")
-
-    # Array Indices
-    min_index = 0 if not one_based else 1
-    max_index = (len(arr) - 1) if not one_based else len(arr)
-    print(f"🔹 Min Index: {min_index}, Max Index: {max_index}")
-
-    # Adjust for one-based printing
-    arr_to_print = arr + 1 if one_based and arr.ndim == 1 else arr
-    if one_based and pair and arr.ndim == 2:
-        arr_to_print = arr + 1  # Adjust connectivity pairs to 1-based
-
-    # Display Contents - Show first and last 5 elements if the list is long
-    if len(arr) > 10:
-        if arr.ndim == 1:
-            print(f"📜 Entries:\n{arr_to_print[:5]} ... {arr_to_print[-5:]}")
-        elif pair and arr.ndim == 2:
-            print(f"📜 Entries:\n{arr_to_print[:5]} \n ... \n{arr_to_print[-5:]}")
-        else:
-            print(f"📜 Entries (truncated):\n{arr[:5]} \n ... \n{arr[-5:]}")
-    else:
-        print(f"📜 Entries:\n{arr_to_print}")
-
-    print("-" * 40)
+    start_points = node_coords[connectivity[:, 0]]
+    end_points = node_coords[connectivity[:, 1]]
+    return np.linalg.norm(end_points - start_points, axis=1).astype(np.float64)
 
 if __name__ == "__main__":
-    # Configure logging
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-    # Example usage
-    test_file = r"jobs\job_0001\mesh.txt"  # Replace with your actual mesh file path
+    def print_array_details(name, arr, units=None, indexing=None):
+        """Print formatted array metadata and full contents"""
+        print(f"\n{' ' + name + ' ':-^80}")
+        print(f"Data Type: {type(arr).__name__} ({arr.dtype})")
+        print(f"Shape: {arr.shape}")
+        print(f"Units: {units or '-'}")
+        print(f"Indexing: {indexing or '0-based'}")
+        print("\nFull Data:")
+        with np.printoptions(
+            threshold=10,  # Show up to 10 elements before truncating
+            edgeitems=2,   # Show first/last 2 elements when truncated
+            linewidth=80,
+            suppress=True,  # Suppress scientific notation
+            formatter={'float': lambda x: f"{x:.6f}"}  # 6 decimal places for floats
+        ):
+            print(arr)
 
-    # Set indexing type: True for one-based, False for zero-based
-    one_based_indexing = False  # Now using 0-based indexing
+    def validate_mesh_integrity(mesh_dict):
+        """Enhanced validation of mesh data structure"""
+        # Check array lengths
+        if len(mesh_dict['element_ids']) != len(mesh_dict['element_types']):
+            raise ValueError("Element IDs and types count mismatch")
+            
+        if len(mesh_dict['connectivity']) != len(mesh_dict['element_ids']):
+            raise ValueError("Connectivity and element ID count mismatch")
 
-    if not os.path.exists(test_file):
-        logging.error(f"Test file '{test_file}' not found. Please ensure the file exists.")
+        # Validate node indices in connectivity
+        max_node_idx = len(mesh_dict['node_ids']) - 1
+        connectivity = mesh_dict['connectivity']
+        if connectivity.size > 0:
+            invalid = connectivity[(connectivity < 0) | (connectivity > max_node_idx)]
+            if invalid.size > 0:
+                invalid_nodes = np.unique(invalid)
+                raise ValueError(
+                    f"Invalid node indices in connectivity: {invalid_nodes.tolist()}\n"
+                    f"Valid node indices: 0-{max_node_idx}"
+                )
+
+    # Execution flow
+    if len(sys.argv) > 1:
+        input_file = sys.argv[1]
     else:
-        try:
-            mesh_dict = parse_mesh(test_file)
+        input_file = os.path.join("jobs", "job_0001", "mesh.txt")  # Default test file
 
-            print("\n" + "="*80)
-            print("                          Parsed Mesh Data")
-            print("="*80)
+    if not os.path.exists(input_file):
+        logging.error(f"Mesh file '{input_file}' not found.")
+        sys.exit(1)
 
-            # General mesh information
-            num_nodes = len(mesh_dict.get('node_ids', []))
-            num_elements = len(mesh_dict.get('element_ids', []))  # Ensure we're using element_ids
+    try:
+        print(f"\n{' INITIALIZING MESH PARSER ':=^80}")
+        mesh_dict = parse_mesh(input_file)
 
-            print(f"🔹 Total Nodes (n): {num_nodes}")
-            print(f"🔹 Total Elements (m): {num_elements}")
-            print("-" * 80)
+        # Perform comprehensive validation
+        validate_mesh_integrity(mesh_dict)
 
-            # Ensure m = n - 1 condition
-            if num_elements != num_nodes - 1:
-                print(f"⚠ WARNING: Expected m = n - 1, but got {num_elements} elements for {num_nodes} nodes.")
-                print("-" * 80)
+        print("\n" + "="*80)
+        print("                          Parsed Mesh Data Structure")
+        print("="*80)
 
-            # NODE INFORMATION
-            if num_nodes > 0:
-                print("\nNODE INFORMATION")
-                print("=" * 80)
-                
-                # Node IDs
-                print_array_details(
-                    name="node_ids",
-                    arr=mesh_dict['node_ids'],
-                    is_coordinates=False,
-                    one_based=one_based_indexing
-                )
-                
-                # Node Coordinates
-                print_array_details(
-                    name="node_coordinates",
-                    arr=mesh_dict['node_coordinates'],
-                    is_coordinates=True
-                )
+        # General information
+        num_nodes = len(mesh_dict['node_ids'])
+        num_elements = len(mesh_dict['element_ids'])
+        print(f"\n● Total Nodes: {num_nodes}")
+        print(f"● Total Elements: {num_elements}")
+        
+        if num_elements != num_nodes - 1:
+            print(f"⚠ Note: Element count ({num_elements}) differs from node count - 1 ({num_nodes-1})")
 
-            # ELEMENT INFORMATION
-            if num_elements > 0:
-                print("\nELEMENT INFORMATION")
-                print("=" * 80)
-                
-                # Connectivity
-                print_array_details(
-                    name="connectivity",
-                    arr=mesh_dict['connectivity'],
-                    pair=True,  # Connectivity contains pairs of node indices
-                    one_based=one_based_indexing
-                )
-                
-                # Element IDs
-                print_array_details(
-                    name="element_ids",
-                    arr=mesh_dict['element_ids'],
-                    is_coordinates=False,
-                    one_based=one_based_indexing
-                )
-                
-                # Element Lengths
-                print_array_details(
-                    name="element_lengths",
-                    arr=mesh_dict['element_lengths'],
-                    is_coordinates=False
-                )
-                
-                # Element Types
-                print_array_details(
-                    name="element_types",
-                    arr=mesh_dict['element_types'],
-                    is_coordinates=False
-                )
+        # Detailed array information
+        print_array_details(
+            name="Node IDs",
+            arr=mesh_dict['node_ids'],
+            units="-",
+            indexing="Original file IDs (1-based)"
+        )
 
-            print("\n✅ Mesh parsing completed successfully!")
-            print("="*80)
+        print_array_details(
+            name="Node Coordinates",
+            arr=mesh_dict['node_coordinates'],
+            units="meters",
+            indexing="0-based [node_index, xyz]"
+        )
 
-        except Exception as e:
-            logging.error(f"An error occurred while parsing the mesh file: {e}")
+        print_array_details(
+            name="Element Connectivity",
+            arr=mesh_dict['connectivity'],
+            units="-",
+            indexing="0-based node indices"
+        )
+
+        print_array_details(
+            name="Element IDs",
+            arr=mesh_dict['element_ids'],
+            units="-",
+            indexing="0-based array indices"
+        )
+
+        print_array_details(
+            name="Element Lengths",
+            arr=mesh_dict['element_lengths'],
+            units="meters",
+            indexing="0-based array indices"
+        )
+
+        print_array_details(
+            name="Element Types",
+            arr=mesh_dict['element_types'],
+            units="-",
+            indexing="0-based array indices"
+        )
+
+        print("\n✅ Mesh parsing completed successfully!")
+        print("="*80 + "\n")
+
+    except Exception as e:
+        print(f"\n{' PARSING FAILED ':=^80}")
+        logging.error("Critical error: %s", str(e))
+        logging.debug("Full error trace:\n%s", traceback.format_exc())
+        sys.exit(1)

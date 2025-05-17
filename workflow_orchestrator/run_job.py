@@ -11,6 +11,7 @@ import psutil
 import shutil
 import platform
 import datetime
+import uuid
 from tabulate import tabulate
 
 # Adjust Python Path to include project root
@@ -81,8 +82,15 @@ def track_usage():
 def process_job(job_dir, job_times, job_start_end_times, base_settings):
     """Processes a single FEM simulation job."""
     case_name = os.path.basename(job_dir)
-    job_results_dir = os.path.join(fem_model_root, 'post_processing', 'results', 
-                                 f"{case_name}_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}")
+    # Modified directory name with microsecond timestamp and unique identifier
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
+    unique_id = uuid.uuid4().hex[:8]  # 8-character random string
+    job_results_dir = os.path.join(
+        fem_model_root, 
+        'post_processing', 
+        'results', 
+        f"{case_name}_{timestamp}_pid{os.getpid()}_{unique_id}"
+    )
     os.makedirs(job_results_dir, exist_ok=True)
 
     logger = configure_child_logging(job_results_dir)
@@ -115,15 +123,15 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
         step_start = time.time()
         element_ids = mesh_dictionary["element_ids"]
         
-        # Modified params_list with job_results_dir propagation
+        # Add unique job identifier to parameters
         params_list = np.array([{
             "geometry_array": base_settings["geometry"],
             "material_array": base_settings["material"],
             "mesh_dictionary": mesh_dictionary,
             "point_load_array": point_load_array,
             "distributed_load_array": distributed_load_array,
-            "element_id": elem_id,
-            "job_results_dir": job_results_dir  # Critical addition
+            "element_id": f"{elem_id}_{unique_id}",  # Unique element identifier
+            "job_results_dir": job_results_dir
         } for elem_id in element_ids], dtype=object)
 
         all_elements = create_elements_batch(mesh_dictionary, params_list)
@@ -225,7 +233,7 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
         with open(performance_log_path, "w") as f:
             f.write(get_machine_specs() + "\n")
             f.write(f"Job: {case_name}\n")
-            f.write(f"Timestamp (job start): {datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}\n")
+            f.write(f"Timestamp (job start): {datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')}\n")
             f.write(f"Total Time: {end_time - start_time:.2f} sec\n\n")
             f.write(tabulate(performance_data, headers="firstrow", tablefmt="grid") + "\n\n")
             f.write(f"Parallel Jobs: {', '.join(parallel_jobs) if parallel_jobs else 'None'}\n")
@@ -235,10 +243,18 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
 
     except Exception as e:
         logger.error(f"❌ Error in job {case_name}: {e}", exc_info=True)
-        # Clean up incomplete results
-        if os.path.exists(job_results_dir):
-            logger.error(f"Cleaning up failed job directory: {job_results_dir}")
-            shutil.rmtree(job_results_dir)
+    
+        # Close all log handlers to release file locks
+        for handler in logger.handlers:
+            handler.close()
+        logging.shutdown()
+    
+        # Retry cleanup with error handling
+        try:
+            if os.path.exists(job_results_dir):
+                shutil.rmtree(job_results_dir, ignore_errors=False)
+        except Exception as cleanup_err:
+            logger.error(f"❌ Cleanup failed for {job_results_dir}: {cleanup_err}")
 
 def main():
     """Manages and runs multiple FEM simulation jobs in parallel."""

@@ -1,7 +1,7 @@
 # pre_processing\element_library\euler_bernoulli\__init__.py
 
 # Import the main element class
-from .euler_bernoulli_6DOF import EulerBernoulliBeamElement6DOF
+from .euler_bernoulli_3D import EulerBernoulliBeamElement3D
 
 # Define explicitly exported members
-__all__ = ["EulerBernoulliBeamElement6DOF"]
+__all__ = ["EulerBernoulliBeamElement3D"]

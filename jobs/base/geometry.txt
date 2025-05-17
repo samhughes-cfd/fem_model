@@ -4,10 +4,10 @@
 [L]                                2.000e+0              # Beam length, aligned with the +ve x-axis direction where x = [0, L] (m)         
 
 [Section]
-[A]                                0.02              # Cross-sectional area (m^2)
-[I_x]                              0.0              # Moment of inertia about x-axis (m^4)
-[I_y]                              6.6667e-5              # Moment of inertia about y-axis (m^4)
-[I_z]                              1.6667e-5              # Moment of inertia about z-axis (m^4)
+[A]                                0.02                  # Cross-sectional area (m^2)
+[I_x]                              0.0                   # Moment of inertia about x-axis (m^4)
+[I_y]                              6.6667e-5             # Moment of inertia about y-axis (m^4)
+[I_z]                              1.6667e-5             # Moment of inertia about z-axis (m^4)
 [J]                                0.0                   # Polar moment of inertia (m^4)
 [J_t]                              1.707e-5              # Torsional constant (m^4)
 [I_w]                              0.0                   # Warping moment of inertia (m^6)

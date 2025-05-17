@@ -54,7 +54,7 @@ def generate_mesh(growth_factor, max_num_nodes, num_uniform_nodes, tolerance=1e-
 
     return node_positions, elements
 
-def save_mesh_to_file(node_positions, elements, element_type='EulerBernoulliBeamElement6DOF', save_directory=r'pre_processing\mesh_library\meshes'):
+def save_mesh_to_file(node_positions, elements, element_type='EulerBernoulliBeamElement3D', save_directory=r'pre_processing\mesh_library\meshes'):
     """
     Save the mesh nodes and elements to a text file with an additional element type column.
 
