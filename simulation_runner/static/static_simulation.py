@@ -44,13 +44,15 @@ class StaticSimulationRunner:
         }
 
         # ✅ Extract and verify required settings
-        self.elements = self.settings.get("elements", np.array([]))
+        self.elements = self.settings.get("elements", [])  # Default to empty list
         self.mesh_dictionary = self.settings.get("mesh_dictionary", {})
 
-        if self.elements.size == 0 or not self.mesh_dictionary:
+        # Use len() for list type check
+        if len(self.elements) == 0 or not self.mesh_dictionary:
             logger.error("❌ Error: Missing elements or mesh data in settings!")
             raise ValueError("❌ Error: Missing elements or mesh data in settings!")
 
+        # Rest of initialization code remains the same...
         self.solver_name = self.settings.get("solver_name", None)
         self.element_stiffness_matrices = self.settings.get("element_stiffness_matrices", None)
         self.element_force_vectors = self.settings.get("element_force_vectors", None)

@@ -1,0 +1,75 @@
+
+------------------------------------------------------------
+### Diagnostics for Global System
+Total DOFs: 606
+Independent Equations (nonzero rows): 606
+Boundary Condition DOFs: None
+⚠️ Matrix is NOT symmetric! Residual: 858
+⚠️ K is not positive definite. Possibly singular or indefinite.
+🔹 Approx. rank of K: 600/606
+🔹 Condition Number: 2.59e+17
+⚠️ DOFs with zero force: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]...
+Min Force = -1.0000e+05, Max Force = 0.0000e+00
+Sum of Forces = -1.0000e+05 (⚠️ Nonzero!)
+Top DOFs by force magnitude:
+  DOF 601, Force = -1.0000e+05
+  DOF 592, Force = 0.0000e+00
+  DOF 591, Force = 0.0000e+00
+  DOF 590, Force = 0.0000e+00
+  DOF 589, Force = 0.0000e+00
+  DOF 588, Force = 0.0000e+00
+  DOF 587, Force = 0.0000e+00
+  DOF 586, Force = 0.0000e+00
+  DOF 585, Force = 0.0000e+00
+  DOF 584, Force = 0.0000e+00
+
+
+------------------------------------------------------------
+### Diagnostics for Modified System
+Total DOFs: 606
+Independent Equations (nonzero rows): 606
+Boundary Condition DOFs: [0, 1, 2, 3, 4, 5]
+⚠️ Matrix is NOT symmetric! Residual: 856
+✅ K is positive definite.
+🔹 Approx. rank of K: 606/606
+🔹 Condition Number: 1.00e+10
+⚠️ DOFs with zero force: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]...
+Min Force = -1.0000e+05, Max Force = 0.0000e+00
+Sum of Forces = -1.0000e+05 (⚠️ Nonzero!)
+Top DOFs by force magnitude:
+  DOF 601, Force = -1.0000e+05
+  DOF 592, Force = 0.0000e+00
+  DOF 591, Force = 0.0000e+00
+  DOF 590, Force = 0.0000e+00
+  DOF 589, Force = 0.0000e+00
+  DOF 588, Force = 0.0000e+00
+  DOF 587, Force = 0.0000e+00
+  DOF 586, Force = 0.0000e+00
+  DOF 585, Force = 0.0000e+00
+  DOF 584, Force = 0.0000e+00
+
+
+------------------------------------------------------------
+### Diagnostics for Condensed System
+Total DOFs: 600
+Independent Equations (nonzero rows): 600
+Boundary Condition DOFs: [0, 1, 2, 3, 4, 5]
+⚠️ Matrix is NOT symmetric! Residual: 856
+✅ K is positive definite.
+🔹 Approx. rank of K: 600/600
+🔹 Condition Number: 1.00e+00
+⚠️ DOFs with zero force: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]...
+Min Force = -1.0000e+05, Max Force = 0.0000e+00
+Sum of Forces = -1.0000e+05 (⚠️ Nonzero!)
+Top DOFs by force magnitude:
+  DOF 595, Force = -1.0000e+05
+  DOF 592, Force = 0.0000e+00
+  DOF 591, Force = 0.0000e+00
+  DOF 590, Force = 0.0000e+00
+  DOF 589, Force = 0.0000e+00
+  DOF 588, Force = 0.0000e+00
+  DOF 587, Force = 0.0000e+00
+  DOF 586, Force = 0.0000e+00
+  DOF 585, Force = 0.0000e+00
+  DOF 584, Force = 0.0000e+00
+

@@ -33,12 +33,23 @@ def create_elements_batch(mesh_dictionary: Dict[str, Any], params_list: List[Dic
     # Runtime import to break circular dependency
     from pre_processing.element_library.element_1D_base import Element1DBase
 
+    # === NEW: PHASE 0 - PRE-VALIDATION TYPE HARDENING ===
+    element_ids_array = _sanitize_element_ids(mesh_dictionary["element_ids"])
+    
+    # Enforce ID consistency between mesh and parameters
+    if len(element_ids_array) != len(params_list):
+        raise ValueError(f"Element ID count mismatch: {len(element_ids_array)} IDs vs {len(params_list)} parameter sets")
+
+    # Convert all element IDs to native int type first
+    for param, elem_id in zip(params_list, element_ids_array):
+        param["element_id"] = int(elem_id)  # Force native Python int
+
+    # === ORIGINAL VALIDATION PIPELINE WITH ENHANCEMENTS ===
     # Phase 1: Input validation
     _validate_mesh_dictionary(mesh_dictionary)
     _validate_params_structure(params_list)
     
     element_types_array = np.asarray(mesh_dictionary["element_types"])
-    element_ids_array = _sanitize_element_ids(mesh_dictionary["element_ids"])
     
     # Phase 2: Environment validation
     job_dir = _validate_job_environment(params_list)
@@ -88,7 +99,7 @@ def _validate_params_structure(params_list: List[Dict[str, Any]]) -> None:
             ("mesh_dictionary", dict),
             ("point_load_array", np.ndarray),
             ("distributed_load_array", np.ndarray),
-            ("element_id", (int, np.integer)),
+            ("element_id", (int, np.integer)),  # Now validated after conversion
             ("job_results_dir", str)
         ]
         
@@ -98,15 +109,29 @@ def _validate_params_structure(params_list: List[Dict[str, Any]]) -> None:
                     f"{param_name} must be {param_type}, got {type(params[param_name])}"
                 )
 
+# === ENHANCED SANITIZATION FUNCTION ===
 def _sanitize_element_ids(raw_ids: List[Any]) -> np.ndarray:
-    """Convert and validate element IDs"""
-    try:
-        ids_array = np.asarray(raw_ids, dtype=np.int64)
-        if np.any(ids_array < 0):
-            raise ValueError("Negative element IDs found")
-        return ids_array
-    except (ValueError, TypeError) as e:
-        raise TypeError("Invalid element ID format") from e
+    """Convert and validate element IDs with enhanced parsing"""
+    converted = []
+    for idx, raw_id in enumerate(raw_ids):
+        try:
+            # Handle string representations of numbers
+            if isinstance(raw_id, str):
+                # Strip whitespace and check numeric
+                clean_id = raw_id.strip()
+                if not clean_id.isdigit():
+                    raise ValueError(f"Non-numeric ID at position {idx}: '{raw_id}'")
+                converted.append(int(clean_id))
+            else:
+                # Convert to int regardless of original type
+                converted.append(int(raw_id))
+        except (ValueError, TypeError) as e:
+            raise TypeError(f"Invalid element ID at index {idx}: {repr(raw_id)}") from e
+    
+    ids_array = np.array(converted, dtype=np.int64)
+    if np.any(ids_array < 0):
+        raise ValueError("Negative element IDs found")
+    return ids_array
 
 def _validate_job_environment(params_list: List[Dict[str, Any]]) -> str:
     """Validate shared job directory configuration"""
@@ -152,7 +177,7 @@ def _instantiate_elements(
         try:
             cls = getattr(modules[etype], etype)
             
-            # Convert and validate parameters
+            # === REDUNDANT TYPE ENFORCEMENT ===
             init_params = {
                 "geometry_array": params["geometry_array"],
                 "material_array": params["material_array"].astype(np.float64),
@@ -160,7 +185,8 @@ def _instantiate_elements(
                 "point_load_array": params["point_load_array"],
                 "distributed_load_array": params["distributed_load_array"],
                 "job_results_dir": str(params["job_results_dir"]),
-                "element_id": int(params["element_id"])
+                # Final type guarantee
+                "element_id": int(params["element_id"])  
             }
             
             # Conditionally add optional parameters
@@ -178,7 +204,6 @@ def _instantiate_elements(
 
             element = cls(**init_params)
             
-            # Keep only essential post-init validation
             elements.append(element)
             
         except Exception as e:

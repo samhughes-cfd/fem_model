@@ -332,11 +332,11 @@ class EulerBernoulliBeamElement3D(Element1DBase):
         """Log detailed stiffness matrix integration data with shape validation."""
         # Validate tensor structures against operational requirements
         if dN_dξ.shape[-2:] != (12, 6):
-            raise ValueError(f"dN_dξ shape mismatch: {dN_dξ.shape}. != (12,6) (12 DOFs x 6 components)")
+            raise ValueError(f"dN_dξ shape mismatch: {dN_dξ.shape}. != (12,6)")
         if d2N_dξ2.shape[-2:] != (12, 6):
             raise ValueError(f"d2N_dξ2 shape mismatch: {d2N_dξ2.shape} != (12,6)")
         if B.shape[-2:] != (4, 12):
-            raise ValueError(f"B-matrix shape mismatch: {B.shape} != (*,4,12) (4 strains x 12 DOFs)")
+            raise ValueError(f"B-matrix shape mismatch: {B.shape} != (*,4,12)")
         if contribution.shape != (12, 12):
             raise ValueError(f"Contribution shape mismatch: {contribution.shape} != (12,12)")
 
@@ -353,15 +353,15 @@ class EulerBernoulliBeamElement3D(Element1DBase):
 
         # Log derivatives with shape annotations
         self.log_matrix("stiffness", dN_dξ,
-                    {**metadata, "name": f"dN/dξ {dN_dξ.shape} (12DOFx6comp)"})
+                    {**metadata, "name": f"Shape Function Derivative Matrix dN/dξ {dN_dξ.shape}"})
         self.log_matrix("stiffness", d2N_dξ2,
-                    {**metadata, "name": f"d²N/dξ² {d2N_dξ2.shape}"})
+                    {**metadata, "name": f"Shape Function Second Derivative Matrix d²N/dξ² {d2N_dξ2.shape}"})
     
         # Log core matrices with operational context
         self.log_matrix("stiffness", B,
-                    {**metadata, "name": f"B-Matrix {B.shape} (strain-displacement)"})
+                    {**metadata, "name": f"Strain-Dsiplacement Matrix B {B.shape}"})
         self.log_matrix("stiffness", contribution,
-                    {**metadata, "name": f"BᵀDB Contribution {contribution.shape}"})
+                    {**metadata, "name": f"Stiffness BᵀDB {contribution.shape}"})
 
     # Force logging helpers ----------------------------------------------------------
     def _log_distributed_loads(self, xi: np.ndarray, weights: np.ndarray,
