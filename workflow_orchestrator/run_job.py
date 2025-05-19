@@ -13,6 +13,8 @@ import platform
 import datetime
 import uuid
 from tabulate import tabulate
+import cpuinfo
+import subprocess
 
 # Adjust Python Path to include project root
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -61,14 +63,34 @@ def configure_child_logging(job_results_dir):
     return logger
 
 def get_machine_specs():
-    """Returns system specifications as a formatted string."""
-    return (
+    """Returns extended system specifications as a formatted string."""
+    cpu_info = cpuinfo.get_cpu_info()
+    cpu_name = cpu_info.get('brand_raw', platform.processor())
+    logical_cores = psutil.cpu_count(logical=True)
+    physical_cores = psutil.cpu_count(logical=False)
+    total_ram = psutil.virtual_memory().total / (1024 ** 3)
+    disk_total, _, disk_free = shutil.disk_usage("/")
+
+    specs = (
         f"Machine Specifications:\n"
         f"   - OS: {platform.system()} {platform.release()} ({platform.version()})\n"
-        f"   - CPU: {platform.processor()} ({psutil.cpu_count(logical=True)} cores)\n"
-        f"   - RAM: {round(psutil.virtual_memory().total / (1024 ** 3), 2)} GB\n"
-        f"   - Python Version: {platform.python_version()}\n"
+        f"   - CPU: {cpu_name}\n"
+        f"       • Logical cores: {logical_cores}\n"
+        f"       • Physical cores: {physical_cores}\n"
+        f"   - RAM: {total_ram:.2f} GB\n"
+        f"   - Disk: {disk_total / (1024 ** 3):.2f} GB total, {disk_free / (1024 ** 3):.2f} GB free\n"
+        f"   - Python Version: {platform.python_version()} ({sys.executable})\n"
     )
+
+    try:
+        result = subprocess.check_output("wmic path win32_VideoController get name", shell=True)
+        gpus = result.decode().split('\n')[1:]
+        gpus = [g.strip() for g in gpus if g.strip()]
+        specs += f"   - GPU(s): {', '.join(gpus)}\n"
+    except Exception:
+        specs += "   - GPU(s): Unable to detect (requires Windows & WMIC)\n"
+
+    return specs
 
 def track_usage():
     """Returns current memory, disk, and CPU usage."""
