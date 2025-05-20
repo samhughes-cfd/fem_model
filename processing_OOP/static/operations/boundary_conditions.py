@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix, lil_matrix, diags
+from scipy.sparse import csr_matrix, diags
 import logging
 import os
 import time

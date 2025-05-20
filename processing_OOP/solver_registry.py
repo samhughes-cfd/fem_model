@@ -1,27 +1,18 @@
-"""
-processing\solver_registry.py
-
-This module provides a registry of linear solvers for finite element analysis (FEM). 
-It includes direct, iterative, and specialized solvers from SciPy, offering flexibility 
-for solving dense, sparse, or ill-conditioned systems.
-
-Role in Pipeline:
-- Enables flexible solver selection for FEM problems.
-- Centralizes solver definitions to simplify integration with other components.
-
-"""
+# processing_OOP\solver_registry.py
 
 from scipy.sparse.linalg import cg, gmres, minres, bicg, bicgstab, lsmr, lsqr, spsolve
 from scipy.linalg import solve, lu_factor, lu_solve
 
-def get_solver_registry():
+class LinearSolverRegistry:
     """
-    Returns a registry of SciPy solvers available for solving linear systems.
-
-    Returns:
-        dict: Mapping solver names (str) to functions.
+    A centralized registry of linear solvers for FEM systems with class methods
+    for solver management and retrieval.
+    
+    Maintains a static registry of solver functions that can be extended
+    without modifying base class functionality.
     """
-    return {
+    
+    _registry = {
         "direct_solver_dense": solve,
         "lu_decomposition_solver": lambda A, b: lu_solve(lu_factor(A), b),
         "direct_solver_sparse": spsolve,
@@ -33,3 +24,39 @@ def get_solver_registry():
         "least_squares_solver": lsmr,
         "sparse_least_squares_solver": lsqr,
     }
+
+    @classmethod
+    def get_solver_registry(cls) -> dict:
+        """Return a copy of the solver registry to prevent accidental modification."""
+        return cls._registry.copy()
+
+    @classmethod
+    def get_solver(cls, solver_name: str) -> callable:
+        """
+        Retrieve a solver function by name with validation.
+        
+        Args:
+            solver_name: Name of the solver to retrieve
+            
+        Returns:
+            Registered solver function
+            
+        Raises:
+            ValueError: If solver name not found in registry
+        """
+        if solver_name not in cls._registry:
+            available = ", ".join(cls._registry.keys())
+            raise ValueError(
+                f"Invalid solver '{solver_name}'. Available solvers: {available}"
+            )
+        return cls._registry[solver_name]
+
+    @classmethod
+    def list_solvers(cls) -> list:
+        """Return sorted list of registered solver names."""
+        return sorted(cls._registry.keys())
+
+    @classmethod
+    def solver_exists(cls, solver_name: str) -> bool:
+        """Check if a solver exists in the registry."""
+        return solver_name in cls._registry
