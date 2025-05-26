@@ -14,14 +14,12 @@ class MaterialStiffnessOperator:
 
     Mathematical Formulation
     -----------------------
-    The constitutive relation follows Timoshenko beam theory with warping effects:
+    The constitutive relation follows Euler-Bernoulli beam theory:
     
-    ⎡ N  ⎤   ⎡ EA     0       0       0   ⎤ ⎡ ε_x ⎤
-    ⎢ M_z⎥ = ⎢ 0     EI_z     0     -EI_wz⎥ ⎢ κ_z ⎥
-    ⎢ M_y⎥   ⎢ 0      0     EI_y     EI_wy⎥ ⎢ κ_y ⎥
-    ⎣ M_x⎦   ⎣ 0    -EI_wz  EI_wy    GJ_t ⎦ ⎣ φ_x ⎦
-
-    where coupling terms emerge when the shear center ≠ centroid (EI_wy, EI_wz ≠ 0).
+    ⎡ N  ⎤   ⎡ EA     0       0        0   ⎤ ⎡ ε_x ⎤
+    ⎢ M_z⎥ = ⎢ 0     EI_z     0        0   ⎥ ⎢ κ_z ⎥
+    ⎢ M_y⎥   ⎢ 0      0     EI_y       0   ⎥ ⎢ κ_y ⎥
+    ⎣ M_x⎦   ⎣ 0      0       0     GJ_t ⎦ ⎣ φ_x ⎦
 
     Parameters
     ----------
@@ -37,15 +35,9 @@ class MaterialStiffnessOperator:
         Second moment of area about z-axis (I_z) in m⁴
     torsion_constant : float
         Torsional constant (J_t) in m⁴
-    warping_inertia_y : float, optional
-        Warping constant about y-axis (I_wy) in m⁶, default=0
-    warping_inertia_z : float, optional
-        Warping constant about z-axis (I_wz) in m⁶, default=0
 
     Attributes
     ----------
-    has_warping_coupling : bool
-        True if bending-torsion coupling exists (I_wy or I_wz ≠ 0)
     """
 
     # Material properties (immutable)
@@ -55,8 +47,6 @@ class MaterialStiffnessOperator:
     moment_inertia_y: float
     moment_inertia_z: float
     torsion_constant: float
-    warping_inertia_y: float = 0.0
-    warping_inertia_z: float = 0.0
 
     # Internal matrices
     _D_assembly: np.ndarray = field(init=False, repr=False)
@@ -129,20 +119,12 @@ class MaterialStiffnessOperator:
             - 'bending_z' : Bending about z-axis energy
             - 'bending_y' : Bending about y-axis energy  
             - 'torsion' : Torsional energy
-            - 'coupling_z' : Z-axis bending-torsion coupling energy
-            - 'coupling_y' : Y-axis bending-torsion coupling energy
         """
         return {
             'total': 0.5 * strain.T @ self._D_postprocess @ strain,
             **{k: 0.5 * strain.T @ v @ strain 
                for k,v in self._energy_components.items()}
         }
-
-    @property
-    def has_warping_coupling(self) -> bool:
-        """bool: True if non-zero warping constants induce bending-torsion coupling."""
-        return (abs(self.warping_inertia_y) > 1e-12 or 
-                abs(self.warping_inertia_z) > 1e-12)
 
     def _validate_properties(self) -> None:
         """Verify physical plausibility of all material parameters."""
@@ -160,28 +142,21 @@ class MaterialStiffnessOperator:
         EI_z = self.youngs_modulus * self.moment_inertia_z
         EI_y = self.youngs_modulus * self.moment_inertia_y
         GJ_t = self.shear_modulus * self.torsion_constant
-        EIw_z = self.youngs_modulus * self.warping_inertia_z
-        EIw_y = self.youngs_modulus * self.warping_inertia_y
 
-        # Construct base matrix (same for both forms in this formulation)
+        # Construct base matrix (diagonal for Euler-Bernoulli)
         D = np.array([
-            [EA,     0,     0,      0],    # Axial
-            [0,    EI_z,     0,  -EIw_z],  # Bending-Z + warping
-            [0,      0,   EI_y,   EIw_y],  # Bending-Y + warping
-            [0,  -EIw_z, EIw_y,    GJ_t]   # Torsion + couplings
+            [EA, 0, 0, 0],        # Axial
+            [0, EI_z, 0, 0],      # Bending-Z
+            [0, 0, EI_y, 0],      # Bending-Y
+            [0, 0, 0, GJ_t]       # Torsion
         ], dtype=np.float64)
 
         object.__setattr__(self, '_D_assembly', D)
         object.__setattr__(self, '_D_postprocess', D.copy())
 
-        if self.has_warping_coupling and not np.allclose(D, D.T, atol=1e-12):
-            raise ValueError("Warping terms violate D-matrix symmetry")
-
         object.__setattr__(self, '_energy_components', {
             'axial': np.diag([EA, 0, 0, 0]),
             'bending_z': np.diag([0, EI_z, 0, 0]),
             'bending_y': np.diag([0, 0, EI_y, 0]),
-            'torsion': np.diag([0, 0, 0, GJ_t]),
-            'coupling_z': np.array([[0,0,0,0], [0,0,0,-EIw_z], [0,0,0,0], [0,-EIw_z,0,0]]),
-            'coupling_y': np.array([[0,0,0,0], [0,0,0,0], [0,0,0,EIw_y], [0,0,EIw_y,0]])
+            'torsion': np.diag([0, 0, 0, GJ_t])
         })

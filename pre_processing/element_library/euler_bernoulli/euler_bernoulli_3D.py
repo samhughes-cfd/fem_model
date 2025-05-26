@@ -183,7 +183,7 @@ class EulerBernoulliBeamElement3D(Element1DBase):
         return self.geometry_array[0, 19]
 
     @property
-    def integration_jacobian(self) -> float:
+    def jacobian_determinant(self) -> float:
         """Shortcut to strain operator's Jacobian"""
         return self.strain_displacement_operator.jacobian
 
@@ -223,7 +223,8 @@ class EulerBernoulliBeamElement3D(Element1DBase):
         for g, (xi_g, w_g) in enumerate(zip(xi, w)):
             _, dN_dξ, d2N_dξ2 = self.shape_function_operator.natural_coordinate_form(np.array([xi_g]))
             B = self.strain_displacement_operator.physical_coordinate_form(dN_dξ, d2N_dξ2)[0]
-            Ke_contribution = B.T @ D @ B * w_g
+            detJ = self.jacobian_determinant
+            Ke_contribution = B.T @ D @ B * w_g * detJ # note B is in cartesian form, w_g is not and requires scaling
             Ke += Ke_contribution
 
             if self.logger_operator:
