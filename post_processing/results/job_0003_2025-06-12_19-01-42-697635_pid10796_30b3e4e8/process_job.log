@@ -1,0 +1,62 @@
+2025-06-12 19:01:42,708 - INFO - 🟢 Starting job: job_0003
+2025-06-12 19:01:43,488 - ERROR - ❌ Error in job job_0003: Simulation aborted
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 590, in run
+    self.prepare_local_system(job_results_dir=self.primary_results_dir)
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 144, in prepare_local_system
+    Ke_formatted, Fe_formatted = preparer.validate_and_format()
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\processing_OOP\static\operations\preparation.py", line 61, in validate_and_format
+    raise TypeError("Ke_raw and Fe_raw must be lists")
+TypeError: Ke_raw and Fe_raw must be lists
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.py", line 228, in process_job
+    runner.run(
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 647, in run
+    raise RuntimeError("Simulation aborted") from e
+RuntimeError: Simulation aborted
+2025-06-12 19:01:44,226 - ERROR - ❌ Failed to move job directory: [WinError 32] The process cannot access the file because it is being used by another process: '\\\\mull.sms.ed.ac.uk\\home\\s1834431\\Win7\\Desktop\\fem_model\\post_processing\\results\\job_0003_2025-06-12_19-01-42-697635_pid10796_30b3e4e8\\process_job.log'
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 590, in run
+    self.prepare_local_system(job_results_dir=self.primary_results_dir)
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 144, in prepare_local_system
+    Ke_formatted, Fe_formatted = preparer.validate_and_format()
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\processing_OOP\static\operations\preparation.py", line 61, in validate_and_format
+    raise TypeError("Ke_raw and Fe_raw must be lists")
+TypeError: Ke_raw and Fe_raw must be lists
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.py", line 228, in process_job
+    runner.run(
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 647, in run
+    raise RuntimeError("Simulation aborted") from e
+RuntimeError: Simulation aborted
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\s1834431\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 847, in move
+    os.rename(src, real_dst)
+PermissionError: [WinError 5] Access is denied: '\\\\mull.sms.ed.ac.uk\\home\\s1834431\\Win7\\Desktop\\fem_model\\post_processing\\results\\job_0003_2025-06-12_19-01-42-697635_pid10796_30b3e4e8' -> '\\\\mull.sms.ed.ac.uk\\home\\s1834431\\Win7\\Desktop\\fem_model\\post_processing\\results\\job_0003_2025-06-12_19-01-42-697635_pid10796_30b3e4e8_FAILED'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.py", line 263, in process_job
+    shutil.move(job_results_dir, failed_dir)
+  File "C:\Users\s1834431\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 865, in move
+    rmtree(src)
+  File "C:\Users\s1834431\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 781, in rmtree
+    return _rmtree_unsafe(path, onexc)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\s1834431\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 635, in _rmtree_unsafe
+    onexc(os.unlink, fullname, err)
+  File "C:\Users\s1834431\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 633, in _rmtree_unsafe
+    os.unlink(fullname)
+PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: '\\\\mull.sms.ed.ac.uk\\home\\s1834431\\Win7\\Desktop\\fem_model\\post_processing\\results\\job_0003_2025-06-12_19-01-42-697635_pid10796_30b3e4e8\\process_job.log'

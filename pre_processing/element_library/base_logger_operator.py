@@ -30,50 +30,29 @@ class BaseLoggerOperator:
     def __init__(self, element_id: int, job_results_dir: str) -> None:
         """
         Initialize a precision-aware logger operator for FEM elements.
-        
+    
         Args:
             element_id: Positive integer element identifier (supports NumPy integers)
             job_results_dir: Valid output directory path
-            
+        
         Raises:
             LoggingConfigurationError: For invalid paths/permissions
         """
-        # Allow NumPy integer types and convert to native int
         if not isinstance(element_id, (int, np.integer)) or element_id < 0:
             raise ValueError(f"Invalid element_id: {element_id} (must be ≥0)")
-            
+        
         if not isinstance(job_results_dir, str) or not job_results_dir:
             raise ValueError("job_results_dir must be a non-empty string")
 
-        # Convert to native Python int for compatibility
         self.element_id: int = int(element_id)
         self.job_results_dir: str = os.path.abspath(job_results_dir)
         self.buffers: Dict[str, list] = defaultdict(list)
-        self._sanitized_id: str = sanitize_filename(str(self.element_id))  # Use converted ID
-        
+        self._sanitized_id: str = sanitize_filename(str(self.element_id))
+
         try:
-            self._create_category_directories()
             self._validate_directory_structure()
         except OSError as e:
             raise LoggingConfigurationError(f"Filesystem error: {e}") from e
-
-    def _create_category_directories(self) -> None:
-        """Create validated output directories with atomic checks"""
-        for category_dir in self._CATEGORY_PATHS.values():
-            full_path = os.path.join(self.job_results_dir, category_dir)
-            
-            try:
-                os.makedirs(full_path, exist_ok=True)
-                if not os.path.isdir(full_path):
-                    raise NotADirectoryError(f"Path exists but is not directory: {full_path}")
-                    
-            except PermissionError as e:
-                raise LoggingConfigurationError(
-                    f"Permission denied creating {full_path}: {e}"
-                ) from e
-            except OSError as e:
-                if e.errno != errno.EEXIST:
-                    raise
 
     def _validate_directory_structure(self) -> None:
         """Validate directory permissions and structure"""
@@ -211,6 +190,19 @@ class BaseLoggerOperator:
                 
         if errors:
             raise LogWriteError(f"Failed flushes:\n- " + "\n- ".join(errors))
+        
+    def emergency_flush(self):
+        """Force write all buffers regardless of state"""
+        for category in self._CATEGORY_PATHS:
+            try:
+                if self.buffers[category]:
+                    self.flush(category, mode='a')  # Append mode in case file exists
+            except Exception:
+                # Last-ditch effort to save data
+                log_path = self._get_log_path(category)
+                with open(log_path, 'a') as f:
+                    f.writelines(str(item) for item in self.buffers[category])
+            self.buffers[category].clear()
 
     def verify_logs_exist(self) -> bool:
         """Validate existence of all expected log files"""

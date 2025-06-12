@@ -1,0 +1,20 @@
+2025-06-12 19:01:42,708 - INFO - 🟢 Starting job: job_0003
+2025-06-12 19:01:43,488 - ERROR - ❌ Error in job job_0003: Simulation aborted
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 590, in run
+    self.prepare_local_system(job_results_dir=self.primary_results_dir)
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 144, in prepare_local_system
+    Ke_formatted, Fe_formatted = preparer.validate_and_format()
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\processing_OOP\static\operations\preparation.py", line 61, in validate_and_format
+    raise TypeError("Ke_raw and Fe_raw must be lists")
+TypeError: Ke_raw and Fe_raw must be lists
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.py", line 228, in process_job
+    runner.run(
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 647, in run
+    raise RuntimeError("Simulation aborted") from e
+RuntimeError: Simulation aborted

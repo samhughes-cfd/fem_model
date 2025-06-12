@@ -94,23 +94,29 @@ class AssembleGlobalSystem:
         """Comprehensive input validation with error messages."""
         if not self.elements:
             raise ValueError("No elements provided")
-            
+
         if self.total_dof is None or self.total_dof <= 0:
             raise ValueError("Invalid total_dof - must be positive integer")
-            
-        if self.element_stiffness_matrices and len(self.element_stiffness_matrices) != len(self.elements):
+
+        if (self.element_stiffness_matrices is not None and 
+            len(self.element_stiffness_matrices) != len(self.elements)):
             raise ValueError("Stiffness matrices count doesn't match elements")
-            
-        if self.element_force_vectors and len(self.element_force_vectors) != len(self.elements):
+
+        if (self.element_force_vectors is not None and 
+            len(self.element_force_vectors) != len(self.elements)):
             raise ValueError("Force vectors count doesn't match elements")
 
-        for i, Ke in enumerate(self.element_stiffness_matrices or []):
-            if Ke.nnz > 0 and not np.isfinite(Ke.data).all():
-                raise ValueError(f"Non-finite values in stiffness matrix {i}")
-                
-        for i, Fe in enumerate(self.element_force_vectors or []):
-            if not np.isfinite(Fe).all():
-                raise ValueError(f"Non-finite values in force vector {i}")
+        if self.element_stiffness_matrices is not None:
+            for i, Ke in enumerate(self.element_stiffness_matrices):
+                if Ke.nnz > 0 and not np.isfinite(Ke.data).all():
+                    raise ValueError(f"Non-finite values in stiffness matrix {i}")
+
+        if self.element_force_vectors is not None:
+            for i, Fe in enumerate(self.element_force_vectors):
+                if not np.isfinite(Fe).all():
+                    raise ValueError(f"Non-finite values in force vector {i}")
+
+
 
     def _compute_dof_mappings(self):
         """Compute DOF mappings with strict validation and error aggregation."""

@@ -81,8 +81,6 @@ class EulerBernoulliBeamElement3D(Element1DBase):
             moment_inertia_y=self.I_y, 
             moment_inertia_z=self.I_z,
             torsion_constant=self.J_t,
-            warping_inertia_y=self.warping_inertia_y,
-            warping_inertia_z=self.warping_inertia_z
         )
 
     def _init_element_geometry(self) -> None:
@@ -171,16 +169,6 @@ class EulerBernoulliBeamElement3D(Element1DBase):
     def J_t(self) -> float:
         """Torsional moment of inertia (m⁴)"""
         return self.geometry_array[0, 6]
-    
-    @property
-    def warping_inertia_y(self) -> float:
-        """Warping constant about y-axis (m⁶)"""
-        return self.geometry_array[0, 18]
-
-    @property  
-    def warping_inertia_z(self) -> float:
-        """Warping constant about z-axis (m⁶)"""
-        return self.geometry_array[0, 19]
 
     @property
     def jacobian_determinant(self) -> float:

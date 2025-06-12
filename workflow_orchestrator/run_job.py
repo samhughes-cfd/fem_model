@@ -101,19 +101,36 @@ def track_usage():
         "CPU (%)": process.cpu_percent(interval=0.1)
     }
 
+def setup_job_results_directory(case_name):
+    """
+    Creates the main job results directory with standard subdirectories.
+    Returns the absolute path to the created directory.
+    """
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
+    pid = os.getpid()
+    uid = uuid.uuid4().hex[:8]
+
+    results_base = os.path.join(fem_model_root, "post_processing", "results")
+    job_results_dir = os.path.join(results_base, f"{case_name}_{timestamp}_pid{pid}_{uid}")
+    os.makedirs(job_results_dir, exist_ok=True)
+
+    subdirs = [
+        "element_stiffness_matrices",
+        "element_force_vectors",
+        "primary_results",
+        "secondary_results"
+    ]
+    for subdir in subdirs:
+        os.makedirs(os.path.join(job_results_dir, subdir), exist_ok=True)
+
+    return job_results_dir
+
+
 def process_job(job_dir, job_times, job_start_end_times, base_settings):
     """Processes a single FEM simulation job."""
+    
     case_name = os.path.basename(job_dir)
-    # Modified directory name with microsecond timestamp and unique identifier
-    timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
-    unique_id = uuid.uuid4().hex[:8]  # 8-character random string
-    job_results_dir = os.path.join(
-        fem_model_root, 
-        'post_processing', 
-        'results', 
-        f"{case_name}_{timestamp}_pid{os.getpid()}_{unique_id}"
-    )
-    os.makedirs(job_results_dir, exist_ok=True)
+    job_results_dir = setup_job_results_directory(case_name)
 
     logger = configure_child_logging(job_results_dir)
     logger.info(f"🟢 Starting job: {case_name}")
@@ -145,14 +162,13 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
         step_start = time.time()
         element_ids = mesh_dictionary["element_ids"]
         
-        # Add unique job identifier to parameters
         params_list = np.array([{
             "geometry_array": base_settings["geometry"],
             "material_array": base_settings["material"],
             "mesh_dictionary": mesh_dictionary,
             "point_load_array": point_load_array,
             "distributed_load_array": distributed_load_array,
-            "element_id": f"{elem_id}_{unique_id}",  # Unique element identifier
+            "element_id": int(elem_id),
             "job_results_dir": job_results_dir
         } for elem_id in element_ids], dtype=object)
 
@@ -162,7 +178,7 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
             logger.error(f"❌ Error: Some elements failed to instantiate in {case_name}.")
             raise ValueError(f"❌ Invalid elements detected in {case_name}.")
         
-        # Verify logging directories were created
+        # Verify logging directories
         required_dirs = [
             os.path.join(job_results_dir, "element_stiffness_matrices"),
             os.path.join(job_results_dir, "element_force_vectors")
@@ -196,50 +212,25 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
         force_time = time.time() - step_start
         performance_data.append(["Element Force Computation", force_time, *track_usage().values()])
 
-        # --- Simulation Setup ---
+        # --- SIMULATION EXECUTION ---
+        step_start = time.time()
         runner = StaticSimulationRunner(
             settings={
                 "elements": all_elements,
                 "mesh_dictionary": mesh_dictionary,
-                "material_array": base_settings["material"],
-                "geometry_array": base_settings["geometry"],
-                "solver_name": base_settings["solver"][0],
                 "element_stiffness_matrices": element_stiffness_matrices,
                 "element_force_vectors": element_force_vectors
             },
             job_name=case_name
         )
-
-        # --- Simulation Steps with Path Passing ---
-        step_start = time.time()
-        runner.setup_simulation()
-        setup_time = time.time() - step_start
-        performance_data.append(["Setup Simulation", setup_time, *track_usage().values()])
-
-        step_start = time.time()
-        K_global, F_global = runner.assemble_global_matrices(job_results_dir)
-        assembly_time = time.time() - step_start
-        performance_data.append(["Assemble Global Matrices", assembly_time, *track_usage().values()])
-
-        step_start = time.time()
-        K_mod, F_mod, fixed_dofs = runner.modify_global_matrices(K_global, F_global, job_results_dir)
-        modify_time = time.time() - step_start
-        performance_data.append(["Modify Global Matrices", modify_time, *track_usage().values()])
-
-        step_start = time.time()
-        U_global, K_cond, F_cond, U_cond = runner.solve_static(K_mod, F_mod, fixed_dofs, job_results_dir)
-        solve_time = time.time() - step_start
-        performance_data.append(["Solve Linear Static System", solve_time, *track_usage().values()])
-
-        step_start = time.time()
-        runner.compute_primary_results(K_global, F_global, K_mod, F_mod, K_cond, F_cond, U_cond, U_global)
-        compute_primary_time = time.time() - step_start
-        performance_data.append(["Compute Primary Results", compute_primary_time, *track_usage().values()])
-
-        step_start = time.time()
-        runner.save_primary_results(output_dir=job_results_dir)
-        save_primary_time = time.time() - step_start
-        performance_data.append(["Save Primary Results", save_primary_time, *track_usage().values()])
+        
+        # Execute full simulation workflow
+        runner.run(
+            parallel_assembly=True,      # Enable parallel assembly
+            parallel_disassembly=True    # Enable parallel disassembly
+        )
+        simulation_time = time.time() - step_start
+        performance_data.append(["Full Simulation", simulation_time, *track_usage().values()])
 
         # --- Final Tracking ---
         end_time = time.time()
@@ -265,18 +256,14 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
 
     except Exception as e:
         logger.error(f"❌ Error in job {case_name}: {e}", exc_info=True)
-    
-        # Close all log handlers to release file locks
-        for handler in logger.handlers:
-            handler.close()
-        logging.shutdown()
-    
-        # Retry cleanup with error handling
+
+        # Move instead of delete
+        failed_dir = job_results_dir + "_FAILED"
         try:
-            if os.path.exists(job_results_dir):
-                shutil.rmtree(job_results_dir, ignore_errors=False)
-        except Exception as cleanup_err:
-            logger.error(f"❌ Cleanup failed for {job_results_dir}: {cleanup_err}")
+            shutil.move(job_results_dir, failed_dir)
+            logger.error(f"🛑 Moved failed job logs to {failed_dir}")
+        except Exception as move_err:
+            logger.error(f"❌ Failed to move job directory: {move_err}", exc_info=True)
 
 def main():
     """Manages and runs multiple FEM simulation jobs in parallel."""
