@@ -11,77 +11,66 @@ from pathlib import Path
 from processing_OOP.static.operations.preparation import PrepareLocalSystem
 from processing_OOP.static.operations.assembly import AssembleGlobalSystem
 from processing_OOP.static.operations.boundary_conditions import ModifyGlobalSystem
-
 from processing_OOP.static.operations.condensation import CondenseGlobalSystem
 from processing_OOP.static.operations.solver import SolveCondensedSystem
 from processing_OOP.static.operations.reconstruction import ReconstructGlobalSystem
-
 from processing_OOP.static.operations.disassembly import DisassembleGlobalSystem
+
 from processing_OOP.static.primary_results.compute_primary_results import ComputePrimaryResults
 from processing_OOP.static.secondary_results.compute_secondary_results import ComputeSecondaryResults
 from processing_OOP.static.primary_results.save_primary_results import SavePrimaryResults
 from processing_OOP.static.secondary_results.save_secondary_results import SaveSecondaryResults
 
-# diagnostic logging
+# Diagnostic logging
 from simulation_runner.static.linear_static_diagnostic import log_system_diagnostics
 
-# Configure logging for this module
+# Configure module-level logger
 logger = logging.getLogger(__name__)
+
 
 class StaticSimulationRunner:
     """
     Handles static finite element analysis.
     """
 
-    def __init__(self, settings, job_name):
+    def __init__(self, settings, job_name, job_results_dir):
         self.settings = settings
         self.job_name = job_name
+        self.results_root = job_results_dir  # Use exact path passed from run_job.py
+        self.primary_results_dir = os.path.join(self.results_root, "primary_results")
+        self.secondary_results_dir = os.path.join(self.results_root, "secondary_results")
 
-        # Store the start time when the simulation begins
-        self.start_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-        # Initialize primary and secondary results storage
+        # Initialize results storage
         self.primary_results = {
-            "global": {},  # Stores stiffness, forces, displacements, reactions
-            "element": {"data": []},  # Stores element-wise results
+            "global": {},           # Global primary_results etc.
+            "element": {}           # Element primary_results etc.
         }
         self.secondary_results = {
-            "global": {},  # Placeholder for secondary computed results (stress, strain, etc.)
-            "element": {"data": []},  # Placeholder for element-wise secondary results
+            "global": {},           # Global secondary_results etc.
+            "element": {}           # Element secondary_results etc.
         }
 
-        # Extract and verify required settings
-        self.elements = self.settings.get("elements", [])  # Default to empty list
+        # Validate mesh and element data
+        self.elements = self.settings.get("elements", [])
         self.mesh_dictionary = self.settings.get("mesh_dictionary", {})
 
-        # Use len() for list type check
         if len(self.elements) == 0 or not self.mesh_dictionary:
             logger.error("❌ Error: Missing elements or mesh data in settings!")
             raise ValueError("❌ Error: Missing elements or mesh data in settings!")
 
-        # Rest of initialization code remains the same...
+        # General simulation settings
         self.solver_name = self.settings.get("solver_name", None)
         self.element_stiffness_matrices = self.settings.get("element_stiffness_matrices", None)
         self.element_force_vectors = self.settings.get("element_force_vectors", None)
 
-        # Ensure stiffness matrices are in sparse format
-        self.element_stiffness_matrices = self._ensure_sparse_format(self.element_stiffness_matrices)
-
-        # Ensure force vectors are properly formatted as 1D NumPy arrays
-        self.element_force_vectors = (
-            np.array([np.asarray(Fe).flatten() for Fe in self.element_force_vectors], dtype=object)
-            if self.element_force_vectors is not None
-            else None
-        )
-
-        # Create comprehensive results directory structure
+        # Create results directory structure
         self.results_root = os.path.join(
             "post_processing", "results", f"{self.job_name}_{self.start_time}"
         )
         self.primary_results_dir = os.path.join(self.results_root, "primary")
         self.secondary_results_dir = os.path.join(self.results_root, "secondary")
-        
-        # Initialize storage for intermediate systems
+
+        # Initialize intermediate system storage
         self.K_global = None
         self.F_global = None
         self.K_mod = None
@@ -94,17 +83,8 @@ class StaticSimulationRunner:
         self.U_cond = None
         self.U_global = None
 
-    def _ensure_sparse_format(self, matrices):
-        """Converts all matrices in `matrices` to COO sparse format if they are not already."""
-        if matrices is None:
-            return None
-        return np.array([
-            coo_matrix(matrix) if not isinstance(matrix, coo_matrix) else matrix
-            for matrix in matrices
-        ], dtype=object)
-
     def setup_simulation(self):
-        """Creates results directory structure."""
+        """Creates the necessary output directory structure."""
         logger.info(f"✅ Setting up static simulation for job: {self.job_name}...")
         os.makedirs(self.primary_results_dir, exist_ok=True)
         os.makedirs(self.secondary_results_dir, exist_ok=True)
@@ -116,39 +96,35 @@ class StaticSimulationRunner:
 
     def prepare_local_system(self, job_results_dir: str):
         """
-        Validate and format all local element stiffness matrices (Ke) and force vectors (Fe)
+        Validate and format local element stiffness matrices (Ke) and force vectors (Fe)
         using the PrepareLocalSystem helper.
 
         Parameters
         ----------
         job_results_dir : str
-            Directory where log files and diagnostics should be written.
+            Directory for logging local system processing.
 
         Returns
         -------
         element_stiffness_matrices : List[scipy.sparse.coo_matrix]
         element_force_vectors : List[numpy.ndarray]
-            Validated and formatted versions of raw Ke and Fe for global assembly.
         """
         logger.info("📦 Preparing local element stiffness matrices and force vectors...")
 
-        # 1. Instantiate validator
         preparer = PrepareLocalSystem(
-            Ke_raw          = self.element_stiffness_matrices,
-            Fe_raw          = self.element_force_vectors,
-            job_results_dir = job_results_dir
+            Ke_raw=self.element_stiffness_matrices,
+            Fe_raw=self.element_force_vectors,
+            job_results_dir=job_results_dir
         )
 
-        # 2. Validate and format
         try:
             Ke_formatted, Fe_formatted = preparer.validate_and_format()
         except Exception as exc:
             logger.error("❌ Local system preparation failed – see prepare_local_system.log for details")
-            raise  # re-raise to propagate failure
+            raise
 
-        # 3. Store the formatted versions
         self.element_stiffness_matrices = Ke_formatted
-        self.element_force_vectors      = Fe_formatted
+        self.element_force_vectors = Fe_formatted
 
         logger.info("✅ Local element systems validated and formatted")
         return Ke_formatted, Fe_formatted
@@ -586,9 +562,8 @@ class StaticSimulationRunner:
         try:
             self.setup_simulation()
 
-            # 0. Prepare local system
+            # 0. Prepare local system — ensures Ke (as COO sparse) and Fe (as 1D np.array) are in correct format for assembly
             self.prepare_local_system(job_results_dir=self.primary_results_dir)
-
             
             # 1. Assemble global system
             self.K_global, self.F_global = self.assemble_global_system(

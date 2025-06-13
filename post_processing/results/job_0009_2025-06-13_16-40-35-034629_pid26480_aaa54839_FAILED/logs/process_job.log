@@ -1,0 +1,10 @@
+2025-06-13 16:40:37,809 - INFO - 🟢 Starting job: job_0009
+2025-06-13 16:40:38,401 - ERROR - ❌ Error in job job_0009: 'StaticSimulationRunner' object has no attribute 'start_time'
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.py", line 246, in process_job
+    runner = StaticSimulationRunner(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 68, in __init__
+    "post_processing", "results", f"{self.job_name}_{self.start_time}"
+                                                     ^^^^^^^^^^^^^^^
+AttributeError: 'StaticSimulationRunner' object has no attribute 'start_time'

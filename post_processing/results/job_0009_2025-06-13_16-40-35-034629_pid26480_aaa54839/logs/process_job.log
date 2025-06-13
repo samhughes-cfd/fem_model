@@ -1,0 +1,42 @@
+2025-06-13 16:40:37,809 - INFO - 🟢 Starting job: job_0009
+2025-06-13 16:40:38,401 - ERROR - ❌ Error in job job_0009: 'StaticSimulationRunner' object has no attribute 'start_time'
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.py", line 246, in process_job
+    runner = StaticSimulationRunner(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 68, in __init__
+    "post_processing", "results", f"{self.job_name}_{self.start_time}"
+                                                     ^^^^^^^^^^^^^^^
+AttributeError: 'StaticSimulationRunner' object has no attribute 'start_time'
+2025-06-13 16:40:38,758 - ERROR - ❌ Failed to move job directory to _FAILED: [WinError 32] The process cannot access the file because it is being used by another process: '\\\\mull.sms.ed.ac.uk\\home\\s1834431\\Win7\\Desktop\\fem_model\\post_processing\\results\\job_0009_2025-06-13_16-40-35-034629_pid26480_aaa54839\\logs\\process_job.log'
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.py", line 246, in process_job
+    runner = StaticSimulationRunner(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 68, in __init__
+    "post_processing", "results", f"{self.job_name}_{self.start_time}"
+                                                     ^^^^^^^^^^^^^^^
+AttributeError: 'StaticSimulationRunner' object has no attribute 'start_time'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\s1834431\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 847, in move
+    os.rename(src, real_dst)
+PermissionError: [WinError 5] Access is denied: '\\\\mull.sms.ed.ac.uk\\home\\s1834431\\Win7\\Desktop\\fem_model\\post_processing\\results\\job_0009_2025-06-13_16-40-35-034629_pid26480_aaa54839' -> '\\\\mull.sms.ed.ac.uk\\home\\s1834431\\Win7\\Desktop\\fem_model\\post_processing\\results\\job_0009_2025-06-13_16-40-35-034629_pid26480_aaa54839_FAILED'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.py", line 304, in process_job
+    shutil.move(job_results_dir, failed_dir)
+  File "C:\Users\s1834431\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 865, in move
+    rmtree(src)
+  File "C:\Users\s1834431\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 781, in rmtree
+    return _rmtree_unsafe(path, onexc)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\s1834431\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 635, in _rmtree_unsafe
+    onexc(os.unlink, fullname, err)
+  File "C:\Users\s1834431\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 633, in _rmtree_unsafe
+    os.unlink(fullname)
+PermissionError: [WinError 32] The process cannot access the file because it is being used by another process: '\\\\mull.sms.ed.ac.uk\\home\\s1834431\\Win7\\Desktop\\fem_model\\post_processing\\results\\job_0009_2025-06-13_16-40-35-034629_pid26480_aaa54839\\logs\\process_job.log'

@@ -50,7 +50,7 @@ def configure_logging(log_file_path):
 
 def configure_child_logging(job_results_dir):
     """Configures logging for a child process."""
-    log_file_path = os.path.join(job_results_dir, "process_job.log")
+    log_file_path = os.path.join(job_results_dir, "logs", "process_job.log")
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
@@ -101,43 +101,72 @@ def track_usage():
         "CPU (%)": process.cpu_percent(interval=0.1)
     }
 
-def setup_job_results_directory(case_name):
+def setup_job_results_directory(case_name: str) -> str:
     """
     Creates the main job results directory with standard subdirectories.
     Returns the absolute path to the created directory.
+
+    Raises:
+        ValueError: If case_name is invalid
+        OSError: If directories cannot be created
     """
+    if not isinstance(case_name, str) or not case_name.strip():
+        raise ValueError("case_name must be a non-empty string")
+
     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
     pid = os.getpid()
     uid = uuid.uuid4().hex[:8]
 
-    results_base = os.path.join(fem_model_root, "post_processing", "results")
-    job_results_dir = os.path.join(results_base, f"{case_name}_{timestamp}_pid{pid}_{uid}")
-    os.makedirs(job_results_dir, exist_ok=True)
+    # Protect against injection or filesystem exploits
+    sanitized_case = case_name.replace(os.sep, "_").replace(" ", "_")
 
-    subdirs = [
+    results_base = os.path.join(fem_model_root, "post_processing", "results")
+    job_results_dir = os.path.join(results_base, f"{sanitized_case}_{timestamp}_pid{pid}_{uid}")
+
+    try:
+        os.makedirs(job_results_dir, exist_ok=False)
+    except FileExistsError:
+        raise RuntimeError(f"Job directory already exists: {job_results_dir}")
+    except OSError as e:
+        raise RuntimeError(f"Failed to create main job directory: {e}") from e
+
+    subdirs: List[str] = [
         "element_stiffness_matrices",
         "element_force_vectors",
         "primary_results",
-        "secondary_results"
+        "secondary_results",
+        "logs"
     ]
+
     for subdir in subdirs:
-        os.makedirs(os.path.join(job_results_dir, subdir), exist_ok=True)
+        full_path = os.path.join(job_results_dir, subdir)
+        try:
+            os.makedirs(full_path, exist_ok=False)
+        except FileExistsError:
+            raise RuntimeError(f"Subdirectory already exists unexpectedly: {full_path}")
+        except OSError as e:
+            raise RuntimeError(f"Failed to create subdirectory: {full_path} -> {e}") from e
+
+    # Optional: Confirm permissions and structure
+    for subdir in subdirs:
+        full_path = os.path.join(job_results_dir, subdir)
+        if not os.access(full_path, os.W_OK):
+            raise PermissionError(f"Subdirectory not writable: {full_path}")
 
     return job_results_dir
 
 
-def process_job(job_dir, job_times, job_start_end_times, base_settings):
+def process_job(job_dir, job_results_dir, job_times, job_start_end_times, base_settings):
     """Processes a single FEM simulation job."""
     
     case_name = os.path.basename(job_dir)
-    job_results_dir = setup_job_results_directory(case_name)
 
     logger = configure_child_logging(job_results_dir)
     logger.info(f"🟢 Starting job: {case_name}")
 
     start_time = time.time()
     usage_start = track_usage()
-    performance_log_path = os.path.join(job_results_dir, "job_performance.log")
+    performance_log_path = os.path.join(job_results_dir, "logs", "job_performance.log")
     performance_data = [["Step", "Time (s)", "Memory (MB)", "Disk (GB)", "CPU (%)"]]
 
     try:
@@ -221,8 +250,10 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
                 "element_stiffness_matrices": element_stiffness_matrices,
                 "element_force_vectors": element_force_vectors
             },
-            job_name=case_name
+            job_name=case_name,
+            job_results_dir=job_results_dir  # Pass explicitly
         )
+
         
         # Execute full simulation workflow
         runner.run(
@@ -255,15 +286,25 @@ def process_job(job_dir, job_times, job_start_end_times, base_settings):
             f.write(f"Start CPU: {usage_start['CPU (%)']:.2f}% | End CPU: {usage_end['CPU (%)']:.2f}%\n")
 
     except Exception as e:
+        # Log to main job log
         logger.error(f"❌ Error in job {case_name}: {e}", exc_info=True)
 
-        # Move instead of delete
+        # Also write the traceback to a separate file in logs/
+        traceback_path = os.path.join(job_results_dir, "logs", "traceback.log")
+        try:
+            with open(traceback_path, "w") as f:
+                import traceback
+                traceback.print_exc(file=f)
+        except Exception as trace_err:
+            logger.error(f"⚠️ Failed to write traceback file: {trace_err}", exc_info=True)
+
+        # Move failed directory
         failed_dir = job_results_dir + "_FAILED"
         try:
             shutil.move(job_results_dir, failed_dir)
             logger.error(f"🛑 Moved failed job logs to {failed_dir}")
         except Exception as move_err:
-            logger.error(f"❌ Failed to move job directory: {move_err}", exc_info=True)
+            logger.error(f"❌ Failed to move job directory to _FAILED: {move_err}", exc_info=True)
 
 def main():
     """Manages and runs multiple FEM simulation jobs in parallel."""
@@ -295,10 +336,18 @@ def main():
         job_start_end_times = manager.dict()
 
         with mp.Pool(processes=num_processes) as pool:
-            pool.starmap(
-                process_job,
-                [(job, job_times, job_start_end_times, base_settings) for job in job_dirs]
-            )
+            job_info = [
+                (
+                    job_dir,
+                    setup_job_results_directory(os.path.basename(job_dir)),  # created once per job
+                    job_times,
+                    job_start_end_times,
+                    base_settings
+                )
+                for job_dir in job_dirs
+            ]
+
+            pool.starmap(process_job, job_info)
 
 if __name__ == "__main__":
     main()

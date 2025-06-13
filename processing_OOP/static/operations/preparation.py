@@ -15,12 +15,12 @@ class PrepareLocalSystem:
 
     def __init__(
         self,
-        Ke_raw: List[Union[np.ndarray, coo_matrix]],
-        Fe_raw: List[Union[np.ndarray, list]],
+        Ke_raw: Union[List[Union[np.ndarray, coo_matrix]], np.ndarray],
+        Fe_raw: Union[List[Union[np.ndarray, list]], np.ndarray],
         job_results_dir: Optional[str] = None
     ):
-        self.Ke_raw = Ke_raw
-        self.Fe_raw = Fe_raw
+        self.Ke_raw = self._ensure_sparse_format(Ke_raw)
+        self.Fe_raw = self._ensure_flattened_vectors(Fe_raw)
         self.job_results_dir = job_results_dir
         self.logger = self._init_logging()
 
@@ -56,6 +56,28 @@ class PrepareLocalSystem:
 
         return logger
 
+    def _ensure_sparse_format(self, matrices) -> List[coo_matrix]:
+        """Ensure all matrices are converted to COO sparse format."""
+        if matrices is None:
+            return []
+        if not isinstance(matrices, list):
+            matrices = list(matrices)
+        return [
+            coo_matrix(mat) if not issparse(mat) else mat.tocoo()
+            for mat in matrices
+        ]
+
+    def _ensure_flattened_vectors(self, vectors) -> List[np.ndarray]:
+        """Ensure all vectors are 1D NumPy arrays of type float64."""
+        if vectors is None:
+            return []
+        if not isinstance(vectors, list):
+            vectors = list(vectors)
+        return [
+            np.asarray(vec, dtype=np.float64).flatten()
+            for vec in vectors
+        ]
+
     def validate_and_format(self) -> Tuple[List[coo_matrix], List[np.ndarray]]:
         if not isinstance(self.Ke_raw, list) or not isinstance(self.Fe_raw, list):
             raise TypeError("Ke_raw and Fe_raw must be lists")
@@ -70,24 +92,14 @@ class PrepareLocalSystem:
 
         for idx, (Ke_i, Fe_i) in enumerate(zip(self.Ke_raw, self.Fe_raw)):
             try:
-                # --- Validate and convert Ke ---
-                if issparse(Ke_i):
-                    Ke_i = Ke_i.tocoo()
-                    self.logger.debug(f"Ke[{idx}] is sparse and converted to COO")
-                elif isinstance(Ke_i, np.ndarray):
-                    Ke_i = coo_matrix(Ke_i)
-                    self.logger.debug(f"Ke[{idx}] ndarray converted to COO")
-                else:
-                    raise TypeError(f"Ke[{idx}] must be a sparse matrix or ndarray")
-
+                # --- Validate Ke ---
                 if not np.isfinite(Ke_i.data).all():
                     raise ValueError(f"Ke[{idx}] contains non-finite values")
 
                 if Ke_i.shape[0] != Ke_i.shape[1]:
                     raise ValueError(f"Ke[{idx}] is not square")
 
-                # --- Validate and convert Fe ---
-                Fe_i = np.asarray(Fe_i, dtype=np.float64)
+                # --- Validate Fe ---
                 if Fe_i.ndim != 1:
                     raise ValueError(f"Fe[{idx}] must be a 1D array")
                 if not np.isfinite(Fe_i).all():
