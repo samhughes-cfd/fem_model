@@ -5,7 +5,6 @@ import numpy as np
 import os
 import datetime
 from scipy.sparse import coo_matrix
-import json
 from pathlib import Path
 
 from processing_OOP.static.operations.preparation import PrepareLocalSystem
@@ -62,13 +61,6 @@ class StaticSimulationRunner:
         self.solver_name = self.settings.get("solver_name", None)
         self.element_stiffness_matrices = self.settings.get("element_stiffness_matrices", None)
         self.element_force_vectors = self.settings.get("element_force_vectors", None)
-
-        # Create results directory structure
-        self.results_root = os.path.join(
-            "post_processing", "results", f"{self.job_name}_{self.start_time}"
-        )
-        self.primary_results_dir = os.path.join(self.results_root, "primary")
-        self.secondary_results_dir = os.path.join(self.results_root, "secondary")
 
         # Initialize intermediate system storage
         self.K_global = None
@@ -170,7 +162,7 @@ class StaticSimulationRunner:
             element_force_vectors      = self.element_force_vectors,
             total_dof                  = total_dof,
             job_results_dir            = job_results_dir,
-            parallel_assembly          = parallel_assembly            # <- switch on/off
+            parallel_assembly          = False           
         )
 
         try:
@@ -384,17 +376,10 @@ class StaticSimulationRunner:
         U_cond = cond_solver.solve_condensed()
         if U_cond is None:
             raise RuntimeError("Condensed solver failed — check condensed_solver.log")
-
-        # 2. Generate and save solver report
-        solver_report = cond_solver.generate_condensed_report()
-        report_path = Path(job_results_dir) / "condensed_solver_report.json"
-        with open(report_path, "w", encoding="utf-8") as fp:
-            json.dump(solver_report, fp, indent=2)
     
-        logger.info(f"📑 Solver report saved to {report_path}")
         logger.info("✅ Condensed system successfully solved")
     
-        return U_cond, solver_report
+        return U_cond
 
     # ---------------------------------------------------------------------------------
     # 5) RECONSTRUCT GLOBAL SYSTEM
@@ -449,13 +434,7 @@ class StaticSimulationRunner:
             raise
 
         # 3. Run diagnostics on reconstructed solution
-        reconstructor.validate_solution(U_global)
-    
-        # 4. Save reconstruction diagnostics
-        recon_report = reconstructor.generate_report()
-        report_path = Path(job_results_dir) / "reconstruction_report.json"
-        with open(report_path, "w", encoding="utf-8") as fp:
-            json.dump(recon_report, fp, indent=2)
+        #reconstructor.validate_solution(U_global)
     
         logger.info(
             f"✅ Displacement reconstruction complete "
@@ -590,7 +569,7 @@ class StaticSimulationRunner:
             )
             
             # 4. Solve condensed system
-            self.U_cond, _ = self.solve_condensed_system(
+            self.U_cond = self.solve_condensed_system(
                 self.K_cond,
                 self.F_cond,
                 self.primary_results_dir

@@ -1,7 +1,10 @@
+# processing_OOP\static\operations\preparation.py
+
 import numpy as np
 from scipy.sparse import coo_matrix, issparse
 from typing import List, Tuple, Union, Optional
 import logging
+from pathlib import Path
 import os
 
 
@@ -9,19 +12,19 @@ class PrepareLocalSystem:
     """
     Validates and formats local element stiffness matrices (Ke) and force vectors (Fe)
     into the formats required by AssembleGlobalSystem:
-      - Ke: scipy.sparse.coo_matrix
-      - Fe: 1D numpy array of finite values
+      - Ke: scipy.sparse.coo_matrix with float64 precision
+      - Fe: 1D numpy arrays with float64 precision
     """
 
     def __init__(
         self,
         Ke_raw: Union[List[Union[np.ndarray, coo_matrix]], np.ndarray],
         Fe_raw: Union[List[Union[np.ndarray, list]], np.ndarray],
-        job_results_dir: Optional[str] = None
+        job_results_dir: Optional[Union[str, Path]] = None
     ):
         self.Ke_raw = self._ensure_sparse_format(Ke_raw)
         self.Fe_raw = self._ensure_flattened_vectors(Fe_raw)
-        self.job_results_dir = job_results_dir
+        self.job_results_dir = Path(job_results_dir) if job_results_dir else None
         self.logger = self._init_logging()
 
     def _init_logging(self):
@@ -32,8 +35,9 @@ class PrepareLocalSystem:
 
         log_path = None
         if self.job_results_dir:
-            os.makedirs(self.job_results_dir, exist_ok=True)
-            log_path = os.path.join(self.job_results_dir, "prepare_local_system.log")
+            log_dir = self.job_results_dir.parent / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_path = log_dir / "PrepareLocalSystem.log"
 
             try:
                 file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
@@ -43,9 +47,8 @@ class PrepareLocalSystem:
                 ))
                 logger.addHandler(file_handler)
             except Exception as e:
-                print(f"⚠️ Failed to create file handler for local system log: {e}")
+                print(f"⚠️ Failed to create file handler for PrepareLocalSystem class log: {e}")
 
-        # Console output (INFO level and above)
         stream_handler = logging.StreamHandler()
         stream_handler.setLevel(logging.INFO)
         stream_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
@@ -57,18 +60,18 @@ class PrepareLocalSystem:
         return logger
 
     def _ensure_sparse_format(self, matrices) -> List[coo_matrix]:
-        """Ensure all matrices are converted to COO sparse format."""
+        """Ensure all matrices are converted to COO sparse format with float64 precision."""
         if matrices is None:
             return []
         if not isinstance(matrices, list):
             matrices = list(matrices)
         return [
-            coo_matrix(mat) if not issparse(mat) else mat.tocoo()
+            coo_matrix(mat.astype(np.float64)) if not issparse(mat) else mat.astype(np.float64).tocoo()
             for mat in matrices
         ]
 
     def _ensure_flattened_vectors(self, vectors) -> List[np.ndarray]:
-        """Ensure all vectors are 1D NumPy arrays of type float64."""
+        """Ensure all vectors are 1D NumPy arrays of float64."""
         if vectors is None:
             return []
         if not isinstance(vectors, list):
@@ -92,14 +95,12 @@ class PrepareLocalSystem:
 
         for idx, (Ke_i, Fe_i) in enumerate(zip(self.Ke_raw, self.Fe_raw)):
             try:
-                # --- Validate Ke ---
                 if not np.isfinite(Ke_i.data).all():
                     raise ValueError(f"Ke[{idx}] contains non-finite values")
 
                 if Ke_i.shape[0] != Ke_i.shape[1]:
                     raise ValueError(f"Ke[{idx}] is not square")
 
-                # --- Validate Fe ---
                 if Fe_i.ndim != 1:
                     raise ValueError(f"Fe[{idx}] must be a 1D array")
                 if not np.isfinite(Fe_i).all():

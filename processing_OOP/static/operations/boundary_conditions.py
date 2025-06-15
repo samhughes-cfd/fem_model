@@ -4,9 +4,10 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix, diags
 import logging
-import os
+from pathlib import Path
 import time
 from typing import Tuple, Optional
+
 
 class ModifyGlobalSystem:
     """High-performance boundary condition applier with numerical stabilization and diagnostics.
@@ -39,40 +40,48 @@ class ModifyGlobalSystem:
         """
         self.K_orig = K_global.astype(np.float64)
         self.F_orig = F_global.astype(np.float64)
-        self.job_results_dir = job_results_dir
-        self.fixed_dofs = fixed_dofs if fixed_dofs is not None else np.arange(6)
-        self.K_mod = None
-        self.F_mod = None
-        self.penalty = None
-        self._init_logging()
+        self.job_results_dir = Path(job_results_dir) if job_results_dir else None
+        self.K_mod: Optional[csr_matrix] = None
+        self.F_mod: Optional[np.ndarray] = None
+        self.penalty: Optional[float] = None
+
+        raw_fixed = fixed_dofs if fixed_dofs is not None else range(6)
+        self.fixed_dofs = np.array([int(dof) for dof in raw_fixed], dtype=int)
+
+        self.logger = self._init_logging()
         self._validate_inputs()
 
     def _init_logging(self):
-        """Configure hierarchical logging system."""
-        self.logger = logging.getLogger(f"BoundaryConditionApplier.{id(self)}")
-        self.logger.handlers.clear()
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.propagate = False
+        logger = logging.getLogger(f"ModifyGlobalSystem.{id(self)}")
+        logger.handlers.clear()
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
 
-        # File handler for detailed diagnostics
+        log_path = None
         if self.job_results_dir:
-            os.makedirs(self.job_results_dir, exist_ok=True)
-            log_path = os.path.join(self.job_results_dir, "boundary_conditions.log")
-            file_handler = logging.FileHandler(log_path, mode='w', encoding='utf-8')
-            file_format = logging.Formatter(
-                "%(asctime)s [%(levelname)s] %(message)s "
-                "(Module: %(module)s, Line: %(lineno)d)"
-            )
-            file_handler.setFormatter(file_format)
-            file_handler.setLevel(logging.DEBUG)
-            self.logger.addHandler(file_handler)
+            logs_dir = self.job_results_dir.parent / "logs"
+            logs_dir.mkdir(parents=True, exist_ok=True)
 
-        # Console handler for critical messages
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-        console_format = logging.Formatter("[%(levelname)s] %(message)s")
-        console_handler.setFormatter(console_format)
-        self.logger.addHandler(console_handler)
+            log_path = logs_dir / "ModifyGlobalSystem.log"
+            try:
+                file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
+                file_handler.setFormatter(logging.Formatter(
+                    "%(asctime)s [%(levelname)s] %(message)s "
+                    "(Module: %(module)s, Line: %(lineno)d)"
+                ))
+                logger.addHandler(file_handler)
+            except Exception as e:
+                print(f"⚠️ Failed to create file handler for ModifyGlobalSystem class log: {e}")
+
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+        logger.addHandler(stream_handler)
+
+        if log_path:
+            logger.debug(f"📁 Log file created at: {log_path}")
+
+        return logger
 
     def _validate_inputs(self):
         """Ensure input matrices meet requirements."""
@@ -113,7 +122,7 @@ class ModifyGlobalSystem:
     def _compute_penalty(self):
         """Calculate dynamic penalty value."""
         diag = self.K_work.diagonal()
-        self.penalty = np.float64(1e36) * (diag.max() if diag.any() else 1e36)
+        self.penalty = np.float64(1e36) * (diag.max() if diag.size > 0 and diag.any() else 1e36)
         self.logger.debug(f"Computed penalty value: {self.penalty:.2e}")
 
     def _apply_penalty_method(self):
@@ -129,15 +138,24 @@ class ModifyGlobalSystem:
         # Zero force vector entries
         self.F_work[self.fixed_dofs] = 0.0
 
-    def _apply_stabilization(self):
+    def _apply_stabilization(self, include_off_diagonal: bool = False):
         """Add numerical stabilization to matrix."""
+        ε = np.float64(1e-10) * self.penalty
+        diagonals = [ε]  # main diagonal
+        offsets = [0]
+
+        if include_off_diagonal:
+            diagonals.extend([ε, ε])     # upper and lower
+            offsets.extend([-1, 1])
+
         stabilization = diags(
-            [np.float64(1e-10) * self.penalty],
-            [0],
+            diagonals,
+            offsets,
             shape=self.K_work.shape,
             format='lil',
             dtype=np.float64
         )
+
         self.K_work = self.K_work + stabilization
 
     def _finalize_system(self):
@@ -183,18 +201,18 @@ class ModifyGlobalSystem:
             self.logger.debug(f"\nCondition Estimate: {cond_estimate:.1e}")
 
     def save_modified_system(self, filename: str):
-        """Save modified system to NPZ file."""
+        """Save modified system to NPZ file with enforced float64 precision."""
         if not filename.endswith('.npz'):
             filename += '.npz'
-            
+
         np.savez_compressed(
             filename,
-            K_data=self.K_mod.data,
-            K_indices=self.K_mod.indices,
-            K_indptr=self.K_mod.indptr,
-            K_shape=self.K_mod.shape,
-            F_global=self.F_mod,
-            fixed_dofs=self.fixed_dofs
+            K_data=self.K_mod.data.astype(np.float64),
+            K_indices=self.K_mod.indices.astype(np.int32),
+            K_indptr=self.K_mod.indptr.astype(np.int32),
+            K_shape=np.array(self.K_mod.shape, dtype=np.int32),
+            F_global=self.F_mod.astype(np.float64),
+            fixed_dofs=np.array(self.fixed_dofs, dtype=np.int32)
         )
         self.logger.info(f"💾 Saved modified system to {filename}")
 
@@ -207,4 +225,6 @@ class ModifyGlobalSystem:
             data['K_indices'],
             data['K_indptr']
         ), shape=data['K_shape'])
-        return K, data['F_global'], data['fixed_dofs']
+        fixed_dofs = [int(dof) for dof in data['fixed_dofs']]
+        return K, data['F_global'], fixed_dofs
+

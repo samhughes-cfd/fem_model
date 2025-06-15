@@ -286,10 +286,9 @@ def process_job(job_dir, job_results_dir, job_times, job_start_end_times, base_s
             f.write(f"Start CPU: {usage_start['CPU (%)']:.2f}% | End CPU: {usage_end['CPU (%)']:.2f}%\n")
 
     except Exception as e:
-        # Log to main job log
         logger.error(f"❌ Error in job {case_name}: {e}", exc_info=True)
 
-        # Also write the traceback to a separate file in logs/
+        # Write the traceback to a separate file
         traceback_path = os.path.join(job_results_dir, "logs", "traceback.log")
         try:
             with open(traceback_path, "w") as f:
@@ -297,14 +296,6 @@ def process_job(job_dir, job_results_dir, job_times, job_start_end_times, base_s
                 traceback.print_exc(file=f)
         except Exception as trace_err:
             logger.error(f"⚠️ Failed to write traceback file: {trace_err}", exc_info=True)
-
-        # Move failed directory
-        failed_dir = job_results_dir + "_FAILED"
-        try:
-            shutil.move(job_results_dir, failed_dir)
-            logger.error(f"🛑 Moved failed job logs to {failed_dir}")
-        except Exception as move_err:
-            logger.error(f"❌ Failed to move job directory to _FAILED: {move_err}", exc_info=True)
 
 def main():
     """Manages and runs multiple FEM simulation jobs in parallel."""

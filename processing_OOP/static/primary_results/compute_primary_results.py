@@ -31,8 +31,43 @@ class ComputePrimaryResults:
         self.assembler = assembler
         self.solver = solver
         self.mesh = mesh_dict
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = _init_logging()
         self.results = None
+
+    def _init_logging(self):
+        logger = logging.getLogger(f"ComputePrimaryResults.{id(self)}")
+        logger.handlers.clear()
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
+
+        log_path = None
+        if self.job_results_dir:
+            # Create the logs subdirectory inside the job results directory
+            logs_dir = os.path.join(self.job_results_dir, "logs")
+            os.makedirs(logs_dir, exist_ok=True)
+
+            log_path = os.path.join(logs_dir, "ComputePrimaryResults.log")
+
+            try:
+                file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
+                file_handler.setFormatter(logging.Formatter(
+                    "%(asctime)s [%(levelname)s] %(message)s "
+                    "(Module: %(module)s, Line: %(lineno)d)"
+                ))
+                logger.addHandler(file_handler)
+            except Exception as e:
+                print(f"⚠️ Failed to create file handler for ComputePrimaryResults class log: {e}")
+
+        # Console output (INFO level and above)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+        logger.addHandler(stream_handler)
+
+        if log_path:
+            logger.debug(f"📁 Log file created at: {log_path}")
+
+        return logger
 
     def compute(self) -> PrimaryResultSet:
         """Execute primary results pipeline"""

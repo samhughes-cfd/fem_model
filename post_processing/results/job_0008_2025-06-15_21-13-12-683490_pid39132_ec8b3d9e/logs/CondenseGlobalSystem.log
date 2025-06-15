@@ -1,0 +1,73 @@
+2025-06-15 21:13:15,897 [DEBUG] 📁 Log file created at: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-15_21-13-12-683490_pid39132_ec8b3d9e\logs\CondenseGlobalSystem.log (Module: condensation, Line: 66)
+2025-06-15 21:13:15,898 [DEBUG] Adaptive tolerance: 3.58e+34 (Module: condensation, Line: 122)
+2025-06-15 21:13:15,898 [DEBUG] System Validation Summary:
+  - Fixed DOFs Valid: 6/18
+  - Matrix Shape: (18, 18)
+  - Adaptive Tolerance: 3.58e+34 (Module: condensation, Line: 76)
+2025-06-15 21:13:15,899 [INFO] 🚀 Starting enhanced condensation process (Module: condensation, Line: 127)
+2025-06-15 21:13:15,901 [DEBUG] Active DOFs: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15...] (Module: condensation, Line: 155)
+2025-06-15 21:13:15,902 [DEBUG] Intermediate system created | Shape: (12, 12) (Module: condensation, Line: 161)
+2025-06-15 21:13:15,903 [INFO] Secondary condensation removed 0 DOFs (Module: condensation, Line: 172)
+2025-06-15 21:13:15,904 [DEBUG] 🔧 Building condensed system from intermediate matrix (Module: condensation, Line: 180)
+2025-06-15 21:13:15,905 [DEBUG] 📐 Condensed system built: K_cond shape = (12, 12), F_cond length = 12 (Module: condensation, Line: 194)
+2025-06-15 21:13:15,905 [DEBUG] Bi-directional mapping validated (Module: condensation, Line: 231)
+2025-06-15 21:13:15,906 [DEBUG] 
+======================================== SYSTEM DETAILS ======================================== (Module: condensation, Line: 245)
+2025-06-15 21:13:15,907 [DEBUG] 📊 Statistics:
+Total DOFs: 18
+Fixed DOFs: 6 (33.3%)
+Active DOFs: 12 (66.7%)
+Condensed DOFs: 12 (66.7%)
+Inactive DOFs: 0 (0.0%) (Module: condensation, Line: 256)
+2025-06-15 21:13:15,907 [DEBUG] 🗺️ Mapping Samples:
+Condensed → Original: 0 → 6
+1 → 7
+2 → 8
+3 → 9
+4 → 10
+... → ...
+7 → 13
+8 → 14
+9 → 15
+10 → 16
+11 → 17
+Original → Condensed: 6 → 0
+7 → 1
+8 → 2
+9 → 3
+10 → 4
+... → ...
+13 → 7
+14 → 8
+15 → 9
+16 → 10
+17 → 11 (Module: condensation, Line: 259)
+2025-06-15 21:13:15,910 [DEBUG] 🔍 Condensed Stiffness Matrix:
+            C0 (O6)   C1 (O7)   C2 (O8)   C3 (O9)  C4 (O10)  C5 (O11)  C6 (O12)  C7 (O13)  C8 (O14)  C9 (O15)  C10 (O16)  C11 (O17)
+C0 (O6)    3.58e+36  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 -4.00e+09  0.00e+00  0.00e+00  0.00e+00   0.00e+00   0.00e+00
+C1 (O7)    0.00e+00  3.58e+36  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 -4.48e+09  0.00e+00  0.00e+00   0.00e+00   0.00e+00
+C2 (O8)    0.00e+00  0.00e+00  3.58e+36  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 -1.79e+10  0.00e+00   0.00e+00   0.00e+00
+C3 (O9)    0.00e+00  0.00e+00  0.00e+00  3.58e+36  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 -1.31e+06   0.00e+00   0.00e+00
+C4 (O10)   0.00e+00  0.00e+00  0.00e+00  0.00e+00  3.58e+36  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00   0.00e+00   0.00e+00
+C5 (O11)   0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  3.58e+36  0.00e+00  0.00e+00  0.00e+00  0.00e+00   0.00e+00   0.00e+00
+C6 (O12)  -4.00e+09  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  3.58e+36  0.00e+00  0.00e+00  0.00e+00   0.00e+00   0.00e+00
+C7 (O13)   0.00e+00 -4.48e+09  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  3.58e+36  0.00e+00  0.00e+00   0.00e+00   0.00e+00
+C8 (O14)   0.00e+00  0.00e+00 -1.79e+10  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  3.58e+36  0.00e+00   0.00e+00   0.00e+00
+C9 (O15)   0.00e+00  0.00e+00  0.00e+00 -1.31e+06  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  3.58e+36   0.00e+00   0.00e+00
+C10 (O16)  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00   3.58e+36   0.00e+00
+C11 (O17)  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00   0.00e+00   3.58e+36 (Module: condensation, Line: 284)
+2025-06-15 21:13:15,911 [DEBUG] 🔍 Condensed Force Vector:
+              Force
+C0 (O6)    0.00e+00
+C1 (O7)    0.00e+00
+C2 (O8)    0.00e+00
+C3 (O9)    0.00e+00
+C4 (O10)   0.00e+00
+C5 (O11)   0.00e+00
+C6 (O12)   0.00e+00
+C7 (O13)  -1.00e+05
+C8 (O14)   0.00e+00
+C9 (O15)   0.00e+00
+C10 (O16)  0.00e+00
+C11 (O17)  0.00e+00 (Module: condensation, Line: 291)
+2025-06-15 21:13:15,912 [INFO] ✅ Condensation completed in 0.01s (Module: condensation, Line: 142)

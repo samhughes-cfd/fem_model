@@ -126,29 +126,39 @@ class DisassembleGlobalSystem:
     #                P R I V A T E   H E L P E R S
     # ------------------------------------------------------------------ #
     def _init_logging(self):
-        """Configure per-instance logger."""
-        self.logger = logging.getLogger(f"DisassemblySystem.{id(self)}")
-        self.logger.handlers.clear()
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.propagate = False
+        logger = logging.getLogger(f"DisassembleGlobalSystem.{id(self)}")
+        logger.handlers.clear()
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
 
-        # file output
+        log_path = None
         if self.job_results_dir:
-            os.makedirs(self.job_results_dir, exist_ok=True)
-            fh = logging.FileHandler(os.path.join(self.job_results_dir, "disassembly.log"), mode="w")
-            fh.setFormatter(
-                logging.Formatter(
+            # Create the logs subdirectory inside the job results directory
+            logs_dir = os.path.join(self.job_results_dir, "logs")
+            os.makedirs(logs_dir, exist_ok=True)
+
+            log_path = os.path.join(logs_dir, "DisassembleGlobalSystem.log")
+
+            try:
+                file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
+                file_handler.setFormatter(logging.Formatter(
                     "%(asctime)s [%(levelname)s] %(message)s "
                     "(Module: %(module)s, Line: %(lineno)d)"
-                )
-            )
-            self.logger.addHandler(fh)
+                ))
+                logger.addHandler(file_handler)
+            except Exception as e:
+                print(f"⚠️ Failed to create file handler for DisassembleGlobalSystem class log: {e}")
 
-        # console (warnings+)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.WARNING)
-        ch.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
-        self.logger.addHandler(ch)
+        # Console output (INFO level and above)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+        logger.addHandler(stream_handler)
+
+        if log_path:
+            logger.debug(f"📁 Log file created at: {log_path}")
+
+        return logger
 
     # ------------------------------------------------------------------ #
     def _validate_inputs(self):

@@ -1,0 +1,18 @@
+2025-06-15 21:13:15,036 - INFO - 🟢 Starting job: job_0002
+2025-06-15 21:13:16,019 - ERROR - ❌ Error in job job_0002: Simulation aborted
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 590, in run
+    self.compute_primary_results(
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 457, in compute_primary_results
+    computer = ComputePrimaryResults(
+               ^^^^^^^^^^^^^^^^^^^^^^
+TypeError: ComputePrimaryResults.__init__() got an unexpected keyword argument 'K_global'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.py", line 259, in process_job
+    runner.run(
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 601, in run
+    raise RuntimeError("Simulation aborted") from e
+RuntimeError: Simulation aborted

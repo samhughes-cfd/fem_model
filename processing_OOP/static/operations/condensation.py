@@ -6,11 +6,12 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix, issparse
 from typing import Tuple, Optional, Dict
+from pathlib import Path
 import time
 
 class CondenseGlobalSystem:
     """Static condensation system with advanced validation and adaptive numerics."""
-    
+
     def __init__(
         self,
         K_mod: csr_matrix,
@@ -22,7 +23,7 @@ class CondenseGlobalSystem:
         self.K_mod = K_mod.astype(np.float64, copy=False)
         self.F_mod = F_mod.astype(np.float64, copy=False)
         self.fixed_dofs = fixed_dofs
-        self.job_results_dir = job_results_dir
+        self.job_results_dir = Path(job_results_dir) if job_results_dir else None
         self.base_tol = float(base_tol)
         self.condensed_dofs = None
         self.inactive_dofs = None
@@ -30,29 +31,41 @@ class CondenseGlobalSystem:
         self.F_cond = None
         self.mapping = {}
         self.adaptive_tol = base_tol
-        self._init_logging()
+        self.logger = self._init_logging()
         self._validate_system()
 
     def _init_logging(self):
-        """Configure hierarchical logging with validation tracking."""
-        self.logger = logging.getLogger(f"EnhancedCondensation.{id(self)}")
-        self.logger.handlers.clear()
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.propagate = False
+        logger = logging.getLogger(f"CondenseGlobalSystem.{id(self)}")
+        logger.handlers.clear()
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
 
+        log_path = None
         if self.job_results_dir:
-            os.makedirs(self.job_results_dir, exist_ok=True)
-            log_path = os.path.join(self.job_results_dir, "condensation.log")
-            file_handler = logging.FileHandler(log_path, mode='w', encoding='utf-8')
-            file_handler.setFormatter(logging.Formatter(
-                "%(asctime)s [%(levelname)s] (%(funcName)s:%(lineno)d) - %(message)s"
-            ))
-            file_handler.setLevel(logging.DEBUG)
-            self.logger.addHandler(file_handler)
+            logs_dir = self.job_results_dir.parent / "logs"  # ✅ Store logs alongside primary_results
+            logs_dir.mkdir(parents=True, exist_ok=True)
 
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.CRITICAL)
-        self.logger.addHandler(console_handler)
+            log_path = logs_dir / "CondenseGlobalSystem.log"
+            try:
+                file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
+                file_handler.setFormatter(logging.Formatter(
+                    "%(asctime)s [%(levelname)s] %(message)s "
+                    "(Module: %(module)s, Line: %(lineno)d)"
+                ))
+                logger.addHandler(file_handler)
+            except Exception as e:
+                print(f"⚠️ Failed to create file handler for CondenseGlobalSystem class log: {e}")
+
+        # Console output (INFO level and above)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(logging.INFO)
+        stream_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+        logger.addHandler(stream_handler)
+
+        if log_path:
+            logger.debug(f"📁 Log file created at: {log_path}")
+
+        return logger
 
     def _validate_system(self):
         """Comprehensive system validation before processing."""
@@ -118,7 +131,7 @@ class CondenseGlobalSystem:
             self._create_intermediate_system()
             self._identify_fully_active_dofs()
             self._validate_condensation()
-            self._build_condensed_system()
+            self._build_condensed_system() # CHECK !!!!!!!!!!!!!!!!!!!!!!!!!!
             self._create_verified_mapping()
             self._log_system_details()
         except Exception as e:
@@ -161,6 +174,28 @@ class CondenseGlobalSystem:
         )
         if len(self.condensed_dofs) == 0:
             raise ValueError("All active DOFs removed in secondary condensation")
+        
+    def _build_condensed_system(self):
+        """Extract condensed system matrices using validated DOF subset."""
+        self.logger.debug("🔧 Building condensed system from intermediate matrix")
+    
+        # Extract condensed stiffness matrix
+        K_c = self.K_intermediate[
+            np.isin(self.active_dofs, self.condensed_dofs)
+        ][:, np.isin(self.active_dofs, self.condensed_dofs)].tocsr()
+    
+        # Extract corresponding condensed force vector
+        F_c = self.F_intermediate[np.isin(self.active_dofs, self.condensed_dofs)]
+
+        # Final assignments
+        self.K_cond = K_c
+        self.F_cond = F_c
+
+        self.logger.debug(
+            f"📐 Condensed system built: "
+            f"K_cond shape = {self.K_cond.shape}, "
+            f"F_cond length = {self.F_cond.shape[0]}"
+        )
 
     def _validate_condensation(self):
         """Post-condensation validation checks."""
@@ -194,6 +229,16 @@ class CondenseGlobalSystem:
             raise ValueError(f"Missing reverse mapping for: {missing}")
             
         self.logger.debug("Bi-directional mapping validated")
+    
+    def _format_dof_sample(self, dofs, n=10):
+        """Format a sample of DOFs for concise logging."""
+        dofs = np.asarray(dofs)
+        if len(dofs) == 0:
+            return "[]"
+        sample = dofs[:n]
+        tail = "..." if len(dofs) > n else ""
+        return "[" + ", ".join(map(str, sample)) + tail + "]"
+
 
     def _log_system_details(self):
         """Comprehensive system logging with mapping integrity."""
