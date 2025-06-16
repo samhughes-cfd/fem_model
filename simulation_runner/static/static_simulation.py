@@ -10,7 +10,7 @@ from pathlib import Path
 from processing_OOP.static.operations.preparation import PrepareLocalSystem
 from processing_OOP.static.operations.assembly import AssembleGlobalSystem
 from processing_OOP.static.operations.boundary_conditions import ModifyGlobalSystem
-from processing_OOP.static.operations.condensation import CondenseGlobalSystem
+from processing_OOP.static.operations.condensation import CondenseModifiedSystem
 from processing_OOP.static.operations.solver import SolveCondensedSystem
 from processing_OOP.static.operations.reconstruction import ReconstructGlobalSystem
 from processing_OOP.static.operations.disassembly import DisassembleGlobalSystem
@@ -67,7 +67,7 @@ class StaticSimulationRunner:
         self.F_global = None
         self.K_mod = None
         self.F_mod = None
-        self.bc_dofs = None
+        self.fixed_dofs = None
         self.condensed_dofs = None
         self.inactive_dofs = None
         self.K_cond = None
@@ -125,7 +125,7 @@ class StaticSimulationRunner:
     # 1) ASSEMBLE GLOBAL SYSTEM
     # -------------------------------------------------------------------------
 
-    def assemble_global_system(self, job_results_dir: str, *, parallel_assembly: bool = False):
+    def assemble_global_system(self, job_results_dir: str):
         """
         Assemble the global stiffness matrix (K_global) and force vector (F_global)
         using the high-performance AssembleGlobalSystem helper.
@@ -134,64 +134,60 @@ class StaticSimulationRunner:
         ----------
         job_results_dir : str
             Directory where log files and any diagnostics should be written.
-        parallel_assembly : bool, optional
-            If True, the element-by-element assembly runs in parallel
-            (multiprocessing Pool).  Defaults to False for determinism/easier
-            debugging; turn on once everything is stable.
 
         Returns
         -------
         K_global : scipy.sparse.csr_matrix
         F_global : numpy.ndarray
             Flattened 1-D force vector.
+        local_global_dof_map : list of np.ndarray
+            Per-element mapping from local to global DOFs.
         """
         logger.info("🔧 Assembling global stiffness and force matrices...")
 
-        
         # 1. Work out the total number of DOFs for the model
-        
         num_nodes = len(self.mesh_dictionary["node_ids"])
-        total_dof  = num_nodes * 6        # -- assuming 6 DOFs per node
+        total_dof = num_nodes * 6        # -- assuming 6 DOFs per node
 
-        
         # 2. Instantiate the high-performance assembler and run it
-        
         assembler = AssembleGlobalSystem(
-            elements                   = self.elements,
+            elements                    = self.elements,
             element_stiffness_matrices = self.element_stiffness_matrices,
             element_force_vectors      = self.element_force_vectors,
             total_dof                  = total_dof,
-            job_results_dir            = job_results_dir,
-            parallel_assembly          = False           
+            job_results_dir            = job_results_dir
         )
 
         try:
             K_global, F_global = assembler.assemble()
-        except Exception as exc:                     # already logged internally
+        except Exception as exc:
             logger.error("❌ Assembly failed – see assembly.log for details")
-            raise                                      # re-raise so callers know
+            raise
 
-        
         # 3. Assemble global system diagnostics
-        
-        F_global = np.asarray(F_global).ravel()       # ensure 1-D
+        F_global = np.asarray(F_global).ravel()
 
         log_system_diagnostics(
             K_global, F_global,
-            bc_dofs         = [],                     
+            bc_dofs         = [],
             job_results_dir = job_results_dir,
             label           = "Global System"
         )
 
         logger.info("✅ Global stiffness matrix and force vector successfully assembled")
-        return K_global, F_global
+        return K_global, F_global, assembler.local_global_dof_map
 
-    
     # -------------------------------------------------------------------------
-    # 2) MODIFY GLOBAL MATRICES (BOUNDARY CONDITIONS)
-    # -------------------------------------------------------------------------
+# 2) MODIFY GLOBAL MATRICES (BOUNDARY CONDITIONS)
+# -------------------------------------------------------------------------
 
-    def modify_global_system(self, K_global, F_global, job_results_dir: str, *, fixed_dofs: np.ndarray | None = None):
+    def modify_global_system(self,
+                         K_global,
+                         F_global,
+                         local_global_dof_map,
+                         job_results_dir: str,
+                         *,
+                         fixed_dofs: np.ndarray | None = None):
         """
         Apply boundary conditions to the global system using the high-performance
         `ModifyGlobalSystem` helper.
@@ -202,6 +198,8 @@ class StaticSimulationRunner:
             Assembled global stiffness matrix.
         F_global : np.ndarray
             Assembled global force vector (1-D or flattenable to 1-D).
+        local_global_dof_map : list of np.ndarray
+            Local-to-global DOF mapping per element, from the assembler.
         job_results_dir : str
             Directory for boundary-condition logs/diagnostics.
         fixed_dofs : array-like[int], optional
@@ -217,54 +215,49 @@ class StaticSimulationRunner:
         """
         logger.info("🔒 Applying boundary conditions to global matrices…")
 
-        
         # 1. Instantiate the boundary-condition helper
-        
         modifier = ModifyGlobalSystem(
-            K_global      = K_global,
-            F_global      = np.asarray(F_global).ravel(),  # ensure 1-D
+            K_global        = K_global,
+            F_global        = np.asarray(F_global).ravel(),
             job_results_dir = job_results_dir,
-            fixed_dofs      = fixed_dofs                   # may be None
+            fixed_dofs      = fixed_dofs
         )
 
-        
-        # 2. Run the boundary-condition pipeline
-        
+        # 2. Run the boundary-condition pipeline with DOF map
         try:
-            K_mod, F_mod, bc_dofs = modifier.apply_boundary_conditions()
-        except Exception as exc:                           # already logged inside
+            K_mod, F_mod, fixed_dofs = modifier.apply_boundary_conditions(local_global_dof_map)
+        except Exception as exc:
             logger.error("❌ Boundary-condition step failed – see boundary_conditions.log")
-            raise                                           # propagate to caller
+            raise
 
-        
         # 3. Project-specific diagnostics (optional)
-        
         log_system_diagnostics(
             K_mod, F_mod,
-            bc_dofs         = bc_dofs,
+            bc_dofs      = fixed_dofs,
             job_results_dir = job_results_dir,
             label           = "Modified System"
         )
 
         logger.info("✅ Boundary conditions successfully applied")
-        return K_mod, F_mod, bc_dofs
+        return K_mod, F_mod, fixed_dofs
 
     # -------------------------------------------------------------------------
-    # 3) CONDENSE GLOBAL SYSTEM
+    # 3) CONDENSE MODIFIED SYSTEM
     # -------------------------------------------------------------------------
 
-    def condense_global_system(
+    def condense_modified_system(
             self,
             K_mod,
             F_mod,
-            bc_dofs,
+            fixed_dofs,
+            local_global_dof_map,
             job_results_dir: str,
             *,
             base_tol: float = 1e-12
         ):
         """
         Perform static condensation on the boundary-conditioned system using the
-        high-performance `CondenseGlobalSystem` helper.
+        high-performance `CondenseModifiedSystem` helper.
 
         Parameters
         ----------
@@ -272,7 +265,7 @@ class StaticSimulationRunner:
             Global stiffness matrix *after* boundary conditions have been applied.
         F_mod : np.ndarray
             Corresponding force vector (flattened to 1-D internally).
-        bc_dofs : np.ndarray
+        fixed_dofs : np.ndarray
             Array of fixed DOF indices (passed straight through to the helper).
         job_results_dir : str
             Directory where condensation logs/diagnostics should be written.
@@ -291,15 +284,16 @@ class StaticSimulationRunner:
         F_cond : np.ndarray
             Condensed force vector (1-D).
         """
-        logger.info("📉 Condensing global system…")
+        logger.info("📉 Condensing modified system…")
 
         
         # 1.  Instantiate the condensation helper
         
-        condenser = CondenseGlobalSystem(
+        condenser = CondenseModifiedSystem(
             K_mod        = K_mod,
             F_mod        = np.asarray(F_mod).ravel(),   # ensure 1-D
-            fixed_dofs   = bc_dofs,
+            fixed_dofs   = fixed_dofs,
+            local_global_dof_map=local_global_dof_map,
             job_results_dir = job_results_dir,
             base_tol        = base_tol
         )
@@ -445,7 +439,7 @@ class StaticSimulationRunner:
     # -------------------------------------------------------------------------
     # 6) PRIMARY RESULTS PIPELINE
     # -------------------------------------------------------------------------
-    def compute_primary_results(self, *, parallel_disassembly: bool = False):
+    def compute_primary_results(self):
         """
         Compute and save primary results:
         1. Global system matrices and solution
@@ -472,7 +466,6 @@ class StaticSimulationRunner:
             U_global=self.U_global,
             R_global=global_set.R_global,
             job_results_dir=self.primary_results_dir,
-            parallel=parallel_disassembly
         )
         K_e_mod, F_e_mod, U_e, R_e = disassembler.disassemble()
         
@@ -536,7 +529,7 @@ class StaticSimulationRunner:
     # -------------------------------------------------------------------------
     # TOP-LEVEL SIMULATION FLOW
     # -------------------------------------------------------------------------
-    def run(self, *, parallel_assembly=False, parallel_disassembly=False):
+    def run(self):
         """Execute full static simulation workflow"""
         try:
             self.setup_simulation()
@@ -545,28 +538,28 @@ class StaticSimulationRunner:
             self.prepare_local_system(job_results_dir=self.primary_results_dir)
             
             # 1. Assemble global system
-            self.K_global, self.F_global = self.assemble_global_system(
-                self.primary_results_dir,
-                parallel_assembly=parallel_assembly
-            )
+            (self.K_global, 
+            self.F_global, 
+            self.local_global_dof_map) = self.assemble_global_system(self.primary_results_dir)
             
             # 2. Apply boundary conditions
-            self.K_mod, self.F_mod, self.bc_dofs = self.modify_global_system(
-                self.K_global,
-                self.F_global,
-                self.primary_results_dir
-            )
+            (self.K_mod, 
+            self.F_mod, 
+            self.fixed_dofs) = self.modify_global_system(self.K_global,
+                                                      self.F_global,
+                                                      self.local_global_dof_map,
+                                                      self.primary_results_dir)
+
             
             # 3. Condense system
             (self.condensed_dofs, 
              self.inactive_dofs, 
              self.K_cond, 
-             self.F_cond) = self.condense_global_system(
-                self.K_mod,
-                self.F_mod,
-                self.bc_dofs,
-                self.primary_results_dir
-            )
+             self.F_cond) = self.condense_modified_system(self.K_mod,
+                                                        self.F_mod,
+                                                        self.fixed_dofs,
+                                                        self.local_global_dof_map,
+                                                        self.primary_results_dir)
             
             # 4. Solve condensed system
             self.U_cond = self.solve_condensed_system(
@@ -582,14 +575,12 @@ class StaticSimulationRunner:
                 self.U_cond,
                 total_dof,
                 self.primary_results_dir,
-                fixed_dofs=self.bc_dofs,
+                fixed_dofs=self.fixed_dofs,
                 inactive_dofs=self.inactive_dofs
             )
             
             # 6. Compute primary results
-            self.compute_primary_results(
-                parallel_disassembly=parallel_disassembly
-            )
+            self.compute_primary_results()
             
             # 7. Compute secondary results
             self.compute_secondary_results()

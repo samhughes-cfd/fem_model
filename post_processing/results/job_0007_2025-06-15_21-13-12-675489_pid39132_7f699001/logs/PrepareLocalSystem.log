@@ -1,4 +1,0 @@
-2025-06-15 21:13:15,708 [DEBUG] 📁 Log file created at: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0007_2025-06-15_21-13-12-675489_pid39132_7f699001\logs\PrepareLocalSystem.log (Module: preparation, Line: 58)
-2025-06-15 21:13:15,709 [INFO] 🔎 Starting validation of Ke and Fe (Module: preparation, Line: 94)
-2025-06-15 21:13:15,710 [DEBUG] ✅ Ke[0] and Fe[0] validated and formatted (Module: preparation, Line: 113)
-2025-06-15 21:13:15,711 [INFO] ✅ Successfully validated and formatted 1 elements (Module: preparation, Line: 119)

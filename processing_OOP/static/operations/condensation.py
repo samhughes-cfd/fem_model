@@ -4,25 +4,27 @@ import os
 import logging
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix, issparse
-from typing import Tuple, Optional, Dict
+from scipy.sparse import csr_matrix, coo_matrix, issparse   # add coo_matrix
+from typing import Sequence, Union, Tuple, Optional, Dict   # Dict gets used below
 from pathlib import Path
 import time
 
-class CondenseGlobalSystem:
+class CondenseModifiedSystem:
     """Static condensation system with advanced validation and adaptive numerics."""
 
     def __init__(
         self,
         K_mod: csr_matrix,
         F_mod: np.ndarray,
-        fixed_dofs: np.ndarray,
+        fixed_dofs: Union[Sequence[int], np.ndarray],
+        local_global_dof_map: list[np.ndarray],
         job_results_dir: Optional[str] = None,
         base_tol: float = 1e-12
     ):
         self.K_mod = K_mod.astype(np.float64, copy=False)
         self.F_mod = F_mod.astype(np.float64, copy=False)
-        self.fixed_dofs = fixed_dofs
+        self.fixed_dofs = np.array(fixed_dofs, dtype=np.int32)
+        self.local_global_dof_map = local_global_dof_map
         self.job_results_dir = Path(job_results_dir) if job_results_dir else None
         self.base_tol = float(base_tol)
         self.condensed_dofs = None
@@ -35,7 +37,7 @@ class CondenseGlobalSystem:
         self._validate_system()
 
     def _init_logging(self):
-        logger = logging.getLogger(f"CondenseGlobalSystem.{id(self)}")
+        logger = logging.getLogger(f"CondenseModifiedSystem.{id(self)}")
         logger.handlers.clear()
         logger.setLevel(logging.DEBUG)
         logger.propagate = False
@@ -45,7 +47,7 @@ class CondenseGlobalSystem:
             logs_dir = self.job_results_dir.parent / "logs"  # ✅ Store logs alongside primary_results
             logs_dir.mkdir(parents=True, exist_ok=True)
 
-            log_path = logs_dir / "CondenseGlobalSystem.log"
+            log_path = logs_dir / "CondenseModifiedSystem.log"
             try:
                 file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
                 file_handler.setFormatter(logging.Formatter(
@@ -54,7 +56,7 @@ class CondenseGlobalSystem:
                 ))
                 logger.addHandler(file_handler)
             except Exception as e:
-                print(f"⚠️ Failed to create file handler for CondenseGlobalSystem class log: {e}")
+                print(f"⚠️ Failed to create file handler for CondenseModifiedSystem class log: {e}")
 
         # Console output (INFO level and above)
         stream_handler = logging.StreamHandler()
@@ -82,8 +84,6 @@ class CondenseGlobalSystem:
 
     def _validate_indices(self):
         """Strict index validation with error feedback."""
-        if not isinstance(self.fixed_dofs, np.ndarray):
-            raise TypeError("Fixed DOFs must be numpy array")
             
         if not np.issubdtype(self.fixed_dofs.dtype, np.integer):
             raise TypeError("Fixed DOFs must be integer indices")
@@ -131,8 +131,11 @@ class CondenseGlobalSystem:
             self._create_intermediate_system()
             self._identify_fully_active_dofs()
             self._validate_condensation()
-            self._build_condensed_system() # CHECK !!!!!!!!!!!!!!!!!!!!!!!!!!
+            self._build_condensed_system()
             self._create_verified_mapping()
+            self._export_K_cond()
+            self._export_F_cond()
+            self._export_condensed_map()
             self._log_system_details()
         except Exception as e:
             self.logger.critical(f"❌ Condensation failed: {str(e)}", exc_info=True)
@@ -238,7 +241,85 @@ class CondenseGlobalSystem:
         sample = dofs[:n]
         tail = "..." if len(dofs) > n else ""
         return "[" + ", ".join(map(str, sample)) + tail + "]"
+    
+    # ------------------------------------------------------------------ utils
+    @staticmethod
+    def _coo_to_dataframe(mat: csr_matrix | coo_matrix,
+                          value_label: str = "Value") -> pd.DataFrame:
+        """Return a tidy Δ-frame of COO data (Row, Col, Value)."""
+        if not isinstance(mat, coo_matrix):
+            mat = mat.tocoo()
+        return pd.DataFrame({
+            "Row":   mat.row.astype(int),
+            "Col":   mat.col.astype(int),
+            value_label: mat.data
+        })
 
+    def _export_K_cond(self):
+        if self.job_results_dir is None or self.K_cond is None:
+            return
+        path = self.job_results_dir / "05_K_cond.csv"
+        df   = self._coo_to_dataframe(self.K_cond, value_label="K Value")
+        df.to_csv(path, index=False, float_format="%.17e")
+        self.logger.info(f"💾 Condensed stiffness matrix saved → {path}")
+
+    def _export_F_cond(self):
+        if self.job_results_dir is None or self.F_cond is None:
+            return
+        path = self.job_results_dir / "06_F_cond.csv"
+        df   = pd.DataFrame({
+                  "DOF":   np.arange(self.F_cond.size, dtype=int),
+                  "F Value": self.F_cond
+              })
+        df.to_csv(path, index=False, float_format="%.17e")
+        self.logger.info(f"💾 Condensed force vector   saved → {path}")
+
+    def _export_condensed_map(self):
+        """
+        Per-element condensation mapping:
+        Element ID,Local DOF,Global DOF,
+        Fixed(1)/Free(0) Flag,Zero(1)/Non-zero(0) Flag,
+        Active(1)/Inactive(0) Flag,Condensed DOF
+        """
+        # ------------------------------------------------------------------ guard
+        if (
+            self.job_results_dir is None
+            or not hasattr(self, "original_to_condensed")
+            or not hasattr(self, "local_global_dof_map")  # <-- MUST be set by caller
+        ):
+            return
+
+        maps_dir = self.job_results_dir.parent / "maps"
+        maps_dir.mkdir(parents=True, exist_ok=True)
+        path = maps_dir / "03_condensation_map.csv"
+
+        # ------------------------------------------------------------------ helpers
+        def flags_for(dof_list):
+            fixed   = [1 if d in self.fixed_dofs else 0 for d in dof_list]
+            zero    = [1 if (d not in self.fixed_dofs and d not in self.condensed_dofs) else 0 for d in dof_list]
+            active  = [1 if d in self.condensed_dofs  else 0 for d in dof_list]
+            cond    = [self.original_to_condensed.get(d, "") for d in dof_list]
+            return fixed, zero, active, cond
+
+        # ------------------------------------------------------------------ rows
+        rows = []
+        for elem_id, g_dofs in enumerate(self.local_global_dof_map):
+            l_dofs = list(range(len(g_dofs)))             # 0…11 etc.
+            fixed, zero, active, cond = flags_for(g_dofs)
+
+            rows.append({
+                "Element ID": elem_id,
+                "Local DOF":               str(l_dofs),
+                "Global DOF":              str(g_dofs.tolist()),
+                "Fixed(1)/Free(0) Flag":   str(fixed),
+                "Zero(1)/Non-zero(0) Flag":str(zero),
+                "Active(1)/Inactive(0) Flag": str(active),
+                "Condensed DOF":           str(cond),
+            })
+
+        # ------------------------------------------------------------------ write
+        pd.DataFrame(rows).to_csv(path, index=False)
+        self.logger.info(f"🗺️  Structured condensation map saved → {path}")
 
     def _log_system_details(self):
         """Comprehensive system logging with mapping integrity."""
@@ -302,39 +383,4 @@ class CondenseGlobalSystem:
         self.logger.debug(
             "🔍 Sparse Matrix Pattern Sample:\n" + 
             sample.to_string(index=False, float_format="%.2e")
-        )
-
-    def save_condensed_system(self, filename: str):
-        """Save condensed system with full metadata."""
-        if not filename.endswith('.npz'):
-            filename += '.npz'
-            
-        np.savez_compressed(
-            filename,
-            K_cond_data=self.K_cond.data,
-            K_cond_indices=self.K_cond.indices,
-            K_cond_indptr=self.K_cond.indptr,
-            K_cond_shape=self.K_cond.shape,
-            F_cond=self.F_cond,
-            condensed_dofs=self.condensed_dofs,
-            inactive_dofs=self.inactive_dofs,
-            adaptive_tol=self.adaptive_tol,
-            fixed_dofs=self.fixed_dofs
-        )
-        self.logger.info(f"💾 Saved condensed system to {filename}")
-
-    @classmethod
-    def load_condensed_system(cls, filename: str):
-        """Load condensed system with metadata validation."""
-        data = np.load(filename)
-        K_cond = csr_matrix((
-            data['K_cond_data'],
-            data['K_cond_indices'],
-            data['K_cond_indptr']
-        ), shape=data['K_cond_shape'])
-        return (
-            data['condensed_dofs'],
-            data['inactive_dofs'],
-            K_cond,
-            data['F_cond']
         )

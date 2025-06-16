@@ -2,12 +2,13 @@
 
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix, diags
 import logging
 from pathlib import Path
 import time
-from typing import Tuple, Optional
+from scipy.sparse import csr_matrix, coo_matrix, lil_matrix, diags
+from typing import Sequence, Tuple, Optional, Union
 
+FLOAT_FORMAT = "%.17e"        # keep full float64 precision
 
 class ModifyGlobalSystem:
     """High-performance boundary condition applier with numerical stabilization and diagnostics.
@@ -24,7 +25,7 @@ class ModifyGlobalSystem:
         K_global: csr_matrix,
         F_global: np.ndarray,
         job_results_dir: Optional[str] = None,
-        fixed_dofs: Optional[np.ndarray] = None
+        fixed_dofs: Optional[Union[Sequence[int], np.ndarray]] = None
     ):
         """
         Parameters
@@ -46,10 +47,18 @@ class ModifyGlobalSystem:
         self.penalty: Optional[float] = None
 
         raw_fixed = fixed_dofs if fixed_dofs is not None else range(6)
-        self.fixed_dofs = np.array([int(dof) for dof in raw_fixed], dtype=int)
+        # single, explicit conversion → contiguous C buffer
+        self.fixed_dofs = np.asarray(raw_fixed, dtype=np.int32)
 
         self.logger = self._init_logging()
         self._validate_inputs()
+
+        # After validation (we know F_orig exists and is valid size)
+        self.free_dofs = np.setdiff1d(
+            np.arange(self.F_orig.size, dtype=np.int32),
+            self.fixed_dofs,
+            assume_unique=True
+            )
 
     def _init_logging(self):
         logger = logging.getLogger(f"ModifyGlobalSystem.{id(self)}")
@@ -94,7 +103,7 @@ class ModifyGlobalSystem:
         if self.K_orig.shape[0] != self.F_orig.shape[0]:
             raise ValueError("Matrix/vector dimension mismatch")
 
-    def apply_boundary_conditions(self) -> Tuple[csr_matrix, np.ndarray, np.ndarray]:
+    def apply_boundary_conditions(self, local_global_dof_map: Sequence[Sequence[int]]) -> Tuple[csr_matrix, np.ndarray, np.ndarray]:
         """Execute full boundary condition application process."""
         start_time = time.perf_counter()
         self.logger.info("🔧 Applying stabilized boundary conditions...")
@@ -103,9 +112,12 @@ class ModifyGlobalSystem:
             self._convert_matrices()
             self._compute_penalty()
             self._apply_penalty_method()
-            self._apply_stabilization()
+            #self._apply_stabilization()
             self._finalize_system()
             self._log_diagnostics()
+            self._export_K_mod()
+            self._export_F_mod()
+            self._export_modify_local_global_dof_map(local_global_dof_map)
         except Exception as e:
             self.logger.critical(f"❌ Boundary condition application failed: {str(e)}", exc_info=True)
             raise RuntimeError("Boundary condition application failed") from e
@@ -113,6 +125,32 @@ class ModifyGlobalSystem:
         exec_time = time.perf_counter() - start_time
         self.logger.info(f"✅ Boundary conditions applied in {exec_time:.2f}s")
         return self.K_mod, self.F_mod, self.fixed_dofs
+    
+    def _export_modify_local_global_dof_map(self, local_global_dof_map):
+        """Exports per-element local/global DOF map and fixed/free flags."""
+        if self.job_results_dir is None:
+            return
+
+        maps_dir = self.job_results_dir.parent / "maps"
+        maps_dir.mkdir(parents=True, exist_ok=True)
+        path = maps_dir / "02_modification_map.csv"
+
+        rows = []
+        for eid, global_dofs in enumerate(local_global_dof_map):
+            global_dofs = np.asarray(global_dofs, dtype=np.int32)  # Explicit coercion
+            local_dofs = np.arange(len(global_dofs), dtype=np.int32)
+            fixed_flags = np.isin(global_dofs, self.fixed_dofs).astype(int)
+
+            rows.append({
+                "Element ID": eid,
+                "Local DOF": local_dofs.tolist(),
+                "Global DOF": global_dofs.tolist(),
+                "Fixed(1)/Free(0) Flag": fixed_flags.tolist()
+            })
+
+        df = pd.DataFrame(rows)
+        df.to_csv(path, index=False)
+        self.logger.info(f"📎 Element DOF fixed/free map saved to: {path}")
 
     def _convert_matrices(self):
         """Convert matrices to working formats with precision control."""
@@ -122,7 +160,9 @@ class ModifyGlobalSystem:
     def _compute_penalty(self):
         """Calculate dynamic penalty value."""
         diag = self.K_work.diagonal()
-        self.penalty = np.float64(1e36) * (diag.max() if diag.size > 0 and diag.any() else 1e36)
+        # safer penalty
+        max_diag = np.max(np.abs(diag)) if diag.size else 1.0
+        self.penalty = (1e36 if max_diag == 0 else 1e36 * max_diag)
         self.logger.debug(f"Computed penalty value: {self.penalty:.2e}")
 
     def _apply_penalty_method(self):
@@ -138,30 +178,76 @@ class ModifyGlobalSystem:
         # Zero force vector entries
         self.F_work[self.fixed_dofs] = 0.0
 
-    def _apply_stabilization(self, include_off_diagonal: bool = False):
-        """Add numerical stabilization to matrix."""
-        ε = np.float64(1e-10) * self.penalty
-        diagonals = [ε]  # main diagonal
-        offsets = [0]
+    #def _apply_stabilization(self, include_off_diagonal: bool = False):
+        #"""Add numerical stabilization to matrix."""
+        #ε = np.float64(1e-10) * self.penalty
+        #diagonals = [ε]  # main diagonal
+        #offsets = [0]
 
-        if include_off_diagonal:
-            diagonals.extend([ε, ε])     # upper and lower
-            offsets.extend([-1, 1])
+        #if include_off_diagonal:
+            #diagonals.extend([ε, ε])     # upper and lower
+            #offsets.extend([-1, 1])
 
-        stabilization = diags(
-            diagonals,
-            offsets,
-            shape=self.K_work.shape,
-            format='lil',
-            dtype=np.float64
-        )
+        #stabilization = diags(
+            #diagonals,
+            #offsets,
+            #shape=self.K_work.shape,
+            #format='lil',
+            #dtype=np.float64
+        #)
 
-        self.K_work = self.K_work + stabilization
+        #self.K_work = self.K_work + stabilization
 
     def _finalize_system(self):
         """Convert to final matrix formats."""
         self.K_mod = self.K_work.tocsr().astype(np.float64)
         self.F_mod = self.F_work.astype(np.float64)
+
+    def _coo_to_dataframe(self, matrix: csr_matrix | coo_matrix, *,
+                      value_label: str = "Value") -> pd.DataFrame:
+        """Return a tidy DataFrame from a COO-format sparse matrix.
+
+        Parameters
+        ----------
+        matrix : csr_matrix or coo_matrix
+            Sparse matrix; will be converted to COO if necessary.
+        value_label : str
+            Column header for the numerical data.
+
+        Returns
+        -------
+        pd.DataFrame
+            Three columns: 'Row', 'Col', <value_label>.
+        """
+        if not isinstance(matrix, coo_matrix):
+            matrix = matrix.tocoo()
+
+        return pd.DataFrame({
+            "Row":   matrix.row.tolist(),      # Python ints
+            "Col":   matrix.col.tolist(),
+            value_label: matrix.data           # float64
+        })
+
+    def _export_K_mod(self):
+        if self.job_results_dir is None or self.K_mod is None:
+            return
+
+        path = self.job_results_dir / "03_K_mod.csv"
+        df   = self._coo_to_dataframe(self.K_mod, value_label="K Value")
+        df.to_csv(path, index=False, float_format=FLOAT_FORMAT)
+        self.logger.info(f"💾 Modified stiffness matrix saved to: {path}")
+
+    def _export_F_mod(self):
+        """Write F_mod to <primary_results>/F_mod.csv."""
+        if self.job_results_dir is None or self.F_mod is None:
+            return
+        path = self.job_results_dir / "04_F_mod.csv"
+        df   = pd.DataFrame({
+            "DOF":   list(range(self.F_mod.size)),   # python int
+            "F Value": self.F_mod                    # float64
+        })
+        df.to_csv(path, index=False, float_format=FLOAT_FORMAT)
+        self.logger.info(f"💾 Modified force vector saved to: {path}")
 
     def _log_diagnostics(self):
         """Log detailed system diagnostics."""
@@ -187,11 +273,8 @@ class ModifyGlobalSystem:
             df_K = pd.DataFrame(mod_coo.toarray(), dtype=np.float64)
             self.logger.debug("\nModified Stiffness Matrix:\n" + df_K.to_string(float_format="%.2e"))
         else:
-            sparse_sample = pd.DataFrame({
-                'Row': mod_coo.row,
-                'Col': mod_coo.col,
-                'Value': mod_coo.data
-            }).sample(n=min(1000, len(mod_coo.data)))
+            sparse_sample = (self._coo_to_dataframe(mod_coo).sample(n=min(1000, mod_coo.nnz), random_state=0))
+
             self.logger.debug("\nMatrix Sample (COO format):\n" + sparse_sample.to_string(index=False))
 
         # Condition number estimation
@@ -199,32 +282,3 @@ class ModifyGlobalSystem:
         if np.any(diag_vals > 0):
             cond_estimate = diag_vals.max() / diag_vals[diag_vals > 0].min()
             self.logger.debug(f"\nCondition Estimate: {cond_estimate:.1e}")
-
-    def save_modified_system(self, filename: str):
-        """Save modified system to NPZ file with enforced float64 precision."""
-        if not filename.endswith('.npz'):
-            filename += '.npz'
-
-        np.savez_compressed(
-            filename,
-            K_data=self.K_mod.data.astype(np.float64),
-            K_indices=self.K_mod.indices.astype(np.int32),
-            K_indptr=self.K_mod.indptr.astype(np.int32),
-            K_shape=np.array(self.K_mod.shape, dtype=np.int32),
-            F_global=self.F_mod.astype(np.float64),
-            fixed_dofs=np.array(self.fixed_dofs, dtype=np.int32)
-        )
-        self.logger.info(f"💾 Saved modified system to {filename}")
-
-    @classmethod
-    def load_modified_system(cls, filename: str):
-        """Load modified system from NPZ file."""
-        data = np.load(filename)
-        K = csr_matrix((
-            data['K_data'],
-            data['K_indices'],
-            data['K_indptr']
-        ), shape=data['K_shape'])
-        fixed_dofs = [int(dof) for dof in data['fixed_dofs']]
-        return K, data['F_global'], fixed_dofs
-

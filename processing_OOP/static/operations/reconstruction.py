@@ -42,7 +42,7 @@ class ReconstructGlobalSystem:
         self.U_cond: np.ndarray = U_cond.astype(np.float64)
         self.total_dofs: int = int(total_dofs)
         self.job_results_dir: Path = Path(job_results_dir)
-        self.fixed_dofs: np.ndarray = fixed_dofs if fixed_dofs is not None else np.array([], dtype=np.int64)
+        self.fixed_dofs: np.ndarray = fixed_dofs if fixed_dofs is not None else np.array([], dtype=np.int32)
         self.inactive_dofs: Optional[np.ndarray] = inactive_dofs
 
         self.U_global: np.ndarray = np.zeros(self.total_dofs, dtype=np.float64)
@@ -99,7 +99,7 @@ class ReconstructGlobalSystem:
             errors.append("active_dofs must be of dtype int64")
         if self.U_cond.dtype != np.float64:
             errors.append("U_cond must be of dtype float64")
-        if self.fixed_dofs.size > 0 and self.fixed_dofs.dtype != np.int64:
+        if self.fixed_dofs.size > 0 and self.fixed_dofs.dtype != np.int32:
             errors.append("fixed_dofs must be of dtype int64 if provided")
 
         if self.active_dofs.ndim != 1:

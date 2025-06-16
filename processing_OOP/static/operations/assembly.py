@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from scipy.sparse import coo_matrix, csr_matrix
-from typing import List, Tuple, Optional, Dict, Callable
+from typing import List, Tuple, Optional, Sequence, Dict, Callable
 import logging
 import os
 import time
@@ -9,6 +9,7 @@ from multiprocessing import Pool, cpu_count
 from functools import partial
 from pathlib import Path
 
+FLOAT_FORMAT = "%.17e"
 
 class AssembleGlobalSystem:
     """
@@ -24,7 +25,6 @@ class AssembleGlobalSystem:
         element_force_vectors: Optional[List[np.ndarray]] = None,
         total_dof: Optional[int] = None,
         job_results_dir: Optional[str] = None,
-        parallel_assembly: bool = False,
         symmetry_tol: float = 1e-8
     ):
         """
@@ -40,21 +40,21 @@ class AssembleGlobalSystem:
             Total number of global degrees of freedom.
         job_results_dir : str, optional
             Path to output logging directory.
-        parallel_assembly : bool, default=False
-            Use multiprocessing for stiffness matrix assembly.
         symmetry_tol : float, default=1e-8
             Tolerance for symmetry check on global matrix.
         """
+
+        self.float_format = FLOAT_FORMAT
+
         self.elements = elements
         self.element_stiffness_matrices = element_stiffness_matrices
         self.element_force_vectors = element_force_vectors
         self.total_dof = total_dof
         self.job_results_dir = Path(job_results_dir) if job_results_dir else None
-        self.parallel_assembly = parallel_assembly
         self.symmetry_tol = symmetry_tol
         self.K_global: Optional[csr_matrix] = None
         self.F_global: Optional[np.ndarray] = None
-        self.dof_mappings = None
+        self.local_global_dof_map = None
         self.assembly_time = None
         self.logger = self._init_logging()
 
@@ -107,12 +107,13 @@ class AssembleGlobalSystem:
 
         try:
             self._validate_inputs()
-            self._compute_dof_mappings()
+            self._compute_local_global_dof_map()
             self._log_system_info()
             self._assemble_stiffness_matrix()
             self._assemble_force_vector()
-            self._post_process()
             self._log_matrix_contents()
+            self._export_K_global()
+            self._export_F_global()
         except Exception as e:
             self.logger.critical(f"❌ Assembly failed: {str(e)}", exc_info=True)
             raise RuntimeError("Global assembly failed") from e
@@ -141,9 +142,9 @@ class AssembleGlobalSystem:
                 if not np.isfinite(Fe).all():
                     raise ValueError(f"Non-finite values in force vector {i}")
 
-    def _compute_dof_mappings(self):
+    def _compute_local_global_dof_map(self):
         """Compute global DOF mappings for each element."""
-        self.dof_mappings = []
+        self.local_global_dof_map = []
         validation_errors = []
         mapping_records = []
 
@@ -151,7 +152,8 @@ class AssembleGlobalSystem:
             try:
                 element_id = int(elem.element_id)  # Ensure Python int
                 dof = elem.assemble_global_dof_indices(element_id)
-                validated_dof = np.asarray(dof, dtype=np.int32).flatten()
+                validated_dof = np.asarray(dof, dtype=np.int32).ravel()  # contiguous int32 buffer
+
 
                 if validated_dof.size == 0:
                     raise ValueError("Empty DOF mapping")
@@ -162,11 +164,16 @@ class AssembleGlobalSystem:
                 if len(np.unique(validated_dof)) != len(validated_dof):
                     raise ValueError("Duplicate DOF indices detected")
 
-                self.dof_mappings.append(validated_dof)
+                # ✅ Store mapping for global assembly
+                self.local_global_dof_map.append(validated_dof)
+
+                # 📋 Record for output/logging
                 mapping_records.append({
                     "Element ID": element_id,
-                    "DOF Indices": validated_dof.tolist()
+                    "Local DOF": list(range(len(validated_dof))),  # usually [0,1,…,11]
+                    "Global DOF": validated_dof.tolist()
                 })
+
                 self.logger.debug(f"Element {element_id} DOF mapping validated")
 
             except Exception as e:
@@ -185,17 +192,29 @@ class AssembleGlobalSystem:
                 msgs.append(f"... {len(validation_errors) - 10} additional errors")
             raise RuntimeError("Assembly aborted due to invalid DOF mappings:\n" + "\n".join(msgs))
 
-        # Log all validated DOF mappings as a DataFrame
+        # Summarise all mappings
         df_dof = pd.DataFrame(mapping_records)
         self.logger.debug("\n✅ DOF Mappings Summary:\n" + df_dof.to_string(index=False))
 
+        # Save DOF mapping CSV to /maps directory
+        maps_path = None
         if self.job_results_dir:
-            mapping_csv_path = self.job_results_dir / "assembly_dof_mapping.csv"
+            maps_dir = self.job_results_dir.parent / "maps"
+            maps_dir.mkdir(parents=True, exist_ok=True)
+            maps_path = maps_dir / "01_assembly_map.csv"
             try:
-                df_dof.to_csv(mapping_csv_path, index=False)
-                self.logger.info(f"🗂️ DOF mapping saved to: {mapping_csv_path}")
+                df_dof.to_csv(maps_path, index=False)
+                self.logger.info(f"🗂️ DOF mapping saved to: {maps_path}")
             except Exception as e:
                 self.logger.warning(f"⚠️ Failed to save DOF mapping CSV: {e}")
+
+    def _coo_to_dataframe(self, matrix: coo_matrix, value_label: str = "Value") -> pd.DataFrame:
+        """Return a DataFrame from a COO matrix with human-readable labels."""
+        return pd.DataFrame({
+            "Row": matrix.row.tolist(),
+            "Col": matrix.col.tolist(),
+            value_label: matrix.data
+        })
 
     def _assemble_stiffness_matrix(self):
         """Assemble the global stiffness matrix in CSR format."""
@@ -204,26 +223,12 @@ class AssembleGlobalSystem:
             return
 
         assembly_func = partial(self._process_stiffness_element)
-        elements = list(zip(self.element_stiffness_matrices, self.dof_mappings))
+        elements = list(zip(self.element_stiffness_matrices, self.local_global_dof_map))
 
-        try:
-            if self.parallel_assembly:
-                # Disallow parallelism inside daemonic processes
-                if multiprocessing.current_process().daemon:
-                    self.logger.warning("⚠️ Detected daemon context: disabling parallel assembly.")
-                    raise RuntimeError("Daemon context detected")
+        results = [assembly_func(Ke, dof) for Ke, dof in elements]
 
-                with Pool(cpu_count()) as pool:
-                    results = pool.starmap(assembly_func, elements)
-            else:
-                results = [assembly_func(Ke, dof) for Ke, dof in elements]
-
-        except (RuntimeError, AssertionError) as e:
-            self.logger.warning(f"⚠️ Parallel assembly failed: {e}. Falling back to serial execution.")
-            results = [assembly_func(Ke, dof) for Ke, dof in elements]
-
-        all_rows = np.concatenate([r for r, _, _ in results])
-        all_cols = np.concatenate([c for _, c, _ in results])
+        all_rows = np.concatenate([r for r, _, _ in results]).astype(np.int32)
+        all_cols = np.concatenate([c for _, c, _ in results]).astype(np.int32)
         all_data = np.concatenate([d for _, _, d in results])
 
         self.K_global = coo_matrix(
@@ -251,7 +256,7 @@ class AssembleGlobalSystem:
             self.F_global = np.zeros(self.total_dof, dtype=np.float64)
         else:
             F = np.zeros(self.total_dof, dtype=np.float64)
-            for idx, (Fe, dof_map) in enumerate(zip(self.element_force_vectors, self.dof_mappings)):
+            for idx, (Fe, dof_map) in enumerate(zip(self.element_force_vectors, self.local_global_dof_map)):
                 if Fe.shape[0] != dof_map.size:
                     raise ValueError(f"Force vector {idx} shape mismatch")
                 F[dof_map] += Fe.astype(np.float64)
@@ -297,10 +302,33 @@ class AssembleGlobalSystem:
         diff = self.K_global - self.K_global.T
         return np.abs(diff.data).max() < tol if diff.nnz > 0 else True
 
-    def _post_process(self):
-        """Remove duplicates and zeros from K_global."""
-        self.K_global.sum_duplicates()
-        self.K_global.eliminate_zeros()
+    def _export_K_global(self):
+        """Export K_global to <primary_results>/K_global.csv with full precision."""
+        if not self.job_results_dir or self.K_global is None:
+            return
+
+        K_path = self.job_results_dir / "01_K_global.csv"
+        K_coo  = self.K_global.tocoo()
+
+        
+        df_K = self._coo_to_dataframe(K_coo, value_label="K Value")
+        df_K.to_csv(K_path, index=False, float_format=self.float_format)
+        self.logger.info(f"💾 Global stiffness matrix saved to: {K_path}")
+
+    def _export_F_global(self):
+        """Export F_global to <primary_results>/F_global.csv with full precision."""
+        if not self.job_results_dir or self.F_global is None:
+            return
+
+        F_path = self.job_results_dir / "02_F_global.csv"
+
+        # Again, Python ints for DOF indices
+        df_F = pd.DataFrame({
+            "DOF":   list(range(self.total_dof)),
+            "F Value": self.F_global           # float64
+        })
+        df_F.to_csv(F_path, index=False, float_format=self.float_format)
+        self.logger.info(f"💾 Global force vector saved to: {F_path}")
 
     def _log_system_info(self):
         """Log basic information about the system before assembly."""
@@ -308,7 +336,6 @@ class AssembleGlobalSystem:
             f"🧾 System Info:\n"
             f"  Total DOFs: {self.total_dof}\n"
             f"  Number of elements: {len(self.elements)}\n"
-            f"  Parallel assembly: {self.parallel_assembly}\n"
             f"  Symmetry tolerance: {self.symmetry_tol:.1e}"
         )
 
@@ -322,15 +349,6 @@ class AssembleGlobalSystem:
             f"Processing Rate: {len(self.elements)/self.assembly_time:.1f} elements/s"
         ]
         self.logger.info("📊 Performance Metrics:\n  " + "\n  ".join(stats))
-
-    def _log_matrix_contents(self):
-        """Log global matrix summary."""
-        self.logger.info(
-            f"Global Stiffness Matrix:\n"
-            f"  Non-zero entries: {self.K_global.nnz}\n"
-            f"  Symmetry: {self._is_symmetric()}\n"
-            f"  Norm: {np.linalg.norm(self.K_global.data):.3e}"
-        )
 
     def _log_matrix_contents(self):
         """Log global matrix summary and detailed contents if appropriate."""
@@ -353,9 +371,5 @@ class AssembleGlobalSystem:
         else:
             # Log sparse sample
             sample_size = min(1000, coo.nnz)
-            sample_df = pd.DataFrame({
-                "Row": coo.row,
-                "Col": coo.col,
-                "Value": coo.data
-            }).sample(n=sample_size, random_state=0)
+            sample_df = self._coo_to_dataframe(coo, value_label="K Value").sample(n=sample_size, random_state=0)
             self.logger.debug("\nStiffness Matrix Sample (COO):\n" + sample_df.to_string(index=False))

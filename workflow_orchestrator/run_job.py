@@ -15,6 +15,9 @@ import uuid
 from tabulate import tabulate
 import cpuinfo
 import subprocess
+from scipy.sparse import csr_matrix, coo_matrix, lil_matrix, diags
+from typing import List, Tuple, Optional, Union
+
 
 # Adjust Python Path to include project root
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -135,7 +138,8 @@ def setup_job_results_directory(case_name: str) -> str:
         "element_force_vectors",
         "primary_results",
         "secondary_results",
-        "logs"
+        "logs",
+        "maps"
     ]
 
     for subdir in subdirs:
@@ -256,10 +260,7 @@ def process_job(job_dir, job_results_dir, job_times, job_start_end_times, base_s
 
         
         # Execute full simulation workflow
-        runner.run(
-            parallel_assembly=True,      # Enable parallel assembly
-            parallel_disassembly=True    # Enable parallel disassembly
-        )
+        runner.run()
         simulation_time = time.time() - step_start
         performance_data.append(["Full Simulation", simulation_time, *track_usage().values()])
 

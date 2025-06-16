@@ -1,0 +1,12 @@
+2025-06-16 17:05:57,021 [DEBUG] 📁 Log file created at: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0007_2025-06-16_17-05-54-627522_pid62308_7928540b\logs\ReconstructGlobalSystem.log (Module: reconstruction, Line: 81)
+2025-06-16 17:05:57,022 [DEBUG] ✅ Input validation passed (Module: reconstruction, Line: 135)
+2025-06-16 17:05:57,023 [INFO] 🚀 Starting displacement reconstruction (Module: reconstruction, Line: 146)
+2025-06-16 17:05:57,023 [INFO] 📊 Reconstruction Statistics:
+  Total DOFs: 12
+  Active DOFs: 4
+  Fixed DOFs: 6
+  Min displacement: -1.786e-04
+  Max displacement: 0.000e+00
+  Mean absolute displacement: 1.488e-05 (Module: reconstruction, Line: 198)
+2025-06-16 17:05:57,036 [INFO] 📂 Saved reconstructed displacements in multiple formats (Module: reconstruction, Line: 217)
+2025-06-16 17:05:57,037 [INFO] ✅ Reconstruction completed in 0.01s (Module: reconstruction, Line: 158)
