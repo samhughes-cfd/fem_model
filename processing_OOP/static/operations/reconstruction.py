@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Sequence
 import matplotlib.pyplot as plt
 import time
 from datetime import datetime
@@ -20,6 +20,8 @@ class ReconstructGlobalSystem:
         U_cond: np.ndarray,
         total_dofs: int,
         job_results_dir: Path,
+        *,                           #  ← keep everything after this keyword-only
+        local_global_dof_map: Sequence[np.ndarray],   # NEW
         fixed_dofs: Optional[np.ndarray] = None,
         inactive_dofs: Optional[np.ndarray] = None):
         """
@@ -44,6 +46,7 @@ class ReconstructGlobalSystem:
         self.job_results_dir: Path = Path(job_results_dir)
         self.fixed_dofs: np.ndarray = fixed_dofs if fixed_dofs is not None else np.array([], dtype=np.int32)
         self.inactive_dofs: Optional[np.ndarray] = inactive_dofs
+        self.local_global_dof_map = list(local_global_dof_map)
 
         self.U_global: np.ndarray = np.zeros(self.total_dofs, dtype=np.float64)
         self.reconstruction_time: Optional[float] = None
@@ -100,7 +103,7 @@ class ReconstructGlobalSystem:
         if self.U_cond.dtype != np.float64:
             errors.append("U_cond must be of dtype float64")
         if self.fixed_dofs.size > 0 and self.fixed_dofs.dtype != np.int32:
-            errors.append("fixed_dofs must be of dtype int64 if provided")
+            errors.append("fixed_dofs must be of dtype int32 if provided")
 
         if self.active_dofs.ndim != 1:
             errors.append(f"active_dofs must be 1D array, got shape {self.active_dofs.shape}")
@@ -148,6 +151,7 @@ class ReconstructGlobalSystem:
         try:
             self._perform_mapping()
             self._validate_reconstruction()
+            self._export_reconstruction_map()
             self._log_statistics()
             self._save_results()
         except Exception as e:
@@ -168,6 +172,50 @@ class ReconstructGlobalSystem:
                 self.logger.warning(
                     f"Non-zero displacements at fixed DOFs: {self.fixed_dofs[fixed_nonzero]}"
                 )
+
+    # --------------------------------------------------------------------- NEW
+    def _export_reconstruction_map(self) -> None:
+        """
+        Write 04_reconstruction_map.csv in <primary_results>/../maps, one row per
+        element with list-style payloads (to stay consistent with maps 01-03).
+        """
+        if self.job_results_dir is None:
+            return                                     # nothing to do
+
+        maps_dir = self.job_results_dir.parent / "maps"
+        maps_dir.mkdir(parents=True, exist_ok=True)
+        path = maps_dir / "04_reconstruction_map.csv"
+
+        # ---------- fast, vectorised flag arrays over *all* global DOFs ----------
+        all_dofs      = np.arange(self.total_dofs, dtype=np.int32)
+        fixed_mask    = np.isin(all_dofs, self.fixed_dofs, assume_unique=True)
+        inactive_mask = np.isin(all_dofs, self.inactive_dofs if self.inactive_dofs is not None else [], assume_unique=True)
+        active_mask   = np.isin(all_dofs, self.active_dofs,   assume_unique=True)
+
+        # condensed index lookup  (-1 → not active)
+        orig_to_cond = {g: c for c, g in enumerate(self.active_dofs)}
+        condensed_idx = np.fromiter((orig_to_cond.get(d, -1) for d in all_dofs),
+                                dtype=np.int32, count=self.total_dofs)
+
+        # ---------- per-element rows ----------
+        rows = []
+        for elem_id, g_dofs in enumerate(self.local_global_dof_map):
+            g_dofs = np.asarray(g_dofs, dtype=np.int32)
+            l_dofs = np.arange(g_dofs.size, dtype=np.int32)
+
+            rows.append({
+                "Element ID": elem_id,                         # still loop index
+                "Local DOF":                str(l_dofs.tolist()),
+                "Global DOF":               str(g_dofs.tolist()),
+                "Fixed(1)/Free(0) Flag":    str(fixed_mask[g_dofs].astype(int).tolist()),
+                "Zero(1)/Non-zero(0) Flag": str(inactive_mask[g_dofs].astype(int).tolist()),
+                "Active(1)/Inactive(0) Flag": str(active_mask[g_dofs].astype(int).tolist()),
+                "Condensed DOF":            str(condensed_idx[g_dofs].tolist()),
+                "Reconstructed Global DOF": str(self.U_global[g_dofs].tolist())
+            })
+
+        pd.DataFrame(rows).to_csv(path, index=False, float_format="%.17e")
+        self.logger.info(f"🗺️  Reconstruction map saved → {path}")
 
     def _validate_reconstruction(self) -> None:
         """Quality checks on reconstructed solution."""
@@ -198,23 +246,13 @@ class ReconstructGlobalSystem:
         self.logger.info("📊 Reconstruction Statistics:\n  " + "\n  ".join(stats))
 
     def _save_results(self) -> None:
-        """Save reconstructed displacements in multiple formats."""
-        np.save(self.job_results_dir / "U_global.npy", self.U_global)
-
-        metadata = f"""# Reconstruction Metadata
-# Active DOFs: {len(self.active_dofs)}
-# Fixed DOFs: {len(self.fixed_dofs)}
-# Total DOFs: {self.total_dofs}
-# Timestamp: {datetime.now().isoformat()}
-"""
-        np.savetxt(
-            self.job_results_dir / "U_global.csv",
-            self.U_global,
-            header=metadata + "GlobalDisplacement",
-            comments='',
-            delimiter=','
-        )
-        self.logger.info("📂 Saved reconstructed displacements in multiple formats")
+        """Write 08_U_global.csv in the same style as 07_U_cond.csv."""
+        path = self.job_results_dir / "08_U_global.csv"
+        pd.DataFrame({
+            "Global DOF":    np.arange(self.U_global.size, dtype=int),
+            "U Value": self.U_global
+        }).to_csv(path, index=False, float_format="%.17e")
+        self.logger.info(f"💾 Global displacement saved → {path}")
 
     @property
     def solution(self) -> np.ndarray:

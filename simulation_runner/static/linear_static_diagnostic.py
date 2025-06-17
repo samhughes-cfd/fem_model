@@ -1,112 +1,111 @@
 # simulation_runner\static\linear_static_diagnostic.py
 
-import os
 import numpy as np
 import scipy.sparse as sp
+from pathlib import Path
+from typing import Sequence, Union
 
-def log_system_diagnostics(K, F, bc_dofs=None, job_results_dir="",
-                           filename="system_diagnostics.log", label="System"):
-    os.makedirs(job_results_dir, exist_ok=True)
-    filepath = os.path.join(job_results_dir, filename)
 
-    n = K.shape[0]
-    if K.shape[0] != K.shape[1]:
-        raise ValueError("K must be square.")
-    if F.shape[0] != n:
-        raise ValueError("F shape mismatch with K.")
+class DiagnoseLinearSystem:
+    """
+    Generic diagnostic logger for a linear system  A · x = b.
 
-    is_sparse = sp.issparse(K)
-    with open(filepath, 'a', encoding="utf-8") as log_file:
-        log_file.write("\n" + "-" * 60 + "\n")
-        log_file.write(f"### Diagnostics for {label}\n")
+    Parameters
+    ----------
+    A : (n, n) array_like or sparse matrix
+        System / coefficient matrix.
+    b : (n,) array_like
+        Right-hand-side vector.
+    constraints, constraint_rows, bc_dofs : Sequence[int] or ndarray, optional
+        Indices whose unknowns are *prescribed* (Dirichlet / essential
+        conditions).  `constraints` is the preferred keyword; the other two
+        remain as aliases for backward compatibility.
+    job_results_dir : str or Path
+        Folder where the log file is written.
+    filename : str, default="system_diagnostics.log"
+        Name of the log file.
+    label : str, default="Linear System"
+        Friendly label written into the header of the log.
+    """
 
-        # 1) Basic logging
-        log_file.write(f"Total DOFs: {n}\n")
+    # ------------------------------------------------------------------ init
+    def __init__(
+        self,
+        A: Union[np.ndarray, sp.spmatrix],
+        b: np.ndarray,
+        *,
+        constraints: Sequence[int] | np.ndarray | None = None,
+        constraint_rows: Sequence[int] | np.ndarray | None = None,
+        bc_dofs: Sequence[int] | np.ndarray | None = None,   # ← legacy alias
+        job_results_dir: str | Path = ".",
+        filename: str = "system_diagnostics.log",
+        label: str = "Linear System",
+    ):
+        # --- resolve aliases ------------------------------------------------
+        if constraints is None:
+            constraints = constraint_rows if constraint_rows is not None else bc_dofs
+        self.constraints = np.asarray(constraints, dtype=int) if constraints is not None else np.empty(0, int)
 
-        # 2) Nonzero rows and columns
-        if is_sparse:
-            num_equations = np.count_nonzero(K.getnnz(axis=1) > 0)
-        else:
-            num_equations = np.count_nonzero(~(K == 0).all(axis=1))
-        log_file.write(f"Independent Equations (nonzero rows): {num_equations}\n")
+        # --- data -----------------------------------------------------------
+        self.A  = A
+        self.b  = np.asarray(b, dtype=float).ravel()
+        self.n  = self.A.shape[0]
+        if self.b.size != self.n:
+            raise ValueError("b must have length equal to A.shape[0]")
 
-        # 3) Boundary conditions
-        if isinstance(bc_dofs, np.ndarray):
-            bc_dofs = bc_dofs.tolist()
+        # --- housekeeping ---------------------------------------------------
+        self.out_dir  = Path(job_results_dir)
+        self.filename = filename
+        self.label    = label
+        self.out_dir.mkdir(parents=True, exist_ok=True)
 
-        if bc_dofs is None or len(bc_dofs) == 0:
-                log_file.write("Boundary Condition DOFs: None\n")
-        else:
-            log_file.write(f"Boundary Condition DOFs: {bc_dofs}\n")
+    # ---------------------------------------------------------------- write
+    def write(self) -> Path:
+        """Run diagnostics and append them to the log file.  Returns the path."""
+        path = self.out_dir / self.filename
+        is_sp = sp.issparse(self.A)
 
-        # 4) Symmetry check (for real K only)
-        if not np.iscomplexobj(K):
-            sym_res = (np.linalg.norm(K - K.T, ord='fro')
-                       if not is_sparse else (K - K.T).count_nonzero())
-            if sym_res == 0:
-                log_file.write("✅ Matrix is symmetric.\n")
+        with path.open("a", encoding="utf-8") as f:
+            f.write("\n" + "-" * 60 + f"\n### Diagnostics for {self.label}\n")
+            f.write(f"Size: {self.n} × {self.n}\n")
+            f.write(f"Non-zeros: {self.A.nnz if is_sp else np.count_nonzero(self.A)}\n")
+
+            # --- rank / symmetry / condition number ------------------------
+            try:
+                mat = self.A.toarray() if is_sp else self.A
+                symmetric = np.allclose(mat, mat.T)
+                f.write(f"Symmetric: {symmetric}\n")
+                s = np.linalg.svd(mat, compute_uv=False)
+                tol = 1e-12 * s[0]
+                rank = (s > tol).sum()
+                f.write(f"Approx. rank: {rank}/{self.n}\n")
+                cond = np.linalg.cond(mat)
+                f.write(f"Condition number: {cond:.2e}\n")
+            except Exception as exc:
+                f.write(f"⚠  Rank / cond-no diagnostic failed: {exc}\n")
+
+            # --- zero rows / columns --------------------------------------
+            if is_sp:
+                zero_rows = np.where(self.A.getnnz(axis=1) == 0)[0]
+                zero_cols = np.where(self.A.getnnz(axis=0) == 0)[0]
             else:
-                log_file.write(f"⚠️ Matrix is NOT symmetric! Residual: {sym_res}\n")
+                zero_rows = np.where(~self.A.any(axis=1))[0]
+                zero_cols = np.where(~self.A.any(axis=0))[0]
+            if zero_rows.size:
+                f.write(f"Zero rows: {zero_rows.tolist()}\n")
+            if zero_cols.size:
+                f.write(f"Zero cols: {zero_cols.tolist()}\n")
 
-        # 5) Positive definiteness / invertibility check
-        try:
-            if is_sparse:
-                np.linalg.cholesky(K.toarray())
+            # --- RHS stats --------------------------------------------------
+            fmin, fmax = self.b.min(), self.b.max()
+            f.write(f"b-vector → min {fmin:.3e} , max {fmax:.3e}\n")
+            if self.b.ptp() == 0:
+                f.write("⚠  b appears to be all equal values\n")
+
+            # --- constraints -----------------------------------------------
+            if self.constraints.size:
+                f.write(f"Prescribed DOFs (constraints): {self.constraints.tolist()}\n")
             else:
-                np.linalg.cholesky(K)
-            log_file.write("✅ K is positive definite.\n")
-        except np.linalg.LinAlgError:
-            log_file.write("⚠️ K is not positive definite. Possibly singular or indefinite.\n")
+                f.write("Prescribed DOFs: none\n")
 
-        # 6) Approximate rank (for moderate n)
-        try:
-            # If n is large, consider a truncated SVD approach
-            mat = K.toarray() if is_sparse else K
-            u, s, vh = np.linalg.svd(mat, full_matrices=False)
-            tol = 1e-12 * s[0]
-            eff_rank = np.sum(s > tol)
-            log_file.write(f"🔹 Approx. rank of K: {eff_rank}/{n}\n")
-            # Check for indefinite behavior: negative or zero singular values (rare but possible).
-        except Exception as e:
-            log_file.write(f"⚠️ Rank check not performed: {e}\n")
-
-        # 7) Condition number
-        try:
-            cond_number = np.linalg.cond(K.toarray() if is_sparse else K)
-            log_file.write(f"🔹 Condition Number: {cond_number:.2e}\n")
-        except np.linalg.LinAlgError:
-            log_file.write("⚠️ Condition number could not be computed (singular).\n")
-
-        # 8) Zero rows/cols (again, good cross-check for BC DOFs)
-        zero_rows = []
-        zero_cols = []
-        if is_sparse:
-            zero_rows = list(map(int, np.where(K.getnnz(axis=1) == 0)[0]))
-            zero_cols = list(map(int, np.where(K.getnnz(axis=0) == 0)[0]))
-        else:
-            zero_rows = list(map(int, np.where(~K.any(axis=1))[0]))
-            zero_cols = list(map(int, np.where(~K.any(axis=0))[0]))
-        if zero_rows:
-            log_file.write(f"⚠️ Zero rows: {zero_rows}\n")
-        if zero_cols:
-            log_file.write(f"⚠️ Zero columns: {zero_cols}\n")
-
-        # 9) Force Vector analysis
-        zero_force_dofs = list(map(int, np.where(F == 0)[0]))
-        if zero_force_dofs:
-            log_file.write(f"⚠️ DOFs with zero force: {zero_force_dofs[:10]}{'...' if len(zero_force_dofs)>10 else ''}\n")
-        fmin, fmax = np.min(F), np.max(F)
-        log_file.write(f"Min Force = {fmin:.4e}, Max Force = {fmax:.4e}\n")
-        fsum = np.sum(F)
-        log_file.write(f"Sum of Forces = {fsum:.4e} {'(⚠️ Nonzero!)' if abs(fsum)>1e-6 else '(OK)'}\n")
-
-        # 10) Check largest forces
-        abs_forces = np.abs(F)
-        sorted_dofs = np.argsort(-abs_forces)
-        top_n = 10
-        log_file.write("Top DOFs by force magnitude:\n")
-        for i in sorted_dofs[:top_n]:
-            log_file.write(f"  DOF {i}, Force = {F[i]:.4e}\n")
-
-        # ...
-        log_file.write("\n")
+        return path

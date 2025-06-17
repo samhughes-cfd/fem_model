@@ -3,25 +3,24 @@
 import logging
 import numpy as np
 import os
-import datetime
-from scipy.sparse import coo_matrix
 from pathlib import Path
+import datetime
 
 from processing_OOP.static.operations.preparation import PrepareLocalSystem
+
+from simulation_runner.static.linear_static_diagnostic import DiagnoseLinearSystem # Diagnostic logging
+
 from processing_OOP.static.operations.assembly import AssembleGlobalSystem
-from processing_OOP.static.operations.boundary_conditions import ModifyGlobalSystem
+from processing_OOP.static.operations.modification import ModifyGlobalSystem
 from processing_OOP.static.operations.condensation import CondenseModifiedSystem
+
 from processing_OOP.static.operations.solver import SolveCondensedSystem
 from processing_OOP.static.operations.reconstruction import ReconstructGlobalSystem
 from processing_OOP.static.operations.disassembly import DisassembleGlobalSystem
 
 from processing_OOP.static.primary_results.compute_primary_results import ComputePrimaryResults
 from processing_OOP.static.secondary_results.compute_secondary_results import ComputeSecondaryResults
-from processing_OOP.static.primary_results.save_primary_results import SavePrimaryResults
 from processing_OOP.static.secondary_results.save_secondary_results import SaveSecondaryResults
-
-# Diagnostic logging
-from simulation_runner.static.linear_static_diagnostic import log_system_diagnostics
 
 # Configure module-level logger
 logger = logging.getLogger(__name__)
@@ -159,7 +158,7 @@ class StaticSimulationRunner:
         )
 
         try:
-            K_global, F_global = assembler.assemble()
+            K_global, F_global, local_global_dof_map = assembler.assemble()
         except Exception as exc:
             logger.error("❌ Assembly failed – see assembly.log for details")
             raise
@@ -167,81 +166,51 @@ class StaticSimulationRunner:
         # 3. Assemble global system diagnostics
         F_global = np.asarray(F_global).ravel()
 
-        log_system_diagnostics(
-            K_global, F_global,
-            bc_dofs         = [],
-            job_results_dir = job_results_dir,
-            label           = "Global System"
-        )
-
         logger.info("✅ Global stiffness matrix and force vector successfully assembled")
-        return K_global, F_global, assembler.local_global_dof_map
+        return K_global, F_global, local_global_dof_map
 
     # -------------------------------------------------------------------------
-# 2) MODIFY GLOBAL MATRICES (BOUNDARY CONDITIONS)
-# -------------------------------------------------------------------------
-
-    def modify_global_system(self,
-                         K_global,
-                         F_global,
-                         local_global_dof_map,
-                         job_results_dir: str,
-                         *,
-                         fixed_dofs: np.ndarray | None = None):
+    # 2) MODIFY GLOBAL MATRICES (BOUNDARY CONDITIONS)
+    # -------------------------------------------------------------------------
+    def modify_global_system(
+            self,
+            K_global,
+            F_global,
+            local_global_dof_map,
+            job_results_dir: str,
+            *,
+            fixed_dofs: np.ndarray | None = None):
         """
-        Apply boundary conditions to the global system using the high-performance
-        `ModifyGlobalSystem` helper.
-
-        Parameters
-        ----------
-        K_global : scipy.sparse.csr_matrix
-            Assembled global stiffness matrix.
-        F_global : np.ndarray
-            Assembled global force vector (1-D or flattenable to 1-D).
-        local_global_dof_map : list of np.ndarray
-            Local-to-global DOF mapping per element, from the assembler.
-        job_results_dir : str
-            Directory for boundary-condition logs/diagnostics.
-        fixed_dofs : array-like[int], optional
-            Explicit list of constrained DOF indices.  If omitted the helper
-            defaults to the first six DOFs.
+        Apply boundary conditions to the global system.
 
         Returns
         -------
-        K_mod : scipy.sparse.csr_matrix
+        K_mod : csr_matrix
         F_mod : np.ndarray
         bc_dofs : np.ndarray
-            The DOF indices actually constrained.
         """
         logger.info("🔒 Applying boundary conditions to global matrices…")
 
         # 1. Instantiate the boundary-condition helper
         modifier = ModifyGlobalSystem(
-            K_global        = K_global,
-            F_global        = np.asarray(F_global).ravel(),
-            job_results_dir = job_results_dir,
-            fixed_dofs      = fixed_dofs
+            K_global         = K_global,
+            F_global         = np.asarray(F_global).ravel(),
+            job_results_dir  = job_results_dir,
+            fixed_dofs       = fixed_dofs,
+            local_global_dof_map = local_global_dof_map   # ← pass map once
         )
 
-        # 2. Run the boundary-condition pipeline with DOF map
+        # 2. Run the BC pipeline (no args now)
         try:
-            K_mod, F_mod, fixed_dofs = modifier.apply_boundary_conditions(local_global_dof_map)
-        except Exception as exc:
-            logger.error("❌ Boundary-condition step failed – see boundary_conditions.log")
+            K_mod, F_mod, fixed_dofs = modifier.apply_boundary_conditions()
+        except Exception:
+            logger.error("❌ Boundary-condition step failed – see ModifyGlobalSystem.log")
             raise
-
-        # 3. Project-specific diagnostics (optional)
-        log_system_diagnostics(
-            K_mod, F_mod,
-            bc_dofs      = fixed_dofs,
-            job_results_dir = job_results_dir,
-            label           = "Modified System"
-        )
 
         logger.info("✅ Boundary conditions successfully applied")
         return K_mod, F_mod, fixed_dofs
 
-    # -------------------------------------------------------------------------
+    # ----------------------------------------=---------------------------------
     # 3) CONDENSE MODIFIED SYSTEM
     # -------------------------------------------------------------------------
 
@@ -311,13 +280,6 @@ class StaticSimulationRunner:
 
         
         # 3.  High-level diagnostics (optional, keeps your existing style)
-        
-        log_system_diagnostics(
-            K_cond, F_cond,
-            bc_dofs         = condensed_dofs,           # what’s left after BCs
-            job_results_dir = job_results_dir,
-            label           = "Condensed System"
-        )
 
         logger.info(
             "✅ Static condensation complete "
@@ -330,35 +292,34 @@ class StaticSimulationRunner:
     # 4) SOLVE CONDENSED SYSTEM
     # -------------------------------------------------------------------------
 
-    def solve_condensed_system(self, K_cond, F_cond, 
-                               job_results_dir: str, *,
-                               solver_name: str = "cg",
-                               preconditioner: str | None = None):
+    def solve_condensed_system(self,
+                            K_cond,
+                            F_cond,
+                            job_results_dir: str,
+                            *,
+                            solver_name: str = "cg",
+                            preconditioner: str | None = "auto"):
         """
-        Solve ONLY the condensed linear system K_cond · U_cond = F_cond.
-        Does NOT handle reconstruction to global DOFs.
-    
+        Solve the condensed linear system K_cond · U_cond = F_cond.
+
         Parameters
         ----------
         K_cond, F_cond : csr_matrix, np.ndarray
-            Condensed stiffness matrix / force vector
+            Condensed stiffness matrix and force vector.
         job_results_dir : str
-            Folder for solver logs and reports
-        solver_name : str, optional
-            Solver algorithm name (default "cg")
-        preconditioner : str | None, optional
-            Preconditioner type
+            Folder for logs and CSV output.
+        solver_name : {"cg","gmres","bicgstab","direct",...}, optional
+            Which registered solver to use (default "cg").
+        preconditioner : {"auto","ilu","jacobi",None}, optional
+            Preconditioning strategy (default "auto").
 
         Returns
         -------
         U_cond : np.ndarray
-            Displacements in condensed system ordering
-        solver_report : dict
-            Solver diagnostics report
+            Displacements in condensed system ordering.
         """
         logger.info("🧮 Solving condensed system…")
 
-        # 1. Instantiate and run solver
         cond_solver = SolveCondensedSystem(
             K_cond=K_cond,
             F_cond=F_cond,
@@ -366,134 +327,122 @@ class StaticSimulationRunner:
             job_results_dir=job_results_dir,
             preconditioner=preconditioner
         )
-    
-        U_cond = cond_solver.solve_condensed()
+
+        U_cond = cond_solver.solve()
         if U_cond is None:
-            raise RuntimeError("Condensed solver failed — check condensed_solver.log")
-    
+            raise RuntimeError(
+                "Condensed solver failed — see SolveCondensedSystem.log")
+
         logger.info("✅ Condensed system successfully solved")
-    
         return U_cond
 
     # ---------------------------------------------------------------------------------
     # 5) RECONSTRUCT GLOBAL SYSTEM
     # ---------------------------------------------------------------------------------
 
-    def reconstruct_global_system(self, condensed_dofs: np.ndarray, 
-                                U_cond: np.ndarray, 
-                                total_dof: int, 
-                                job_results_dir: str, *,
-                                fixed_dofs: np.ndarray | None = None,
-                                inactive_dofs: np.ndarray | None = None):
+    def reconstruct_global_system(self,
+                                    condensed_dofs: np.ndarray,
+                                    U_cond: np.ndarray,
+                                    total_dof: int,
+                                    job_results_dir: str | Path,
+                                    *,
+                                    fixed_dofs: np.ndarray | None = None,
+                                    inactive_dofs: np.ndarray | None = None,
+                                    local_global_dof_map,) -> np.ndarray:
         """
-        Reconstruct full displacement vector and perform validation checks
-    
+        Reconstruct the full displacement vector from the condensed solution.
+
         Parameters
         ----------
         condensed_dofs : np.ndarray
-            Active DOF indices in original numbering
+            Active DOF indices in original numbering.
         U_cond : np.ndarray
-            Solved displacements in condensed ordering
+            Displacements solved in condensed ordering.
         total_dof : int
-            Total DOFs in original system
-        job_results_dir : str
-            Directory for reconstruction logs
+            Total DOFs in the original system.
+        job_results_dir : str | Path
+            Directory for reconstruction logs and CSV output.
         fixed_dofs : np.ndarray | None, optional
-            Fixed DOF indices for validation
+            Fixed DOF indices for validation.
         inactive_dofs : np.ndarray | None, optional
-            Inactive DOFs eliminated during condensation
+            Inactive DOFs removed during condensation.
 
         Returns
         -------
-        U_global : np.ndarray
-            Full displacement vector in original ordering
+        np.ndarray
+            Reconstructed global displacement vector (
+            ).
         """
         logger.info("🔄 Reconstructing global displacement vector…")
 
-        # 1. Instantiate reconstructor
         reconstructor = ReconstructGlobalSystem(
             active_dofs=condensed_dofs,
             U_cond=U_cond,
             total_dofs=total_dof,
             job_results_dir=Path(job_results_dir),
             fixed_dofs=fixed_dofs,
-            inactive_dofs=inactive_dofs  # Pass for validation
+            inactive_dofs=inactive_dofs,
+            local_global_dof_map = local_global_dof_map
         )
 
-        # 2. Run reconstruction pipeline
         try:
             U_global = reconstructor.reconstruct()
-        except Exception as exc:
-            logger.error("❌ Reconstruction failed – see reconstruction.log")
+        except Exception:
+            logger.error("❌ Reconstruction failed – see ReconstructModifiedSystem.log")
             raise
 
-        # 3. Run diagnostics on reconstructed solution
-        #reconstructor.validate_solution(U_global)
-    
         logger.info(
             f"✅ Displacement reconstruction complete "
             f"(min={U_global.min():.3e}, max={U_global.max():.3e})"
         )
         return U_global
     
-    # -------------------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────────
     # 6) PRIMARY RESULTS PIPELINE
-    # -------------------------------------------------------------------------
-    def compute_primary_results(self):
+    # ──────────────────────────────────────────────────────────────────────────
+    def compute_primary_results(self) -> None:
         """
-        Compute and save primary results:
-        1. Global system matrices and solution
-        2. Element-wise disassembled results
+        1. Build *all* global-level first-order outputs (incl. reactions).
+        2. Disassemble U_global & R_global back onto each element.
+        3. Cache the two result sets in-memory.
+        (All CSVs are persisted by the helpers themselves.)
         """
-        logger.info("📊 Computing primary results...")
-        
-        # 1. Compute global-level results (K, F, U, reactions)
-        computer = ComputePrimaryResults(
-            K_global=self.K_global,
-            F_global=self.F_global,
-            K_mod=self.K_mod,
-            F_mod=self.F_mod,
-            U_global=self.U_global,
-            mesh_dict=self.mesh_dictionary
-        )
-        global_set = computer.compute()
-        
-        # 2. Disassemble to element level
-        disassembler = DisassembleGlobalSystem(
-            elements=self.elements,
-            K_mod=self.K_mod,
-            F_mod=self.F_mod,
-            U_global=self.U_global,
-            R_global=global_set.R_global,
-            job_results_dir=self.primary_results_dir,
-        )
-        K_e_mod, F_e_mod, U_e, R_e = disassembler.disassemble()
-        
-        # 3. Package element results
-        element_set = {
-            "K_e": self.element_stiffness_matrices,
-            "F_e": self.element_force_vectors,
-            "K_e_mod": K_e_mod,
-            "F_e_mod": F_e_mod,
-            "U_e": U_e,
-            "R_e": R_e,
-        }
-        
-        # 4. Save all results
-        SavePrimaryResults(
-            job_name=self.job_name,
-            start_timestamp=self.start_time,
-            output_root=self.primary_results_dir,
-            global_set=global_set,
-            element_set=element_set
-        ).write_all()
-        
-        # 5. Store in memory
+        logger.info("📊 Computing primary results …")
+
+        # 1 ── global-level ----------------------------------------------------
+        global_set = ComputePrimaryResults(
+            K_global             = self.K_global,
+            F_global             = self.F_global,
+            K_mod                = self.K_mod,
+            F_mod                = self.F_mod,
+            K_cond               = self.K_cond,
+            F_cond               = self.F_cond,
+            U_cond               = self.U_cond,
+            U_global             = self.U_global,
+            local_global_dof_map = self.local_global_dof_map,
+            fixed_dofs           = self.fixed_dofs,
+            job_results_dir      = self.primary_results_dir,
+        ).compute()
+
+        # 2 ── element-level ---------------------------------------------------
+        U_e, R_e = DisassembleGlobalSystem(
+            elements             = self.elements,
+            K_mod                = self.K_mod,                 # shape check only
+            F_mod                = self.F_mod,
+            U_global             = self.U_global,
+            R_global             = global_set.R_global,
+            local_global_dof_map = self.local_global_dof_map,
+            element_K_raw        = self.element_stiffness_matrices,
+            element_F_raw        = self.element_force_vectors,
+            job_results_dir      = self.primary_results_dir,
+        ).disassemble()
+
+        # 3 ── keep results in RAM --------------------------------------------
         self.primary_results = {
-            "global": global_set,
-            "element": element_set
+            "global":  global_set,          # PrimaryResultSet object
+            "element": (U_e, R_e),          # two lists from disassembly
         }
-        logger.info("✅ Primary results computed and saved")
+        logger.info("✅ Primary results computed and written")
 
     # -------------------------------------------------------------------------
     # 7) SECONDARY RESULTS PIPELINE
@@ -529,64 +478,81 @@ class StaticSimulationRunner:
     # -------------------------------------------------------------------------
     # TOP-LEVEL SIMULATION FLOW
     # -------------------------------------------------------------------------
-    def run(self):
-        """Execute full static simulation workflow"""
+    def run(self) -> None:
+        """Execute the complete linear-static workflow."""
         try:
-            self.setup_simulation()
+            # -- 0) housekeeping & local systems --
+            self.setup_simulation()                           # makes folders
+            self.start_time = datetime.datetime.now()         # used in logs/metadata
 
-            # 0. Prepare local system — ensures Ke (as COO sparse) and Fe (as 1D np.array) are in correct format for assembly
             self.prepare_local_system(job_results_dir=self.primary_results_dir)
-            
-            # 1. Assemble global system
-            (self.K_global, 
-            self.F_global, 
-            self.local_global_dof_map) = self.assemble_global_system(self.primary_results_dir)
-            
-            # 2. Apply boundary conditions
-            (self.K_mod, 
-            self.F_mod, 
-            self.fixed_dofs) = self.modify_global_system(self.K_global,
-                                                      self.F_global,
-                                                      self.local_global_dof_map,
-                                                      self.primary_results_dir)
 
+            # -- 1) global assembly --
+            (self.K_global,
+             self.F_global,
+             self.local_global_dof_map) = self.assemble_global_system(self.primary_results_dir)
             
-            # 3. Condense system
-            (self.condensed_dofs, 
-             self.inactive_dofs, 
-             self.K_cond, 
-             self.F_cond) = self.condense_modified_system(self.K_mod,
-                                                        self.F_mod,
-                                                        self.fixed_dofs,
-                                                        self.local_global_dof_map,
-                                                        self.primary_results_dir)
+            DiagnoseLinearSystem(A = self.K_global,
+                                 b = self.F_global,
+                                 constraints = [],                  
+                                 job_results_dir = job_results_dir,
+                                 label           = "Global System",).write()
+
+            # -- 2) boundary conditions --
+            (self.K_mod,
+             self.F_mod,
+             self.fixed_dofs) = self.modify_global_system(self.K_global,
+                                                         self.F_global,
+                                                         self.local_global_dof_map,
+                                                         self.primary_results_dir)
+
+            DiagnoseLinearSystem(A = self.K_mod,
+                                 b = self.F_mod,
+                                 constraints = fixed_dofs,                  
+                                 job_results_dir = job_results_dir,
+                                 label           = "Modified System",).write()
+
+            # -- 3) static condensation --
+            (self.condensed_dofs,
+            self.inactive_dofs,
+            self.K_cond,
+            self.F_cond) = self.condense_modified_system(self.K_mod,
+                                                         self.F_mod,
+                                                         self.fixed_dofs,
+                                                         self.local_global_dof_map,
+                                                         self.primary_results_dir)
+
+            DiagnoseLinearSystem(A = self.K_cond,
+                                 b = self.F_cond,
+                                 constraints = fixed_dofs,                  
+                                 job_results_dir = job_results_dir,
+                                 label           = "Condensed System",).write()
+
+            # -- 4) solve condensed system --
+            self.U_cond = self.solve_condensed_system(self.K_cond,
+                                                      self.F_cond,
+                                                      self.primary_results_dir,
+                                                      solver_name="cg",
+                                                      preconditioner="auto")
             
-            # 4. Solve condensed system
-            self.U_cond = self.solve_condensed_system(
-                self.K_cond,
-                self.F_cond,
-                self.primary_results_dir
-            )
-            
-            # 5. Reconstruct global solution
-            total_dof = len(self.mesh_dictionary["node_ids"]) * 6
-            self.U_global = self.reconstruct_global_system(
-                self.condensed_dofs,
-                self.U_cond,
-                total_dof,
-                self.primary_results_dir,
-                fixed_dofs=self.fixed_dofs,
-                inactive_dofs=self.inactive_dofs
-            )
-            
-            # 6. Compute primary results
+            # -- 5) reconstruct full-length displacement vector --
+            total_dofs      = len(self.mesh_dictionary["node_ids"]) * 6
+            self.U_global   = self.reconstruct_global_system(self.condensed_dofs,
+                                                             self.U_cond,
+                                                             total_dofs,
+                                                             self.primary_results_dir,
+                                                             fixed_dofs = self.fixed_dofs,
+                                                             inactive_dofs = self.inactive_dofs,
+                                                             local_global_dof_map = self.local_global_dof_map)
+
+            # -- 6) first-order (primary) results incl. disassembly & all CSVs --
             self.compute_primary_results()
-            
-            # 7. Compute secondary results
+
+            # -- 7) derived (secondary) results --
             self.compute_secondary_results()
-            
-            logger.info(f"🏁 Simulation completed successfully in {self.results_root}")
-            
-        except Exception as e:
+
+            logger.info("🏁 Simulation completed successfully → %s", self.results_root)
+
+        except Exception as exc:
             logger.exception("💥 Simulation failed with critical error")
-            raise RuntimeError("Simulation aborted") from e
+            raise RuntimeError("Simulation aborted") from exc

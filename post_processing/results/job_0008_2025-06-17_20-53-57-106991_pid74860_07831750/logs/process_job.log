@@ -1,0 +1,16 @@
+2025-06-17 20:53:58,691 - INFO - 🟢 Starting job: job_0008
+2025-06-17 20:53:59,433 - ERROR - ❌ Error in job job_0008: Simulation aborted
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 544, in run
+    self.U_global = self.reconstruct_modified_system(self.condensed_dofs,
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'StaticSimulationRunner' object has no attribute 'reconstruct_modified_system'. Did you mean: 'condense_modified_system'?
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.py", line 263, in process_job
+    runner.run()
+  File "\\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\simulation_runner\static\static_simulation.py", line 562, in run
+    raise RuntimeError("Simulation aborted") from e
+RuntimeError: Simulation aborted

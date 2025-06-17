@@ -1,127 +1,134 @@
-# processing_OOP\static\primary_results\compute_primary_results.py
-
+# processing_OOP/static/primary_results/compute_primary_results.py
 import numpy as np
 import scipy.sparse as sp
 from pathlib import Path
 from dataclasses import dataclass
-from typing import List
-import logging
+from typing import List, Sequence
+import logging, os
+
 
 @dataclass
 class PrimaryResultSet:
-    """Container for raw FEM solution outputs"""
-    K_global: sp.csr_matrix
-    F_global: np.ndarray
-    K_mod: sp.csr_matrix
-    F_mod: np.ndarray
-    U_global: np.ndarray
-    R_global: np.ndarray
-    element_dof_maps: List[np.ndarray]
+    """Minimal container for the quantities that other pipelines reuse."""
+    # ────────────────────────────────────────────── global level ───────────────
+    K_global:  sp.csr_matrix        # *assembled* stiffness matrix
+    F_global:  np.ndarray           # global load vector   (shape = n_dof,)
+    U_global:  np.ndarray           # solved displacements (shape = n_dof,)
+    R_global:  np.ndarray           # support reactions    (shape = n_dof,)
+    # ────────────────────────────────────────────── BC / condensed level ──────
+    K_mod:     sp.csr_matrix        # stiffness *after* BCs (penalty rows)
+    F_mod:     np.ndarray           # load   *after* BCs (rows zeroed)
+    K_cond:    sp.csr_matrix | None # condensed stiffness  (may be None)
+    F_cond:    np.ndarray  | None   # condensed load       (may be None)
+    U_cond:    np.ndarray  | None   # condensed solution   (may be None)
+    # ────────────────────────────────────────────── element level ─────────────
+    local_global_dof_map: List[np.ndarray]  # local DOF → global DOF map
+    fixed_dofs: np.ndarray                  # fixed global DOFs map
 
 class ComputePrimaryResults:
-    """Computes and stores direct solver outputs"""
-    
-    def __init__(self, assembler, solver, mesh_dict):
-        """
-        Parameters:
-            assembler: Global system assembler instance
-            solver: Boundary-conditioned system solver
-            mesh_dict: Dictionary with 'elements' list
-        """
-        self.assembler = assembler
-        self.solver = solver
-        self.mesh = mesh_dict
-        self.logger = _init_logging()
-        self.results = None
+    """
+    Gather the first-order outputs of the linear static analysis in one place.
 
-    def _init_logging(self):
+    *Reactions are evaluated with **K_global**, **NOT** with K_mod.*
+
+    The penalty rows/columns that `ModifyGlobalSystem` inserts into **K_mod**
+    enforce the displacement B.C.s numerically, but they obliterate the real
+    equilibrium in those rows (all off-diagonals are zeroed and an enormous
+    diagonal value is inserted, while the corresponding rows of **F_mod** are
+    also zeroed).  
+    Using K_mod would therefore give either *zero* or *nonsense* forces at
+    supports.  To obtain physically correct reactions we must use the pristine
+    assembled matrix:
+
+    ```text
+    R_global =  K_global · U_global  –  F_global
+    ```
+    """
+
+    # --------------------------------------------------------------------- init
+    def __init__(
+        self,
+        *,
+        K_global: sp.csr_matrix,
+        F_global: np.ndarray,
+        K_mod:    sp.csr_matrix,
+        F_mod:    np.ndarray,
+        K_cond:   sp.csr_matrix | None,
+        F_cond:   np.ndarray    | None,
+        U_cond:   np.ndarray    | None,
+        U_global: np.ndarray,
+        local_global_dof_map: Sequence[np.ndarray],
+        fixed_dofs: np.ndarray,
+        job_results_dir: str | Path | None = None,
+    ):
+        self.K_global  = K_global
+        self.F_global  = F_global
+        self.K_mod     = K_mod
+        self.F_mod     = F_mod
+        self.K_cond    = K_cond
+        self.F_cond    = F_cond
+        self.U_cond    = U_cond
+        self.U_global  = U_global
+        self.local_global_dof_map = list(local_global_dof_map)
+        self.fixed_dofs = np.asarray(fixed_dofs, dtype=np.int32)
+        self.job_results_dir  = Path(job_results_dir) if job_results_dir else None
+
+        self.logger = self._init_logging()
+
+    # ----------------------------------------------------------------- logging
+    def _init_logging(self) -> logging.Logger:
         logger = logging.getLogger(f"ComputePrimaryResults.{id(self)}")
         logger.handlers.clear()
         logger.setLevel(logging.DEBUG)
         logger.propagate = False
 
-        log_path = None
         if self.job_results_dir:
-            # Create the logs subdirectory inside the job results directory
-            logs_dir = os.path.join(self.job_results_dir, "logs")
-            os.makedirs(logs_dir, exist_ok=True)
+            logs_dir = self.job_results_dir.parent / "logs"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            f = logging.FileHandler(logs_dir / "ComputePrimaryResults.log", mode="w", encoding="utf-8")
+            f.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+            logger.addHandler(f)
 
-            log_path = os.path.join(logs_dir, "ComputePrimaryResults.log")
-
-            try:
-                file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
-                file_handler.setFormatter(logging.Formatter(
-                    "%(asctime)s [%(levelname)s] %(message)s "
-                    "(Module: %(module)s, Line: %(lineno)d)"
-                ))
-                logger.addHandler(file_handler)
-            except Exception as e:
-                print(f"⚠️ Failed to create file handler for ComputePrimaryResults class log: {e}")
-
-        # Console output (INFO level and above)
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(logging.INFO)
-        stream_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
-        logger.addHandler(stream_handler)
-
-        if log_path:
-            logger.debug(f"📁 Log file created at: {log_path}")
-
+        sh = logging.StreamHandler()
+        sh.setLevel(logging.INFO)
+        sh.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+        logger.addHandler(sh)
         return logger
 
+    # --------------------------------------------------------------- interface
     def compute(self) -> PrimaryResultSet:
-        """Execute primary results pipeline"""
-        self._validate_systems()
-        
-        self.results = PrimaryResultSet(
-            K_global=self.assembler.K_global,
-            F_global=self.assembler.F_global,
-            K_mod=self.solver.K_mod,
-            F_mod=self.solver.F_mod,
-            U_global=self.solver.U_global,
-            R_global=self._compute_reactions(),
-            element_dof_maps=self._get_element_dofs()
+        self._basic_sanity_checks()
+
+        # ── raw reactions for every DOF ─────────────────────────────────────
+        R_raw = self.K_global @ self.U_global - self.F_global
+
+        # ── mask free DOFs (keep zeros elsewhere) ───────────────────────────
+        R_global = np.zeros_like(R_raw)
+        R_global[self.fixed_dofs] = R_raw[self.fixed_dofs]
+
+        self.logger.info("✅ Reactions evaluated & masked to fixed DOFs")
+
+        result = PrimaryResultSet(
+            K_global = self.K_global,
+            F_global = self.F_global,
+            K_mod    = self.K_mod,
+            F_mod    = self.F_mod,
+            K_cond   = self.K_cond,
+            F_cond   = self.F_cond,
+            U_cond   = self.U_cond,
+            U_global = self.U_global,
+            R_global = R_global,
+            local_global_dof_map = self.local_global_dof_map,
+            fixed_dofs = self.fixed_dofs,
         )
-        self.logger.info("Primary results computed")
-        return self.results
+        return result
 
-    def _compute_reactions(self) -> np.ndarray:
-        """Calculate reaction forces: K_global * U_global - F_global"""
-        return self.assembler.K_global @ self.solver.U_global - self.assembler.F_global
-
-    def _get_element_dofs(self) -> List[np.ndarray]:
-        """Extract DOF maps from all elements"""
-        return [elem.assemble_global_dof_indices() for elem in self.mesh["elements"]]
-
-    def _validate_systems(self):
-        """Verify matrix dimensions match"""
-        if self.assembler.K_global.shape != self.solver.K_mod.shape:
-            raise ValueError(
-                f"Global matrix dim mismatch: {self.assembler.K_global.shape} vs "
-                f"{self.solver.K_mod.shape}"
-            )
-        if len(self.solver.U_global) != self.assembler.K_global.shape[0]:
-            raise ValueError(
-                f"Solution dim mismatch: U_global {len(self.solver.U_global)} vs "
-                f"K_global {self.assembler.K_global.shape[0]}"
-            )
-
-    def save(self, output_dir: Path):
-        """Save results to disk in compressed format"""
-        output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Save sparse matrices in CSR components
-        sp.save_npz(output_dir / "K_global.npz", self.results.K_global)
-        sp.save_npz(output_dir / "K_mod.npz", self.results.K_mod)
-        
-        # Save dense arrays
-        np.savez_compressed(
-            output_dir / "F_results.npz",
-            F_global=self.results.F_global,
-            F_mod=self.results.F_mod,
-            U_global=self.results.U_global,
-            R_global=self.results.R_global,
-            element_dof_maps=self.results.element_dof_maps
-        )
-        
-        self.logger.info(f"Saved primary results to {output_dir}")
+    # -------------------------------------------------------------- validators
+    def _basic_sanity_checks(self) -> None:
+        n = self.K_global.shape[0]
+        if self.U_global.shape != (n,):
+            raise ValueError(f"U_global shape {self.U_global.shape} does not match K_global ({n},)")
+        if self.F_global.shape != (n,):
+            raise ValueError(f"F_global shape {self.F_global.shape} does not match K_global ({n},)")
+        if self.K_mod.shape != self.K_global.shape:
+            raise ValueError("K_mod size mismatch with K_global")

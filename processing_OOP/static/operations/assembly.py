@@ -91,16 +91,18 @@ class AssembleGlobalSystem:
 
         return logger
 
-    def assemble(self) -> Tuple[csr_matrix, np.ndarray]:
+    def assemble(self) -> Tuple[csr_matrix, np.ndarray, list[np.ndarray]]:
         """
         Assemble the global stiffness matrix and force vector.
 
         Returns
         -------
-        K_global : csr_matrix
-            Assembled global stiffness matrix.
-        F_global : ndarray
-            Assembled global force vector.
+        tuple
+            (K_global, F_global, local_global_dof_map) where  
+            • **K_global** – csr_matrix, global stiffness  
+            • **F_global** – (N,) float64 array, global load vector  
+            • **local_global_dof_map** – list of 1-D int32 arrays, one per element,
+              mapping each local DOF index (0…nᵢ-1) to its global DOF.
         """
         start_time = time.perf_counter()
         self.logger.info("🔧 Starting global matrix assembly...")
@@ -121,7 +123,7 @@ class AssembleGlobalSystem:
         self.assembly_time = time.perf_counter() - start_time
         self._log_performance_metrics()
         self.logger.info("✅ Assembly complete.")
-        return self.K_global, self.F_global
+        return self.K_global, self.F_global, self.local_global_dof_map
 
     def _validate_inputs(self):
         """Validate elements, stiffness matrices, and force vectors."""
