@@ -1,0 +1,51 @@
+2025-06-18 15:55:38,060 [DEBUG] 📁 Log file created at: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\logs\AssembleGlobalSystem.log (Module: assembly, Line: 90)
+2025-06-18 15:55:38,060 [INFO] 🔧 Starting global matrix assembly... (Module: assembly, Line: 108)
+2025-06-18 15:55:38,061 [DEBUG] Element 0 DOF mapping validated (Module: assembly, Line: 179)
+2025-06-18 15:55:38,063 [DEBUG] Element 1 DOF mapping validated (Module: assembly, Line: 179)
+2025-06-18 15:55:38,065 [DEBUG] 
+✅ DOF Mappings Summary:
+ Element ID                              Local DOF                                   Global DOF
+          0 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]       [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+          1 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17] (Module: assembly, Line: 199)
+2025-06-18 15:55:38,079 [INFO] 🗂️ DOF mapping saved to: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\maps\01_assembly_map.csv (Module: assembly, Line: 209)
+2025-06-18 15:55:38,080 [INFO] 🧾 System Info:
+  Total DOFs: 18
+  Number of elements: 2
+  Symmetry tolerance: 1.0e-08 (Module: assembly, Line: 337)
+2025-06-18 15:55:38,081 [INFO] ✅ Stiffness matrix assembled (Module: assembly, Line: 241)
+2025-06-18 15:55:38,082 [INFO] ✅ Force vector assembled (Module: assembly, Line: 270)
+2025-06-18 15:55:38,082 [INFO] Global Stiffness Matrix:
+  Non-zero entries: 28
+  Symmetry: True
+  Norm: 5.977e+10 (Module: assembly, Line: 357)
+2025-06-18 15:55:38,085 [DEBUG] 
+Full Stiffness Matrix (Dense):
+Col        0         1         2         3        4        5         6         7         8         9        10       11        12        13        14        15       16       17
+Row                                                                                                                                                                              
+0    4.00e+09  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00 -4.00e+09  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+1    0.00e+00  4.48e+09  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00 -4.48e+09  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+2    0.00e+00  0.00e+00  1.79e+10  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00 -1.79e+10  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+3    0.00e+00  0.00e+00  0.00e+00  1.31e+06 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00 -1.31e+06 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+4    0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+5    0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+6   -4.00e+09  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  8.00e+09  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00 -4.00e+09  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+7    0.00e+00 -4.48e+09  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  8.96e+09  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00 -4.48e+09  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+8    0.00e+00  0.00e+00 -1.79e+10  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  3.58e+10  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00 -1.79e+10  0.00e+00 0.00e+00 0.00e+00
+9    0.00e+00  0.00e+00  0.00e+00 -1.31e+06 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  2.63e+06 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00 -1.31e+06 0.00e+00 0.00e+00
+10   0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+11   0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+12   0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00 -4.00e+09  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  4.00e+09  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+13   0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00 -4.48e+09  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  4.48e+09  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+14   0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00 -1.79e+10  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  1.79e+10  0.00e+00 0.00e+00 0.00e+00
+15   0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00 -1.31e+06 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  1.31e+06 0.00e+00 0.00e+00
+16   0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00
+17   0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00  0.00e+00  0.00e+00  0.00e+00  0.00e+00 0.00e+00 0.00e+00 (Module: assembly, Line: 372)
+2025-06-18 15:55:38,093 [INFO] 💾 Global stiffness matrix saved to: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\primary_results\01_K_global.csv (Module: assembly, Line: 318)
+2025-06-18 15:55:38,101 [INFO] 💾 Global force vector saved to: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\primary_results\02_F_global.csv (Module: assembly, Line: 333)
+2025-06-18 15:55:38,101 [INFO] 📊 Performance Metrics:
+  Assembly Time: 0.04s
+  Elements Processed: 2
+  Matrix Density: 8.64e-02
+  Memory Usage: 0.00MB
+  Processing Rate: 49.3 elements/s (Module: assembly, Line: 353)
+2025-06-18 15:55:38,102 [INFO] ✅ Assembly complete. (Module: assembly, Line: 125)

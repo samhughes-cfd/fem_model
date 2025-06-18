@@ -1,0 +1,62 @@
+2025-06-18 15:55:39,005 [DEBUG] 📁 Log file created at: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\logs\CondenseModifiedSystem.log (Module: condensation, Line: 68)
+2025-06-18 15:55:39,006 [DEBUG] Adaptive tolerance: 3.58e+34 (Module: condensation, Line: 122)
+2025-06-18 15:55:39,007 [DEBUG] System Validation Summary:
+  - Fixed DOFs Valid: 6/18
+  - Matrix Shape: (18, 18)
+  - Adaptive Tolerance: 3.58e+34 (Module: condensation, Line: 78)
+2025-06-18 15:55:39,007 [INFO] 🚀 Starting enhanced condensation process (Module: condensation, Line: 127)
+2025-06-18 15:55:39,008 [DEBUG] Active DOFs: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15...] (Module: condensation, Line: 158)
+2025-06-18 15:55:39,009 [DEBUG] Intermediate system created | Shape: (12, 12) (Module: condensation, Line: 164)
+2025-06-18 15:55:39,010 [INFO] Secondary condensation removed 4 DOFs (Module: condensation, Line: 175)
+2025-06-18 15:55:39,011 [DEBUG] 🔧 Building condensed system from intermediate matrix (Module: condensation, Line: 183)
+2025-06-18 15:55:39,011 [DEBUG] 📐 Condensed system built: K_cond shape = (8, 8), F_cond length = 8 (Module: condensation, Line: 197)
+2025-06-18 15:55:39,012 [DEBUG] Bi-directional mapping validated (Module: condensation, Line: 234)
+2025-06-18 15:55:39,021 [INFO] 💾 Condensed stiffness matrix saved → \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\primary_results\05_K_cond.csv (Module: condensation, Line: 264)
+2025-06-18 15:55:39,032 [INFO] 💾 Condensed force vector   saved → \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\primary_results\06_F_cond.csv (Module: condensation, Line: 275)
+2025-06-18 15:55:39,040 [INFO] 🗺️  Structured condensation map saved → \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\maps\03_condensation_map.csv (Module: condensation, Line: 322)
+2025-06-18 15:55:39,041 [DEBUG] 
+======================================== SYSTEM DETAILS ======================================== (Module: condensation, Line: 326)
+2025-06-18 15:55:39,041 [DEBUG] 📊 Statistics:
+Total DOFs: 18
+Fixed DOFs: 6 (33.3%)
+Active DOFs: 12 (66.7%)
+Condensed DOFs: 8 (44.4%)
+Inactive DOFs: 4 (22.2%) (Module: condensation, Line: 337)
+2025-06-18 15:55:39,042 [DEBUG] 🗺️ Mapping Samples:
+Condensed → Original: 0 → 6
+1 → 7
+2 → 8
+3 → 9
+4 → 12
+5 → 13
+6 → 14
+7 → 15
+Original → Condensed: 6 → 0
+7 → 1
+8 → 2
+9 → 3
+12 → 4
+13 → 5
+14 → 6
+15 → 7 (Module: condensation, Line: 340)
+2025-06-18 15:55:39,044 [DEBUG] 🔍 Condensed Stiffness Matrix:
+           C0 (O6)   C1 (O7)   C2 (O8)   C3 (O9)  C4 (O12)  C5 (O13)  C6 (O14)  C7 (O15)
+C0 (O6)   8.00e+09  0.00e+00  0.00e+00  0.00e+00 -4.00e+09  0.00e+00  0.00e+00  0.00e+00
+C1 (O7)   0.00e+00  8.96e+09  0.00e+00  0.00e+00  0.00e+00 -4.48e+09  0.00e+00  0.00e+00
+C2 (O8)   0.00e+00  0.00e+00  3.58e+10  0.00e+00  0.00e+00  0.00e+00 -1.79e+10  0.00e+00
+C3 (O9)   0.00e+00  0.00e+00  0.00e+00  2.63e+06  0.00e+00  0.00e+00  0.00e+00 -1.31e+06
+C4 (O12) -4.00e+09  0.00e+00  0.00e+00  0.00e+00  4.00e+09  0.00e+00  0.00e+00  0.00e+00
+C5 (O13)  0.00e+00 -4.48e+09  0.00e+00  0.00e+00  0.00e+00  4.48e+09  0.00e+00  0.00e+00
+C6 (O14)  0.00e+00  0.00e+00 -1.79e+10  0.00e+00  0.00e+00  0.00e+00  1.79e+10  0.00e+00
+C7 (O15)  0.00e+00  0.00e+00  0.00e+00 -1.31e+06  0.00e+00  0.00e+00  0.00e+00  1.31e+06 (Module: condensation, Line: 365)
+2025-06-18 15:55:39,045 [DEBUG] 🔍 Condensed Force Vector:
+             Force
+C0 (O6)   0.00e+00
+C1 (O7)   0.00e+00
+C2 (O8)   0.00e+00
+C3 (O9)   0.00e+00
+C4 (O12)  0.00e+00
+C5 (O13) -1.00e+05
+C6 (O14)  0.00e+00
+C7 (O15)  0.00e+00 (Module: condensation, Line: 372)
+2025-06-18 15:55:39,049 [INFO] ✅ Condensation completed in 0.04s (Module: condensation, Line: 145)

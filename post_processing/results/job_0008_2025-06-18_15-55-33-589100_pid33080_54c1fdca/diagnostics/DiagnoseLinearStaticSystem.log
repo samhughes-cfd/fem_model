@@ -1,0 +1,69 @@
+--------------------------------------------------------------------------
+### Global System
+
+                   │ CURRENT            │ EVOLUTION         
+Equations          │ 18                 │ 18                
+Dirichlet          │ 0                  │ 0                 
+Eliminated         │ 0                  │ 0                 
+Unknowns           │ 18                 │ 18                
+nnz                │ 28                 │ 28                
+Density            │ 8.64e-02           │ 8.64e-02          
+Zero rows          │ 6                  │ 6                 
+Zero cols          │ 6                  │ 6                 
+Bandwidth          │ 6                  │ 6                 
+Symmetric          │ yes                │ yes               
+Rank               │ 8                  │ 8                 
+Cond-no            │ inf                │ inf               
+λmin/λmax          │ -1.1e-06/5.4e+10   │ -1.1e-06/5.4e+10  
+Inertia            │ 11/3/4             │ 11/3/4            
+b-min/max          │ -1.0e+05/0.0e+00   │ -1.0e+05/0.0e+00  
+Σb                 │ -1.0e+05           │ -1.0e+05          
+Top|b|             │ 13:-1.0e+05, 0:0.0e+00, 2:0.0e+00 │ 13:-1.0e+05, 0:0.0e+00, 2:0.0e+00
+
+2025-06-18 15:55:38,332 [INFO] 🩺  Global System diagnostics appended → \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\diagnostics\DiagnoseLinearStaticSystem.log
+--------------------------------------------------------------------------
+### Modified System
+
+                   │ CURRENT            │ EVOLUTION         
+Equations          │ 18                 │ 18                
+Dirichlet          │ 0                  │ 6                 
+Eliminated         │ 0                  │ 0                 
+Unknowns           │ 18                 │ 12                
+nnz                │ 22                 │ 28                
+Density            │ 6.79e-02           │ 8.64e-02          
+Zero rows          │ 4                  │ 6                 
+Zero cols          │ 4                  │ 6                 
+Bandwidth          │ 6                  │ 6                 
+Symmetric          │ yes                │ yes               
+Rank               │ 6                  │ 8                 
+Cond-no            │ inf                │ inf               
+λmin/λmax          │ -1.4e-05/3.6e+46   │ -1.1e-06/5.4e+10  
+Inertia            │ 14/2/2             │ 11/3/4            
+b-min/max          │ -1.0e+05/0.0e+00   │ -1.0e+05/0.0e+00  
+Σb                 │ -1.0e+05           │ -1.0e+05          
+Top|b|             │ 13:-1.0e+05, 0:0.0e+00, 2:0.0e+00 │ 13:-1.0e+05, 0:0.0e+00, 2:0.0e+00
+
+2025-06-18 15:55:38,798 [INFO] 🩺  Modified System diagnostics appended → \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\diagnostics\DiagnoseLinearStaticSystem.log
+--------------------------------------------------------------------------
+### Condensed System
+
+                   │ CURRENT            │ EVOLUTION         
+Equations          │ 8                  │ 18                
+Dirichlet          │ 0                  │ 6                 
+Eliminated         │ 0                  │ 10                
+Unknowns           │ 8                  │ 2                 
+nnz                │ 16                 │ 28                
+Density            │ 2.50e-01           │ 8.64e-02          
+Zero rows          │ 0                  │ 6                 
+Zero cols          │ 0                  │ 6                 
+Bandwidth          │ 4                  │ 6                 
+Symmetric          │ yes                │ yes               
+Rank               │ 8                  │ 8                 
+Cond-no            │ 9.4e+04            │ inf               
+λmin/λmax          │ 5.0e+05/4.7e+10    │ -1.1e-06/5.4e+10  
+Inertia            │ 8/0/0              │ 11/3/4            
+b-min/max          │ -1.0e+05/0.0e+00   │ -1.0e+05/0.0e+00  
+Σb                 │ -1.0e+05           │ -1.0e+05          
+Top|b|             │ 5:-1.0e+05, 0:0.0e+00, 2:0.0e+00 │ 13:-1.0e+05, 0:0.0e+00, 2:0.0e+00
+
+2025-06-18 15:55:39,267 [INFO] 🩺  Condensed System diagnostics appended → \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0008_2025-06-18_15-55-33-589100_pid33080_54c1fdca\diagnostics\DiagnoseLinearStaticSystem.log

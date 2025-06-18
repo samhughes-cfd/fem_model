@@ -6,21 +6,20 @@ import os
 from pathlib import Path
 import datetime
 
+from processing_OOP.static.diagnostics.linear_static_diagnostic import DiagnoseLinearStaticSystem
+from processing_OOP.static.diagnostics.runtime_monitor_telemetry import RuntimeMonitorTelemetry
+
 from processing_OOP.static.operations.preparation import PrepareLocalSystem
-
-from simulation_runner.static.linear_static_diagnostic import DiagnoseLinearSystem # Diagnostic logging
-
 from processing_OOP.static.operations.assembly import AssembleGlobalSystem
 from processing_OOP.static.operations.modification import ModifyGlobalSystem
 from processing_OOP.static.operations.condensation import CondenseModifiedSystem
 
 from processing_OOP.static.operations.solver import SolveCondensedSystem
-from processing_OOP.static.operations.reconstruction import ReconstructGlobalSystem
-from processing_OOP.static.operations.disassembly import DisassembleGlobalSystem
 
+from processing_OOP.static.operations.reconstruction import ReconstructGlobalSystem
 from processing_OOP.static.primary_results.compute_primary_results import ComputePrimaryResults
 from processing_OOP.static.secondary_results.compute_secondary_results import ComputeSecondaryResults
-from processing_OOP.static.secondary_results.save_secondary_results import SaveSecondaryResults
+from processing_OOP.static.operations.disassembly import DisassembleGlobalSystem
 
 # Configure module-level logger
 logger = logging.getLogger(__name__)
@@ -34,9 +33,15 @@ class StaticSimulationRunner:
     def __init__(self, settings, job_name, job_results_dir):
         self.settings = settings
         self.job_name = job_name
+
         self.results_root = job_results_dir  # Use exact path passed from run_job.py
         self.primary_results_dir = os.path.join(self.results_root, "primary_results")
         self.secondary_results_dir = os.path.join(self.results_root, "secondary_results")
+        self.maps_dir = os.path.join(self.results_root, "maps")
+        self.logs_dir = os.path.join(self.results_root, "logs")
+        self.diagnostics_dir = os.path.join(self.results_root, "diagnostics")
+
+        self.monitor = RuntimeMonitorTelemetry(job_results_dir=self.primary_results_dir)
 
         # Initialize results storage
         self.primary_results = {
@@ -79,6 +84,9 @@ class StaticSimulationRunner:
         logger.info(f"✅ Setting up static simulation for job: {self.job_name}...")
         os.makedirs(self.primary_results_dir, exist_ok=True)
         os.makedirs(self.secondary_results_dir, exist_ok=True)
+        os.makedirs(self.maps_dir, exist_ok=True)
+        os.makedirs(self.logs_dir, exist_ok=True)
+        os.makedirs(self.diagnostics_dir, exist_ok=True)
         logger.info(f"📁 Results will be saved to: {self.results_root}")
 
     # -------------------------------------------------------------------------
@@ -464,12 +472,12 @@ class StaticSimulationRunner:
         secondary_set = computer.compute()
         
         # 2. Save results
-        SaveSecondaryResults(
-            job_name=self.job_name,
-            start_timestamp=self.start_time,
-            output_root=self.secondary_results_dir,
-            secondary_set=secondary_set
-        ).write_all()
+        #SaveSecondaryResults(
+            #job_name=self.job_name,
+            #start_timestamp=self.start_time,
+            #output_root=self.secondary_results_dir,
+            #secondary_set=secondary_set
+        #).write_all()
         
         # 3. Store in memory
         self.secondary_results = secondary_set
@@ -481,75 +489,111 @@ class StaticSimulationRunner:
     def run(self) -> None:
         """Execute the complete linear-static workflow."""
         try:
-            # -- 0) housekeeping & local systems --
-            self.setup_simulation()                           # makes folders
-            self.start_time = datetime.datetime.now()         # used in logs/metadata
+            # initialise once – writes machine header
+            self.monitor = RuntimeMonitorTelemetry(job_results_dir=self.diagnostics_dir)
 
-            self.prepare_local_system(job_results_dir=self.primary_results_dir)
+            # 0) housekeeping & local systems
+            self.setup_simulation()                       # create folders
+            self.start_time = datetime.datetime.now()
 
-            # -- 1) global assembly --
-            (self.K_global,
-             self.F_global,
-             self.local_global_dof_map) = self.assemble_global_system(self.primary_results_dir)
-            
-            DiagnoseLinearSystem(A = self.K_global,
-                                 b = self.F_global,
-                                 constraints = [],                  
-                                 job_results_dir = job_results_dir,
-                                 label           = "Global System",).write()
+            # -----------------------------------------------------------------
+            # 0  Prepare local element data
+            # -----------------------------------------------------------------
+            with self.monitor.stage("PrepareLocalSystem"):
+                self.prepare_local_system(job_results_dir=self.primary_results_dir)
 
-            # -- 2) boundary conditions --
-            (self.K_mod,
-             self.F_mod,
-             self.fixed_dofs) = self.modify_global_system(self.K_global,
-                                                         self.F_global,
-                                                         self.local_global_dof_map,
-                                                         self.primary_results_dir)
+            # -----------------------------------------------------------------
+            # 1  Global assembly
+            # -----------------------------------------------------------------
+            with self.monitor.stage("AssembleGlobalSystem"):
+                (self.K_global,
+                 self.F_global,
+                 self.local_global_dof_map) = self.assemble_global_system(self.primary_results_dir)
 
-            DiagnoseLinearSystem(A = self.K_mod,
-                                 b = self.F_mod,
-                                 constraints = fixed_dofs,                  
-                                 job_results_dir = job_results_dir,
-                                 label           = "Modified System",).write()
+            DiagnoseLinearStaticSystem(stage="Global System",
+                                       A_current       = self.K_global,  
+                                       b_current       = self.F_global,
+                                       A_full          = self.K_global,  
+                                       b_full          = self.F_global,
+                                       fixed_dofs      = [], 
+                                       condensed_dofs  = [],
+                                       job_results_dir = self.primary_results_dir,)
 
-            # -- 3) static condensation --
-            (self.condensed_dofs,
-            self.inactive_dofs,
-            self.K_cond,
-            self.F_cond) = self.condense_modified_system(self.K_mod,
-                                                         self.F_mod,
-                                                         self.fixed_dofs,
-                                                         self.local_global_dof_map,
-                                                         self.primary_results_dir)
+            # -----------------------------------------------------------------
+            # 2  Boundary conditions
+            # -----------------------------------------------------------------
+            with self.monitor.stage("ModifyGlobalSystem"):
+                (self.K_mod,
+                 self.F_mod,
+                 self.fixed_dofs) = self.modify_global_system(self.K_global,
+                                                              self.F_global,
+                                                              self.local_global_dof_map,
+                                                              self.primary_results_dir)
 
-            DiagnoseLinearSystem(A = self.K_cond,
-                                 b = self.F_cond,
-                                 constraints = fixed_dofs,                  
-                                 job_results_dir = job_results_dir,
-                                 label           = "Condensed System",).write()
+            DiagnoseLinearStaticSystem(stage="Modified System",
+                                       A_current       = self.K_mod,
+                                       b_current       = self.F_mod,
+                                       A_full          = self.K_global,
+                                       b_full          = self.F_global,
+                                       fixed_dofs      = self.fixed_dofs,
+                                       condensed_dofs  = [],
+                                       job_results_dir = self.primary_results_dir,)
 
-            # -- 4) solve condensed system --
-            self.U_cond = self.solve_condensed_system(self.K_cond,
-                                                      self.F_cond,
-                                                      self.primary_results_dir,
-                                                      solver_name="cg",
-                                                      preconditioner="auto")
-            
-            # -- 5) reconstruct full-length displacement vector --
-            total_dofs      = len(self.mesh_dictionary["node_ids"]) * 6
-            self.U_global   = self.reconstruct_global_system(self.condensed_dofs,
-                                                             self.U_cond,
-                                                             total_dofs,
-                                                             self.primary_results_dir,
-                                                             fixed_dofs = self.fixed_dofs,
-                                                             inactive_dofs = self.inactive_dofs,
-                                                             local_global_dof_map = self.local_global_dof_map)
+            # -----------------------------------------------------------------
+            # 3  Static condensation
+            # -----------------------------------------------------------------
+            with self.monitor.stage("CondenseModifiedSystem"):
+                (self.condensed_dofs,
+                 self.inactive_dofs,
+                 self.K_cond,
+                 self.F_cond) = self.condense_modified_system(self.K_mod, 
+                                                              self.F_mod,
+                                                              self.fixed_dofs,
+                                                              self.local_global_dof_map,
+                                                              self.primary_results_dir)
 
-            # -- 6) first-order (primary) results incl. disassembly & all CSVs --
-            self.compute_primary_results()
+            DiagnoseLinearStaticSystem(stage="Condensed System",
+                                       A_current       = self.K_cond,
+                                       b_current       = self.F_cond,
+                                       A_full          = self.K_global,
+                                       b_full          = self.F_global,
+                                       fixed_dofs      = self.fixed_dofs,
+                                       condensed_dofs  = self.condensed_dofs,
+                                       job_results_dir = self.primary_results_dir,)
 
-            # -- 7) derived (secondary) results --
-            self.compute_secondary_results()
+            # -----------------------------------------------------------------
+            # 4  Solve condensed system
+            # -----------------------------------------------------------------
+            with self.monitor.stage("SolveCondensedSystem"):
+                self.U_cond = self.solve_condensed_system(self.K_cond, 
+                                                          self.F_cond,
+                                                          self.primary_results_dir,
+                                                          solver_name="cg", 
+                                                          preconditioner="auto")
+
+            # -----------------------------------------------------------------
+            # 5  Reconstruct full-length displacement vector
+            # -----------------------------------------------------------------
+            with self.monitor.stage("ReconstructGlobalSystem"):
+                total_dofs = len(self.mesh_dictionary["node_ids"]) * 6
+                self.U_global = self.reconstruct_global_system(self.condensed_dofs,
+                                                               self.U_cond,total_dofs,
+                                                               self.primary_results_dir,
+                                                               fixed_dofs=self.fixed_dofs,
+                                                               inactive_dofs=self.inactive_dofs,
+                                                               local_global_dof_map=self.local_global_dof_map)
+
+            # -----------------------------------------------------------------
+            # 6  Primary results (includes disassembly & CSV export)
+            # -----------------------------------------------------------------
+            with self.monitor.stage("ComputePrimaryResults"):
+                self.compute_primary_results()
+
+            # -----------------------------------------------------------------
+            # 7  Secondary (derived) results
+            # -----------------------------------------------------------------
+            # with self.monitor.stage("ComputeSecondaryResults"):
+            #     self.compute_secondary_results()
 
             logger.info("🏁 Simulation completed successfully → %s", self.results_root)
 

@@ -1,109 +1,174 @@
-# post_processing\graphical_visualisers\deformation\deformation_visualisation.py
+# post_processing/graphical_visualisers/deformation/deformation_visualisation.py
 
-import os
-import sys
+"""Deformation visualisation utility.
+
+Updated June 2025 for new results directory layout, *_U_global.csv format,
+**and** corrected parent‑folder detection (job folder now two levels above
+primary_results).
+"""
+
+from __future__ import annotations
+
 import glob
+import os
 import re
-import numpy as np
+import sys
+from pathlib import Path
+from typing import Final, Optional
+
 import matplotlib.pyplot as plt
+import numpy as np
 
-# Setup paths
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../../../"))
-sys.path.append(PROJECT_ROOT)
+# ---------------------------------------------------------------------------#
+#  Project paths
+# ---------------------------------------------------------------------------#
+SCRIPT_DIR: Final[Path] = Path(__file__).resolve().parent
 
-from pre_processing.parsing.mesh_parser import parse_mesh
+# Walk upwards until we find the repo root (must contain pre_processing)
+PROJECT_ROOT: Final[Path] = next(
+    (p for p in SCRIPT_DIR.parents if (p / "pre_processing").is_dir()),
+    SCRIPT_DIR.parents[4],
+)
 
-FIGURE_OUTPUT_DIR = os.path.join(SCRIPT_DIR, "deformation_plots")
-os.makedirs(FIGURE_OUTPUT_DIR, exist_ok=True)
+sys.path.append(str(PROJECT_ROOT))
 
-def visualize_deformation(U, node_positions, scale=1.0, title_suffix="", save_path=None):
-    if U.shape[1] != 6:
-        raise ValueError("Input U must have shape (n_nodes, 6)")
+# Local import after sys.path tweak
+from pre_processing.parsing.mesh_parser import parse_mesh  # type: ignore
 
-    fig, axes = plt.subplots(3, 2, figsize=(15, 10), sharex=True)
-    title = r"Raw $U_g (x)$"
-    if title_suffix:
-        title += f" - {title_suffix}"
-    fig.suptitle(title, fontsize=16, fontweight='bold')
+# ---------------------------------------------------------------------------#
+#  Visualiser class
+# ---------------------------------------------------------------------------#
 
-    color = "#4F81BD"
-    deformation_pairs = [
-        (U[:, 0] * 1000 * scale, r"$u_x(x)$ [mm]", U[:, 3], r"$\theta_x(x)$ [°]"),
-        (U[:, 1] * 1000 * scale, r"$u_y(x)$ [mm]", U[:, 5], r"$\theta_z(x)$ [°]"),
-        (U[:, 2] * 1000 * scale, r"$u_z(x)$ [mm]", U[:, 4], r"$\theta_y(x)$ [°]"),
-    ]
+class VisualiseDeformation:
+    """Produce translation / rotation profiles from *_U_global.csv files."""
 
-    for i, (ax_left, ax_right, (disp, disp_label, rot, rot_label)) in enumerate(zip(axes[:, 0], axes[:, 1], deformation_pairs)):
-        # Displacement plot
-        ax_left.plot(node_positions, disp, color=color, linewidth=2, marker='o',
-                     markerfacecolor=color, markeredgecolor=color)
-        ax_left.axhline(0, color='k', linestyle='--', linewidth=0.75)
-        ax_left.grid(True, linestyle='--', alpha=0.6)
-        ax_left.set_ylabel(disp_label, fontsize=12)
+    def __init__(self) -> None:
+        self.figure_output_dir: Final[Path] = SCRIPT_DIR / "deformation_plots"
+        self.figure_output_dir.mkdir(exist_ok=True)
 
-        # Rotation plot
-        rot_deg = np.degrees(rot) * scale
-        ax_right.plot(node_positions, rot_deg, color=color, linewidth=2, marker='o',
-                      markerfacecolor=color, markeredgecolor=color)
-        ax_right.axhline(0, color='k', linestyle='--', linewidth=0.75)
-        ax_right.grid(True, linestyle='--', alpha=0.6)
-        ax_right.set_ylabel(rot_label, fontsize=12)
+        self.base_dir: Final[Path] = PROJECT_ROOT / "post_processing" / "results"
+        self.mesh_dir: Final[Path] = PROJECT_ROOT / "jobs"
 
-        if i == 0:
-            ax_left.set_title("Translation profiles", fontsize=12, fontweight='bold')
-            ax_right.set_title("Rotation profiles", fontsize=12, fontweight='bold')
+    # ---------------------------------------------------------------------#
+    #  Plotting
+    # ---------------------------------------------------------------------#
 
-    axes[-1, 0].set_xlabel(r"$x$ [m]", fontsize=12)
-    axes[-1, 1].set_xlabel(r"$x$ [m]", fontsize=12)
+    def _plot(
+        self,
+        U: np.ndarray,
+        node_positions: np.ndarray,
+        *,
+        scale: float = 1.0,
+        title_suffix: str = "",
+        save_path: Optional[Path] = None,
+    ) -> None:
+        if U.shape[1] != 6:
+            raise ValueError("U must be (n_nodes, 6)")
 
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.9)
+        fig, axes = plt.subplots(3, 2, figsize=(15, 10), sharex=True)
+        fig.suptitle(
+            rf"Raw $U_g(x)${' – ' + title_suffix if title_suffix else ''}",
+            fontsize=16,
+            fontweight="bold",
+        )
 
-    if save_path:
-        plt.savefig(save_path, dpi=300)
-        plt.close(fig)
-    else:
-        plt.show()
+        color = "#4F81BD"
+        pairs = [
+            (U[:, 0] * 1_000 * scale, r"$u_x(x)\ \mathrm{[mm]}$", U[:, 3], r"$\theta_x(x)\ [^\circ]$"),
+            (U[:, 1] * 1_000 * scale, r"$u_y(x)\ \mathrm{[mm]}$", U[:, 5], r"$\theta_z(x)\ [^\circ]$"),
+            (U[:, 2] * 1_000 * scale, r"$u_z(x)\ \mathrm{[mm]}$", U[:, 4], r"$\theta_y(x)\ [^\circ]$"),
+        ]
 
-def read_deformation_file(file_path):
-    try:
-        with open(file_path, 'r') as file:
-            data = np.loadtxt(file, comments='#')
-            return data.reshape(-1, 6)
-    except Exception as e:
-        print(f"Error reading file {file_path}: {e}")
-        return None
 
-def process_deformation_files():
-    base_dir = os.path.join(PROJECT_ROOT, "post_processing", "results")
-    mesh_dir = os.path.join(PROJECT_ROOT, "jobs")
-    search_pattern = os.path.join(base_dir, "job_*_*", "primary_results", "job_*_static_global_U_global_*.txt")
-    files = sorted(glob.glob(search_pattern))
+        for i, (ax_l, ax_r, (disp, disp_lbl, rot, rot_lbl)) in enumerate(
+            zip(axes[:, 0], axes[:, 1], pairs)
+        ):
+            ax_l.plot(node_positions, disp, color=color, marker="o")
+            ax_l.axhline(0, color="k", linestyle="--", linewidth=0.8)
+            ax_l.grid(ls="--", alpha=0.6)
+            ax_l.set_ylabel(disp_lbl)
 
-    if not files:
-        print("No deformation files found.")
-        return
+            ax_r.plot(node_positions, np.degrees(rot) * scale, color=color, marker="o")
+            ax_r.axhline(0, color="k", linestyle="--", linewidth=0.8)
+            ax_r.grid(ls="--", alpha=0.6)
+            ax_r.set_ylabel(rot_lbl)
 
-    for file_path in files:
-        match = re.search(r"job_(\d+)_([0-9\-]+_[0-9\-]+)", file_path)
-        if not match:
-            print(f"Skipping unrecognized file format: {file_path}")
-            continue
+            if i == 0:
+                ax_l.set_title("Translation profiles", fontweight="bold")
+                ax_r.set_title("Rotation profiles", fontweight="bold")
 
-        job_id, timestamp = match.groups()
-        mesh_path = os.path.join(mesh_dir, f"job_{job_id}", "mesh.txt")
+        axes[-1, 0].set_xlabel(r"$x$ [m]")
+        axes[-1, 1].set_xlabel(r"$x$ [m]")
+        fig.tight_layout()
+        fig.subplots_adjust(top=0.9)
 
-        print(f"Processing: {file_path}")
-        U = read_deformation_file(file_path)
-        mesh_dictionary = parse_mesh(mesh_path)
+        if save_path:
+            fig.savefig(save_path, dpi=300)
+            plt.close(fig)
+        else:
+            plt.show()
 
-        if U is not None and mesh_dictionary is not None and 'node_coordinates' in mesh_dictionary:
-            node_positions = mesh_dictionary['node_coordinates'][:, 0]
-            title_suffix = f"job_{job_id}_{timestamp}"
+    # ---------------------------------------------------------------------#
+    #  File helpers
+    # ---------------------------------------------------------------------#
+
+    @staticmethod
+    def _read_U_global(file: Path) -> Optional[np.ndarray]:
+        try:
+            vals = np.genfromtxt(file, delimiter=",", skip_header=1, usecols=1)
+            if vals.size % 6:
+                raise ValueError("DOF count not divisible by 6")
+            return vals.reshape(-1, 6)
+        except Exception as exc:
+            print(f"Error reading {file}: {exc}")
+            return None
+
+    # ---------------------------------------------------------------------#
+    #  Main driver
+    # ---------------------------------------------------------------------#
+
+    def process_all(self) -> None:
+        pattern = self.base_dir / "job_*" / "primary_results" / "*_U_global.csv"
+        files = sorted(glob.glob(str(pattern)))
+        if not files:
+            print("No deformation files found.")
+            return
+
+        for file_path in files:
+            file = Path(file_path)
+            job_dir = file.parent.parent  # …/job_xxx/.../primary_results/ <─ two levels up
+            job_name = job_dir.name
+
+            m = re.match(
+                r"job_(?P<id>\d+)_(?P<ts>\d{4}-\d{2}-\d{2}_[\d\-]+)",
+                job_name,
+            )
+            if not m:
+                print(f"Skipping unrecognised folder '{job_name}'")
+                continue
+
+            job_id = m.group("id")
+            timestamp = m.group("ts")
+
+            mesh_file = self.mesh_dir / f"job_{job_id}" / "mesh.txt"
+            print(f"→ Processing job {job_id} ({timestamp})")
+
+            U = self._read_U_global(file)
+            mesh = parse_mesh(mesh_file) if mesh_file.is_file() else None
+
+            if U is None or mesh is None or "node_coordinates" not in mesh:
+                print(f"⚠️  Missing data for job {job_id}, skipping.")
+                continue
+
+            node_x = mesh["node_coordinates"][:, 0]
             fig_name = f"deformation_job_{job_id}_{timestamp}.png"
-            fig_path = os.path.join(FIGURE_OUTPUT_DIR, fig_name)
-            visualize_deformation(U, node_positions, scale=1.0, title_suffix=title_suffix, save_path=fig_path)
+            self._plot(
+                U,
+                node_x,
+                title_suffix=f"job_{job_id}_{timestamp}",
+                save_path=self.figure_output_dir / fig_name,
+            )
+
 
 if __name__ == "__main__":
-    process_deformation_files()
+    VisualiseDeformation().process_all()

@@ -23,7 +23,7 @@ def _csr_to_csv(mat: csr_matrix | coo_matrix, path: Path) -> None:
         mat = mat.tocsr()
     coo = mat.tocoo()
     pd.DataFrame(
-        {"Row": coo.row, "Col": coo.col, "Value": coo.data}
+        {"Row": coo.row, "Col": coo.col, "K Value": coo.data}
     ).to_csv(path, index=False)
 
 

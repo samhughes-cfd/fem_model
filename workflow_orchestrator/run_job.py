@@ -15,8 +15,7 @@ import uuid
 from tabulate import tabulate
 import cpuinfo
 import subprocess
-from scipy.sparse import csr_matrix, coo_matrix, lil_matrix, diags
-from typing import List, Tuple, Optional, Union
+from typing import List
 
 
 # Adjust Python Path to include project root
@@ -32,7 +31,7 @@ from pre_processing.parsing.material_parser import parse_material
 from pre_processing.parsing.solver_parser import parse_solver
 from pre_processing.parsing.point_load_parser import parse_point_load
 from pre_processing.parsing.distributed_load_parser import parse_distributed_load
-from processing.solver_registry import get_solver_registry
+#from processing.solver_registry import get_solver_registry
 from simulation_runner.static.static_simulation import StaticSimulationRunner
 from pre_processing.element_library.element_factory import create_elements_batch
 
@@ -139,7 +138,8 @@ def setup_job_results_directory(case_name: str) -> str:
         "primary_results",
         "secondary_results",
         "logs",
-        "maps"
+        "maps",
+        "diagnostics"
     ]
 
     for subdir in subdirs:
