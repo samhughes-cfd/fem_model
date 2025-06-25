@@ -7,18 +7,20 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class StrainDisplacementOperator:
     """
-    Constructs the strain-displacement matrix `B` for a 2-node 3D Euler-Bernoulli beam element.
+    Builds the strain–displacement matrix **B** for a 2-node 3-D Euler–Bernoulli beam element.
 
     The operator transforms derivatives of shape functions into physical strain measures.
 
     Strain vector:
-        ε = [εₓ, κ_z, κ_y, φₓ]ᵀ
+        ε = [ ε_x  κ_y  κ_z  γ_xy  γ_xz  φ_x ]ᵀ
 
     where:
-        - εₓ  = ∂uₓ/∂x          (axial strain)
-        - κ_z = ∂²v/∂x²         (curvature about z-axis, x-y plane bending)
-        - κ_y = ∂²w/∂x²         (curvature about y-axis, x-z plane bending)
-        - φₓ  = ∂θₓ/∂x          (torsional strain)
+        ε_x   = ∂uₓ/∂x        (axial)
+        κ_y   = ∂²w /∂x²      (bending about y, x–z plane)
+        κ_z   = ∂²v /∂x²      (bending about z, x–y plane)
+        γ_xy  = 0             (shear xy not modelled in Euler-Bernoulli theory)
+        γ_xz  = 0             (shear xz not modelled in Euler-Bernoulli theory)
+        φ_x   = ∂θₓ/∂x        (torsion)
 
     Coordinate mapping:
         - x(ξ) = ((1 - ξ)/2)x₁ + ((1 + ξ)/2)x₂
@@ -79,22 +81,25 @@ class StrainDisplacementOperator:
 
         Returns
         -------
-        B : np.ndarray (n_gauss, 4, 12)
+        B : np.ndarray (n_gauss, 6, 12)
             Strain-displacement matrix in ξ-space
         """
-        B = np.zeros((dN_dξ.shape[0], 4, 12))
+        n_gauss = dN_dξ.shape[0]
+        B = np.zeros((n_gauss, 6, 12))
 
-        # Axial strain: εₓ = ∂uₓ/∂ξ
-        B[:, 0, [0, 6]] = dN_dξ[:, [0, 6], 0]
+        # Axial strain: ε_x = ∂u_x/∂ξ
+        B[:, 0, [0, 6]] = dN_dξ[:, [0, 6], 0]       # u_x
 
-        # Bending about z-axis: κ_z = ∂²v/∂ξ²
-        B[:, 1, [1, 7]] = d2N_dξ2[:, [1, 7], 1]
+        # Bending about y-axis: κ_y = ∂²u_z/∂ξ²
+        B[:, 1, [2, 8]] = d2N_dξ2[:, [2, 8], 2]     # u_z
+        B[:, 1, [4, 10]] = d2N_dξ2[:, [4, 10], 4]   # θ_y
 
-        # Bending about y-axis: κ_y = ∂²w/∂ξ²
-        B[:, 2, [2, 8]] = d2N_dξ2[:, [2, 8], 2]
+        # Bending about z-axis: κ_z = ∂²u_y/∂ξ²
+        B[:, 2, [1, 7]] = d2N_dξ2[:, [1, 7], 1]     # u_y
+        B[:, 2, [5, 11]] = d2N_dξ2[:, [5, 11], 5]   # θ_z
 
-        # Torsional strain: φₓ = ∂θₓ/∂ξ
-        B[:, 3, [3, 9]] = dN_dξ[:, [3, 9], 3]
+        # Torsional strain: φ_x = ∂θ_x/∂ξ
+        B[:, 5, [3, 9]] = dN_dξ[:, [3, 9], 3]       # θ_x
 
         return B
 
@@ -113,22 +118,25 @@ class StrainDisplacementOperator:
 
         Returns
         -------
-        B : np.ndarray (n_gauss, 4, 12)
+        B : np.ndarray (n_gauss, 6, 12)
             Physical strain-displacement matrix (ε = B @ u_e)
         """
-        B = np.zeros((dN_dξ.shape[0], 4, 12))
+        n_gauss = dN_dξ.shape[0]
+        B = np.zeros((n_gauss, 6, 12))
 
-        # Axial strain: εₓ = ∂uₓ/∂x
-        B[:, 0, [0, 6]] = dN_dξ[:, [0, 6], 0] * self.dξ_dx
+        # Axial strain: ε_x = ∂u_x/∂x
+        B[:, 0, [0, 6]] = dN_dξ[:, [0, 6], 0] * self.dξ_dx           # u_x
 
-        # Bending about z-axis: κ_z = ∂²v/∂x²
-        B[:, 1, [1, 7]] = d2N_dξ2[:, [1, 7], 1] * self.d2ξ_dx2
+        # Bending about y-axis: κ_y = ∂²u_z/∂ξ²
+        B[:, 1, [2, 8]] = d2N_dξ2[:, [2, 8], 2] * self.d2ξ_dx2       # u_z
+        B[:, 1, [4, 10]] = d2N_dξ2[:, [4, 10], 4] * self.d2ξ_dx2     # θ_y
+ 
+        # Bending about z-axis: κ_z = ∂²u_y/∂ξ²
+        B[:, 2, [1, 7]] = d2N_dξ2[:, [1, 7], 1] * self.d2ξ_dx2       # u_y
+        B[:, 2, [5, 11]] = d2N_dξ2[:, [5, 11], 5] * self.d2ξ_dx2     # θ_z
 
-        # Bending about y-axis: κ_y = ∂²w/∂x²
-        B[:, 2, [2, 8]] = d2N_dξ2[:, [2, 8], 2] * self.d2ξ_dx2
-
-        # Torsional strain: φₓ = ∂θₓ/∂x
-        B[:, 3, [3, 9]] = dN_dξ[:, [3, 9], 3] * self.dξ_dx
+        # Torsional strain: φ_x = ∂θ_x/∂ξ
+        B[:, 5, [3, 9]] = dN_dξ[:, [3, 9], 3] * self.dξ_dx           # θ_x
 
         return B
 
@@ -148,8 +156,8 @@ class StrainDisplacementOperator:
         """
         checks = [
             ("Jacobian", abs(self.jacobian - self.element_length/2)),
-            ("First derivative", abs(self.dξ_dx - 2/self.element_length)),
-            ("Second derivative", abs(self.d2ξ_dx2 - 4/self.element_length**2))
+            ("∂ξ/∂x", abs(self.dξ_dx - 2/self.element_length)),
+            ("∂²ξ/∂x²", abs(self.d2ξ_dx2 - 4/self.element_length**2))
         ]
         for name, error in checks:
             if error > tol:

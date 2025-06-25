@@ -164,11 +164,8 @@ class ModifyGlobalSystem:
         self.F_work = self.F_orig.copy().astype(np.float64)
 
     def _compute_penalty(self):
-        """Calculate dynamic penalty value."""
-        diag = self.K_work.diagonal()
-        # safer penalty
-        max_diag = np.max(np.abs(diag)) if diag.size else 1.0
-        self.penalty = (1e36 if max_diag == 0 else 1e36 * max_diag)
+        """Calculate penalty value."""
+        self.penalty = 1e36
         self.logger.debug(f"Computed penalty value: {self.penalty:.2e}")
 
     def _apply_penalty_method(self):

@@ -1,5 +1,5 @@
 [Mesh]
 [node_ids]     [x]            [y]         [z]         [connectivity]      [element_type]           
-1              0.000000       0.0         0.0         (1,2)               EulerBernoulliBeamElement6DOF
-2              1.000000       0.0         0.0         (2,3)               EulerBernoulliBeamElement6DOF
+1              0.000000       0.0         0.0         (1,2)               EulerBernoulliBeamElement3D
+2              1.000000       0.0         0.0         (2,3)               EulerBernoulliBeamElement3D
 3              2.000000       0.0         0.0         -                   -                        

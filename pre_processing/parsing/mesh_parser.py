@@ -257,124 +257,124 @@ def _compute_element_lengths(connectivity: np.ndarray,
     end_points = node_coords[connectivity[:, 1]]
     return np.linalg.norm(end_points - start_points, axis=1).astype(np.float64)
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    def print_array_details(name, arr, units=None, indexing=None):
-        """Print formatted array metadata and full contents"""
-        print(f"\n{' ' + name + ' ':-^80}")
-        print(f"Data Type: {type(arr).__name__} ({arr.dtype})")
-        print(f"Shape: {arr.shape}")
-        print(f"Units: {units or '-'}")
-        print(f"Indexing: {indexing or '0-based'}")
-        print("\nFull Data:")
-        with np.printoptions(
-            threshold=10,  # Show up to 10 elements before truncating
-            edgeitems=2,   # Show first/last 2 elements when truncated
-            linewidth=80,
-            suppress=True,  # Suppress scientific notation
-            formatter={'float': lambda x: f"{x:.6f}"}  # 6 decimal places for floats
-        ):
-            print(arr)
+#     def print_array_details(name, arr, units=None, indexing=None):
+#         """Print formatted array metadata and full contents"""
+#         print(f"\n{' ' + name + ' ':-^80}")
+#         print(f"Data Type: {type(arr).__name__} ({arr.dtype})")
+#         print(f"Shape: {arr.shape}")
+#         print(f"Units: {units or '-'}")
+#         print(f"Indexing: {indexing or '0-based'}")
+#         print("\nFull Data:")
+#         with np.printoptions(
+#             threshold=10,  # Show up to 10 elements before truncating
+#             edgeitems=2,   # Show first/last 2 elements when truncated
+#             linewidth=80,
+#             suppress=True,  # Suppress scientific notation
+#             formatter={'float': lambda x: f"{x:.6f}"}  # 6 decimal places for floats
+#         ):
+#             print(arr)
 
-    def validate_mesh_integrity(mesh_dict):
-        """Enhanced validation of mesh data structure"""
-        # Check array lengths
-        if len(mesh_dict['element_ids']) != len(mesh_dict['element_types']):
-            raise ValueError("Element IDs and types count mismatch")
+#     def validate_mesh_integrity(mesh_dict):
+#         """Enhanced validation of mesh data structure"""
+#         # Check array lengths
+#         if len(mesh_dict['element_ids']) != len(mesh_dict['element_types']):
+#             raise ValueError("Element IDs and types count mismatch")
             
-        if len(mesh_dict['connectivity']) != len(mesh_dict['element_ids']):
-            raise ValueError("Connectivity and element ID count mismatch")
+#         if len(mesh_dict['connectivity']) != len(mesh_dict['element_ids']):
+#             raise ValueError("Connectivity and element ID count mismatch")
 
-        # Validate node indices in connectivity
-        max_node_idx = len(mesh_dict['node_ids']) - 1
-        connectivity = mesh_dict['connectivity']
-        if connectivity.size > 0:
-            invalid = connectivity[(connectivity < 0) | (connectivity > max_node_idx)]
-            if invalid.size > 0:
-                invalid_nodes = np.unique(invalid)
-                raise ValueError(
-                    f"Invalid node indices in connectivity: {invalid_nodes.tolist()}\n"
-                    f"Valid node indices: 0-{max_node_idx}"
-                )
+#         # Validate node indices in connectivity
+#         max_node_idx = len(mesh_dict['node_ids']) - 1
+#         connectivity = mesh_dict['connectivity']
+#         if connectivity.size > 0:
+#             invalid = connectivity[(connectivity < 0) | (connectivity > max_node_idx)]
+#             if invalid.size > 0:
+#                 invalid_nodes = np.unique(invalid)
+#                 raise ValueError(
+#                     f"Invalid node indices in connectivity: {invalid_nodes.tolist()}\n"
+#                     f"Valid node indices: 0-{max_node_idx}"
+#                 )
 
-    # Execution flow
-    if len(sys.argv) > 1:
-        input_file = sys.argv[1]
-    else:
-        input_file = os.path.join("jobs", "job_0001", "mesh.txt")  # Default test file
+#     # Execution flow
+#     if len(sys.argv) > 1:
+#         input_file = sys.argv[1]
+#     else:
+#         input_file = os.path.join("jobs", "job_0009", "mesh.txt")  # Default test file
 
-    if not os.path.exists(input_file):
-        logging.error(f"Mesh file '{input_file}' not found.")
-        sys.exit(1)
+#     if not os.path.exists(input_file):
+#         logging.error(f"Mesh file '{input_file}' not found.")
+#         sys.exit(1)
 
-    try:
-        print(f"\n{' INITIALIZING MESH PARSER ':=^80}")
-        mesh_dict = parse_mesh(input_file)
+#     try:
+#         print(f"\n{' INITIALIZING MESH PARSER ':=^80}")
+#         mesh_dict = parse_mesh(input_file)
 
-        # Perform comprehensive validation
-        validate_mesh_integrity(mesh_dict)
+#         # Perform comprehensive validation
+#         validate_mesh_integrity(mesh_dict)
 
-        print("\n" + "="*80)
-        print("                          Parsed Mesh Data Structure")
-        print("="*80)
+#         print("\n" + "="*80)
+#         print("                          Parsed Mesh Data Structure")
+#         print("="*80)
 
-        # General information
-        num_nodes = len(mesh_dict['node_ids'])
-        num_elements = len(mesh_dict['element_ids'])
-        print(f"\n● Total Nodes: {num_nodes}")
-        print(f"● Total Elements: {num_elements}")
+#         # General information
+#         num_nodes = len(mesh_dict['node_ids'])
+#         num_elements = len(mesh_dict['element_ids'])
+#         print(f"\n● Total Nodes: {num_nodes}")
+#         print(f"● Total Elements: {num_elements}")
         
-        if num_elements != num_nodes - 1:
-            print(f"⚠ Note: Element count ({num_elements}) differs from node count - 1 ({num_nodes-1})")
+#         if num_elements != num_nodes - 1:
+#             print(f"⚠ Note: Element count ({num_elements}) differs from node count - 1 ({num_nodes-1})")
 
-        # Detailed array information
-        print_array_details(
-            name="Node IDs",
-            arr=mesh_dict['node_ids'],
-            units="-",
-            indexing="Original file IDs (1-based)"
-        )
+#         # Detailed array information
+#         print_array_details(
+#             name="Node IDs",
+#             arr=mesh_dict['node_ids'],
+#             units="-",
+#             indexing="Original file IDs (1-based)"
+#         )
 
-        print_array_details(
-            name="Node Coordinates",
-            arr=mesh_dict['node_coordinates'],
-            units="meters",
-            indexing="0-based [node_index, xyz]"
-        )
+#         print_array_details(
+#             name="Node Coordinates",
+#             arr=mesh_dict['node_coordinates'],
+#             units="meters",
+#             indexing="0-based [node_index, xyz]"
+#         )
 
-        print_array_details(
-            name="Element Connectivity",
-            arr=mesh_dict['connectivity'],
-            units="-",
-            indexing="0-based node indices"
-        )
+#         print_array_details(
+#             name="Element Connectivity",
+#             arr=mesh_dict['connectivity'],
+#             units="-",
+#             indexing="0-based node indices"
+#         )
 
-        print_array_details(
-            name="Element IDs",
-            arr=mesh_dict['element_ids'],
-            units="-",
-            indexing="0-based array indices"
-        )
+#         print_array_details(
+#             name="Element IDs",
+#             arr=mesh_dict['element_ids'],
+#             units="-",
+#             indexing="0-based array indices"
+#         )
 
-        print_array_details(
-            name="Element Lengths",
-            arr=mesh_dict['element_lengths'],
-            units="meters",
-            indexing="0-based array indices"
-        )
+#         print_array_details(
+#             name="Element Lengths",
+#             arr=mesh_dict['element_lengths'],
+#             units="meters",
+#             indexing="0-based array indices"
+#         )
 
-        print_array_details(
-            name="Element Types",
-            arr=mesh_dict['element_types'],
-            units="-",
-            indexing="0-based array indices"
-        )
+#         print_array_details(
+#             name="Element Types",
+#             arr=mesh_dict['element_types'],
+#             units="-",
+#             indexing="0-based array indices"
+#         )
 
-        print("\n✅ Mesh parsing completed successfully!")
-        print("="*80 + "\n")
+#         print("\n✅ Mesh parsing completed successfully!")
+#         print("="*80 + "\n")
 
-    except Exception as e:
-        print(f"\n{' PARSING FAILED ':=^80}")
-        logging.error("Critical error: %s", str(e))
-        logging.debug("Full error trace:\n%s", traceback.format_exc())
-        sys.exit(1)
+#     except Exception as e:
+#         print(f"\n{' PARSING FAILED ':=^80}")
+#         logging.error("Critical error: %s", str(e))
+#         logging.debug("Full error trace:\n%s", traceback.format_exc())
+#         sys.exit(1)

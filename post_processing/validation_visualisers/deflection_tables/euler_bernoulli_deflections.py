@@ -1,117 +1,272 @@
-# post_processing\validation_visualisers\deflection_tables\euler_bernoulli_deflections.py
+"""
+Euler–Bernoulli vs FEM comparison
+=================================
+Plots for each selected job:
 
-import numpy as np
+    • u_y   (vertical deflection)   ── millimetres
+    • θ_z   (rotation about z)      ── degrees
+
+The script relies on your mesh parser:
+
+    pre_processing/parsing/mesh_parser.py   (function: parse_mesh)
+
+Folder conventions (adjust only in helpers if they change)
+----------------------------------------------------------
+jobs/<job_id>/mesh.txt
+post_processing/results/<job_id>_<timestamp>/primary_results/*_U_global.*
+"""
+
+from __future__ import annotations
+
+import glob
+import math
+import sys
+from pathlib import Path
+
 import matplotlib.pyplot as plt
-import os
-import re
+import numpy as np
 
-# Constants
-E = 2e11  # Young's Modulus in Pa (N/m^2)
-I_y = 6.6667e-5  # Second moment of area in m^4
-F = 1e5  # Point Load in N
-q_0 = 1e5  # Uniform Load Intensity in N/m
+# ────────────────────────────────────────────────────────────────────────────────
+# Add project root to sys.path so that the mesh_parser import always works
+# ────────────────────────────────────────────────────────────────────────────────
+def find_project_root(start: Path) -> Path:
+    p = start
+    while p != p.parent:
+        if (p / "jobs").is_dir() and (p / "post_processing").is_dir():
+            return p
+        p = p.parent
+    raise FileNotFoundError("Project root with 'jobs' and 'post_processing' not found")
 
-# Job files and corresponding load types
-job_files = [
-    "post_processing/results/job_0001_2025-05-06_15-47-53/primary_results/job_0001_static_global_U_global_2025-05-06_15-47-56.txt",
-    "post_processing/results/job_0002_2025-05-06_15-47-53/primary_results/job_0002_static_global_U_global_2025-05-06_15-47-56.txt",
-    "post_processing/results/job_0003_2025-05-06_15-47-53/primary_results/job_0003_static_global_U_global_2025-05-06_15-47-56.txt",
-    "post_processing/results/job_0004_2025-05-06_15-47-53/primary_results/job_0004_static_global_U_global_2025-05-06_15-47-59.txt",
-    "post_processing/results/job_0005_2025-05-06_15-47-53/primary_results/job_0005_static_global_U_global_2025-05-06_15-47-59.txt",
-    "post_processing/results/job_0006_2025-05-06_15-47-53/primary_results/job_0006_static_global_U_global_2025-05-06_15-47-59.txt",
-]
+SCRIPT_DIR   = Path(__file__).resolve().parent
+ROOT         = find_project_root(SCRIPT_DIR)
+sys.path.insert(0, str(ROOT))   # ensure project root is importable
 
+from pre_processing.parsing.mesh_parser import parse_mesh  # noqa: E402
+
+SETTINGS_ROOT   = ROOT / "jobs"
+RESULTS_ROOT    = ROOT / "post_processing" / "results"
+PRIMARY_RESULTS = "primary_results"
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Material / beam constants
+# ────────────────────────────────────────────────────────────────────────────────
+E   = 2.0e11        # Pa
+I_z = 6.6667e-5     # m⁴
+F   = 1.0e5         # N
+q_0 = 1.0e5         # N/m
+
+# job → load description
 job_to_loadtype = {
     "job_0001": "End Load",
     "job_0002": "Midpoint Load",
     "job_0003": "Quarterpoint Load",
     "job_0004": "Constant Distributed Load",
     "job_0005": "Quadratic Distributed Load",
-    "job_0006": "Parabolic Distributed Load"
+    "job_0006": "Parabolic Distributed Load",
 }
 
-# Mesh node positions (based on the provided mesh)
-nodes = np.array([0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0])  # Node positions in meters
+# ────────────────────────────────────────────────────────────────────────────────
+# Discovery helpers
+# ────────────────────────────────────────────────────────────────────────────────
+def newest(paths: list[Path]) -> Path:
+    return sorted(paths)[-1]
 
-def get_nodewise_displacement(filepath):
-    # Read the displacement data (6 DOF per node)
-    data = np.loadtxt(filepath)
-    # Extracting the vertical displacement (assuming it's the second value in the 6 DOF data)
-    uy = data[1::6]  # Every 6th value starting from the second column
-    return uy
+def settings_dir(job: str) -> Path:
+    direct = SETTINGS_ROOT / job
+    if direct.is_dir():
+        return direct
+    matches = [p for p in SETTINGS_ROOT.glob(f"{job}_*") if p.is_dir()]
+    if not matches:
+        raise FileNotFoundError(f"Settings directory not found for {job}")
+    return newest(matches)
 
-def generate_expected_shape(x, load_type):
+def mesh_file(job: str) -> Path:
+    sd = settings_dir(job)
+    candidate = sd / "mesh.txt"
+    if candidate.is_file():
+        return candidate
+    patterns = ("*mesh*.csv", "*mesh*.txt", "*nodes*.csv", "*nodes*.txt")
+    for pat in patterns:
+        matches = list(sd.glob(pat))
+        if matches:
+            return newest(matches)
+    raise FileNotFoundError(f"No mesh/nodes file in {sd}")
+
+def results_dir(job: str) -> Path:
+    matches = [p for p in RESULTS_ROOT.glob(f"{job}_*") if p.is_dir()]
+    if not matches:
+        raise FileNotFoundError(f"Results directory not found for {job}")
+    return newest(matches)
+
+def displacement_file(job: str) -> Path:
+    rd = results_dir(job)
+    pattern = rd / PRIMARY_RESULTS / "*_U_global.*"
+    files = [Path(p) for p in glob.glob(str(pattern))]
+    if not files:
+        raise FileNotFoundError(f"No *_U_global.* file in {rd/PRIMARY_RESULTS}")
+    return newest(files)
+
+# ────────────────────────────────────────────────────────────────────────────────
+# File readers
+# ────────────────────────────────────────────────────────────────────────────────
+def read_mesh_nodes_x(mesh_path: Path) -> np.ndarray:
+    """Use mesh_parser to get node X-coordinates, sorted ascending."""
+    mesh_dict = parse_mesh(str(mesh_path))
+    x_coords = mesh_dict["node_coordinates"][:, 0]   # column 0 = x
+    return np.sort(np.unique(x_coords))
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Robust displacement-file reader  (handles 2-column DOF list, table, or 1-D vector)
+# ────────────────────────────────────────────────────────────────────────────────
+def read_dofs(path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Extracts FEM results from a *_U_global.* file and returns:
+
+        u_y_mm      — vertical displacements [mm]
+        theta_z_deg — rotations about z [deg]
+
+    Accepts three formats automatically:
+    1) 2-column list    ->  index , value
+    2) Wide table       ->  one row per node, ≥6 numeric DOF columns
+    3) Flat 1-D vector  ->  [... ux, uy, uz, rx, ry, rz] * n_nodes
+    """
+    # ---------- try 2-column “index,value” list ----------
+    data = np.genfromtxt(path,
+                         delimiter=",",
+                         skip_header=1,      # skip header if present
+                         comments=None,
+                         dtype=float,
+                         invalid_raise=False)
+
+    # If genfromtxt read something numeric, `data` is either (N,2) or (N,)
+    if data.ndim == 2 and data.shape[1] == 2:
+        values = data[:, 1]
+        if values.size % 6 != 0:
+            raise ValueError(
+                f"{path.name}: DOF list length {values.size} not divisible by 6"
+            )
+        u_y_mm  = values[1::6] * 1_000.0
+        rz_deg  = values[5::6] * 180.0 / np.pi
+        return u_y_mm, rz_deg
+
+    # ---------- try wide table (≥ 6 columns) ----------
+    if data.ndim == 2 and data.shape[1] >= 6:
+        # If first column looks like sequential node IDs, ignore it
+        offset = 1 if np.allclose(data[:, 0], np.arange(data.shape[0])) else 0
+        u_y_mm = data[:, 1 + offset] * 1_000.0
+        rz_deg = data[:, 5 + offset] * 180.0 / np.pi
+        return u_y_mm, rz_deg
+
+    # ---------- fallback: flat 1-D vector ----------
+    flat = np.genfromtxt(path,
+                         delimiter=",",
+                         comments=None,
+                         dtype=float,
+                         invalid_raise=False).flatten()
+    flat = flat[np.isfinite(flat)]           # drop any NaNs
+    if flat.size % 6 != 0:
+        raise ValueError(
+            f"{path.name}: cannot interpret file format – "
+            f"2-column list and wide-table heuristics failed, "
+            f"and {flat.size} numbers is not 6×n"
+        )
+    u_y_mm = flat[1::6] * 1_000.0
+    rz_deg = flat[5::6] * 180.0 / np.pi
+    return u_y_mm, rz_deg
+
+# ────────────────────────────────────────────────────────────────────────────────
+# Euler–Bernoulli theory
+# ────────────────────────────────────────────────────────────────────────────────
+def eb_deflection(x: np.ndarray, load: str) -> np.ndarray:
     L = x[-1]
-    
-    # Normalize x
-    xi = x / L
-    
-    if load_type == "End Load":
-        return (F * x**2) / (6 * E * I_y) * (3 * L - x)  # Point Load at Free End (x=L)
-    elif load_type == "Midpoint Load":
-        return (F * x**2) / (6 * E * I_y) * (3 * L - x)  # Simplified for midpoint load
-    elif load_type == "Quarterpoint Load":
-        return (F * x**2) / (6 * E * I_y) * (3 * L - x)  # Approximation for quarter point
-    elif load_type == "Constant Distributed Load":
-        return (q_0 * x**2) / (24 * E * I_y) * (6 * L**2 - 4 * L * x + x**2)  # Uniform Load
-    elif load_type == "Quadratic Distributed Load":
-        return (q_0 * x**4) / (30 * L**2) - (q_0 * x**5) / (10 * L) + (q_0 * x**6) / (12)  # Quadratic Load
-    elif load_type == "Parabolic Distributed Load":
-        return (q_0 * x**5) / (20 * L**2) - (q_0 * x**6) / (30 * L**3) - (q_0 * x**4) / (12)  # Parabolic Load
-    else:
-        return np.zeros_like(x)
+    if load == "End Load":
+        return (F * x**2) / (6 * E * I_z) * (3 * L - x)
+    if load == "Midpoint Load":
+        return (F * x**2) / (6 * E * I_z) * (3 * L - x)
+    if load == "Quarterpoint Load":
+        return (F * x**2) / (6 * E * I_z) * (3 * L - x)
+    if load == "Constant Distributed Load":
+        return (q_0 * x**2) / (24 * E * I_z) * (6 * L**2 - 4 * L * x + x**2)
+    if load == "Quadratic Distributed Load":
+        return (q_0 * x**4) / (30 * L**2) - (q_0 * x**5) / (10 * L) + (q_0 * x**6) / 12
+    if load == "Parabolic Distributed Load":
+        return (q_0 * x**5) / (20 * L**2) - (q_0 * x**6) / (30 * L**3) - (q_0 * x**4) / 12
+    return np.zeros_like(x)
 
-# Function to extract job name from file path using regular expressions (regex)
-def extract_job_name(file_path):
-    match = re.search(r'job_\d+', os.path.basename(file_path))  # Match "job_<number>"
-    if match:
-        return match.group(0)  # Return the matched job name (e.g., 'job_0001')
-    else:
-        return "Unknown"  # Return "Unknown" if no match is found
+def eb_slope_deg(x: np.ndarray, load: str) -> np.ndarray:
+    slope_rad = np.gradient(eb_deflection(x, load), x)
+    return slope_rad * 180.0 / np.pi
 
-# Define beam nodes (using the provided mesh)
-n_nodes = len(nodes)
-L = nodes[-1]  # beam length from the last node
-x = nodes  # Beam node positions
+# ────────────────────────────────────────────────────────────────────────────────
+# Plotting
+# ────────────────────────────────────────────────────────────────────────────────
 
-# Create a 2x3 subplot grid
-fig, axs = plt.subplots(2, 3, figsize=(18, 12))
+def plot_jobs(jobs: list[str]) -> None:
+    """
+    Make a single figure with 1×2 sub-plots:
+        • left  : u_y  [mm]   vs x
+        • right : θ_z [deg]   vs x
+    Every selected job is plotted on the same pair of axes.
+    """
+    # ---------- gather all data -------------------------------------------------
+    artefacts: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray, str]] = {}
+    for job in jobs:
+        try:
+            x_coords       = read_mesh_nodes_x(mesh_file(job))
+            uy_mm, rz_deg  = read_dofs(displacement_file(job))
+            load           = job_to_loadtype.get(job, "Unknown")
+            artefacts[job] = (x_coords, uy_mm, rz_deg, load)
+        except (FileNotFoundError, ValueError) as e:
+            print(f"[WARN] {e}")
 
-# Flatten the 2x3 grid to iterate through each subplot
-axs = axs.flatten()
+    if not artefacts:
+        sys.exit("Nothing to plot – no valid jobs found.")
 
-for i, job_file in enumerate(job_files):
-    # Extract job name from the file path and map it to load type
-    job_name = extract_job_name(job_file)  # Use the robust job name extraction
-    load_type = job_to_loadtype.get(job_name, "Unknown")  # Get the load type from the mapping
+    # ---------- prepare figure --------------------------------------------------
+    fig, (ax_u, ax_th) = plt.subplots(
+        1, 2, figsize=(12, 5), sharex=False, constrained_layout=True
+    )
 
-    try:
-        uy = get_nodewise_displacement(job_file)  # Extract the vertical displacement (uy)
-    except Exception as e:
-        print(f"Could not load {job_file}: {e}")
-        continue
+    # Give each job a distinct colour cycle automatically
+    for job_idx, (job, (x, uy_mm, rz_deg, load)) in enumerate(artefacts.items()):
+        # Theory
+        eb_mm  = eb_deflection(x, load) * 1_000.0
+        eb_deg = eb_slope_deg(x, load)
 
-    # Convert FEM results (uy) from meters to millimeters
-    uy_mm = uy * 1000
+        if load != "Parabolic Distributed Load":
+            eb_mm  *= -1.0
+            eb_deg *= -1.0
 
-    expected = generate_expected_shape(x, load_type)
+        # ---------- u_y subplot (left) ----------
+        ax_u.plot(x, uy_mm,
+                  marker="o", linestyle="-",  label=f"{job} FEM")
+        ax_u.plot(x, eb_mm,
+                  linestyle="--",            label=f"{job} EB")
 
-    # Selectively apply negative sign to expected displacement, skipping Parabolic Load
-    if load_type != "Parabolic Distributed Load":
-        expected_mm = expected * 1000 * -1  # Make expected displacement negative
-    else:
-        expected_mm = expected * 1000  # Keep it positive for parabolic load
+        # ---------- θ_z subplot (right) ----------
+        ax_th.plot(x, rz_deg,
+                   marker="s", linestyle="-",  label=f"{job} FEM")
+        ax_th.plot(x, eb_deg,
+                   linestyle=":",             label=f"{job} EB")
 
-    # Plot FEM displacement and expected shape in the subplot grid
-    ax = axs[i]
-    ax.plot(x, uy_mm, label=f"{load_type} - FEM", linestyle='-', marker='o', markersize=8)
-    ax.plot(x, expected_mm, label=f"{load_type} - Expected", linestyle='--', linewidth=2)
-    ax.set_xlabel("Beam Length (x) [m]", fontsize=12)
-    ax.set_ylabel("Vertical Displacement (uy) [mm]", fontsize=12)
-    ax.set_title(f"{load_type} Comparison", fontsize=14)  # Set the title with the correct load type
-    ax.grid(True, linestyle='--', alpha=0.7)
-    ax.legend(loc='upper right', fontsize=10)
+    # ---------- cosmetics -------------------------------------------------------
+    ax_u.set_title("$u_y$ comparison")
+    ax_u.set_xlabel("x [m]")
+    ax_u.set_ylabel("$u_y$ [mm]")
+    ax_u.grid(True, linestyle="--", alpha=0.7)
+    ax_u.legend()
 
-# Adjust layout to prevent overlap
-plt.tight_layout()
-plt.show()
+    ax_th.set_title("$\\theta_z$ comparison")
+    ax_th.set_xlabel("x [m]")
+    ax_th.set_ylabel("$\\theta_z$ [deg]")
+    ax_th.grid(True, linestyle="--", alpha=0.7)
+    ax_th.legend()
+
+    plt.show()
+
+# ────────────────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    # Edit this list to choose which jobs to plot
+    JOBS = ["job_0011"]
+
+    plot_jobs(JOBS)

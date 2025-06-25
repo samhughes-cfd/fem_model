@@ -201,12 +201,14 @@ class EulerBernoulliBeamElement3D(Element1DBase):
         self._validate_logging_setup()
 
         Ke = np.zeros((12, 12), dtype=np.float64)
+        L = np.array([[self.L]], dtype=np.float64)
         D = self.material_stiffness_operator.assembly_form()
         xi, w = self.integration_points
 
         if self.logger_operator:  # Modified logging block
             self.logger_operator.log_text("stiffness", f"\n=== Element {self.element_id} Stiffness Matrix Computation ===")
-            self.logger_operator.log_matrix("stiffness", D, {"name": "Material Stiffness Matrix (D)"})
+            self.logger_operator.log_matrix("stiffness", L, {"name": f"Element length  L  {(1,1)}"})
+            self.logger_operator.log_matrix("stiffness", D, {"name": f"Material stiffness matrix  D  {D.shape}"})
         
         for g, (xi_g, w_g) in enumerate(zip(xi, w)):
             _, dN_dξ, d2N_dξ2 = self.shape_function_operator.natural_coordinate_form(np.array([xi_g]))
@@ -315,42 +317,65 @@ class EulerBernoulliBeamElement3D(Element1DBase):
         return Fe_point
 
     # Stiffness logging helpers ----------------------------------------------------------
-    def _log_gauss_point_stiffness(self, gp_idx: int, xi: float, weight: float,
-                                dN_dξ: np.ndarray, d2N_dξ2: np.ndarray,
-                                B: np.ndarray, contribution: np.ndarray):
-        """Log detailed stiffness matrix integration data with shape validation."""
-        # Validate tensor structures against operational requirements
+    def _log_gauss_point_stiffness(
+        self,
+        gp_idx: int,
+        xi: float,
+        weight: float,
+        dN_dξ: np.ndarray,
+        d2N_dξ2: np.ndarray,
+        B: np.ndarray,
+        contribution: np.ndarray,
+    ) -> None:
+        """
+        Log detailed stiffness-integration data for one Gauss point.
+
+        All tensors are shape-checked before logging to guard against silent
+        dimensional errors.
+        """
+        # --- shape validation ----------------------------------------------------
         if dN_dξ.shape[-2:] != (12, 6):
-            raise ValueError(f"dN_dξ shape mismatch: {dN_dξ.shape}. != (12,6)")
+            raise ValueError(f"dN_dξ shape mismatch: {dN_dξ.shape} ≠ (12, 6)")
         if d2N_dξ2.shape[-2:] != (12, 6):
-            raise ValueError(f"d2N_dξ2 shape mismatch: {d2N_dξ2.shape} != (12,6)")
-        if B.shape[-2:] != (4, 12):
-            raise ValueError(f"B-matrix shape mismatch: {B.shape} != (*,4,12)")
+            raise ValueError(f"d2N_dξ2 shape mismatch: {d2N_dξ2.shape} ≠ (12, 6)")
+        if B.shape[-2:] != (6, 12):                     # ← updated (was 4 × 12)
+            raise ValueError(f"B-matrix shape mismatch: {B.shape} ≠ (*, 6, 12)")
         if contribution.shape != (12, 12):
-            raise ValueError(f"Contribution shape mismatch: {contribution.shape} != (12,12)")
+            raise ValueError(f"Contribution shape mismatch: {contribution.shape} ≠ (12, 12)")
 
+        # --- metadata for pretty print ------------------------------------------
         metadata = {
-            "name": f"GP {gp_idx+1}",
-            "precision": 6,  # Display precision
-            "max_line_width": 120
+            "name": f"GP {gp_idx + 1}",
+            "precision": 6,
+            "max_line_width": 120,
         }
-    
-        # Header with transformed coordinates
-        self.log_text("stiffness", 
-                    f"\nGP {gp_idx+1}/{self.quadrature_order}: "
-                    f"ξ={xi:.6f}, x={self._xi_to_x(xi):.6e}, w={weight:.6e}")
 
-        # Log derivatives with shape annotations
-        self.log_matrix("stiffness", dN_dξ,
-                    {**metadata, "name": f"Shape Function Derivative Matrix dN/dξ {dN_dξ.shape}"})
-        self.log_matrix("stiffness", d2N_dξ2,
-                    {**metadata, "name": f"Shape Function Second Derivative Matrix d²N/dξ² {d2N_dξ2.shape}"})
-    
-        # Log core matrices with operational context
-        self.log_matrix("stiffness", B,
-                    {**metadata, "name": f"Strain-Dsiplacement Matrix B {B.shape}"})
-        self.log_matrix("stiffness", contribution,
-                    {**metadata, "name": f"Stiffness BᵀDB {contribution.shape}"})
+        # --- header --------------------------------------------------------------
+        self.log_text(
+            "stiffness",
+            f"\nGP {gp_idx + 1}/{self.quadrature_order}: "
+            f"ξ = {xi:.6f},  x = {self._xi_to_x(xi):.6e},  w = {weight:.6e}",
+        )
+
+        # --- derivative matrices -------------------------------------------------
+        self.log_matrix(
+            "stiffness", dN_dξ,
+            {**metadata, "name": f"Shape-function derivative  dN/dξ  {dN_dξ.shape}"}
+        )
+        self.log_matrix(
+            "stiffness", d2N_dξ2,
+            {**metadata, "name": f"Second derivative  d²N/dξ²  {d2N_dξ2.shape}"}
+        )
+
+        # --- B-matrix & BᵀDB contribution --------------------------------------------
+        self.log_matrix(
+            "stiffness", B,
+            {**metadata, "name": f"Strain-displacement matrix  B  {B.shape}"}
+        )
+        self.log_matrix(
+            "stiffness", contribution,
+            {**metadata, "name": f"Gauss-point contribution  BᵀDB  {contribution.shape}"}
+        )
 
     # Force logging helpers ----------------------------------------------------------
     def _log_distributed_loads(self, xi: np.ndarray, weights: np.ndarray,

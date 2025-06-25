@@ -121,29 +121,26 @@ class CondenseModifiedSystem:
         self.adaptive_tol = max(self.base_tol, 1e-12 * max_val)
         self.logger.debug(f"Adaptive tolerance: {self.adaptive_tol:.2e}")
 
-    def apply_condensation(self) -> Tuple[np.ndarray, np.ndarray, csr_matrix, np.ndarray]:
-        """Robust condensation process with validation checkpoints."""
-        start_time = time.perf_counter()
-        self.logger.info("🚀 Starting enhanced condensation process")
-        
-        try:
-            self._compute_active_dofs()
-            self._create_intermediate_system()
-            self._identify_fully_active_dofs()
-            self._validate_condensation()
-            self._build_condensed_system()
-            self._create_verified_mapping()
-            self._export_K_cond()
-            self._export_F_cond()
-            self._export_condensed_map()
-            self._log_system_details()
-        except Exception as e:
-            self.logger.critical(f"❌ Condensation failed: {str(e)}", exc_info=True)
-            raise RuntimeError("Condensation aborted") from e
-            
-        exec_time = time.perf_counter() - start_time
-        self.logger.info(f"✅ Condensation completed in {exec_time:.2f}s")
+    def apply_condensation(self):
+        """Apply static condensation, preserving curvature DOFs and pruning only structurally zeroed DOFs."""
+        self._compute_active_dofs()
+        self.condensed_dofs = self.active_dofs.copy()
+        self.inactive_dofs = np.array([], dtype=int)
+        self._create_intermediate_system()
+
+        if self._has_truly_singular_dofs():
+            self.logger.warning("⚠️ Detected DOFs with zero stiffness coupling — pruning these DOFs.")
+            self._prune_truly_singular_dofs()
+
+        self._validate_condensation()
+        self._build_condensed_system()
+        self._create_verified_mapping()
+        self._export_condensed_map()
+        self._export_K_cond()
+        self._export_F_cond()
+        self._log_system_details()
         return self.condensed_dofs, self.inactive_dofs, self.K_cond, self.F_cond
+
 
     def _compute_active_dofs(self):
         """Compute active DOFs with validation."""
@@ -168,7 +165,8 @@ class CondenseModifiedSystem:
     def _identify_fully_active_dofs(self):
         """Identify non-zero DOFs using sparse-safe methods."""
         # Sparse row-wise non-zero detection
-        nonzero_rows = np.unique(self.K_intermediate.nonzero()[0])
+        mask = np.abs(self.K_intermediate).sum(axis=1).A1 > self.adaptive_tol
+        nonzero_rows = np.where(mask)[0]
         self.condensed_dofs = self.active_dofs[nonzero_rows]
         self.inactive_dofs = np.setdiff1d(self.active_dofs, self.condensed_dofs)
         
@@ -383,4 +381,32 @@ class CondenseModifiedSystem:
         self.logger.debug(
             "🔍 Sparse Matrix Pattern Sample:\n" + 
             sample.to_string(index=False, float_format="%.2e")
+        )
+
+    def _has_truly_singular_dofs(self) -> bool:
+        """Check for DOFs with zero stiffness coupling (rows AND columns of all zeros)."""
+        submatrix = self.K_mod[self.active_dofs][:, self.active_dofs].tocsr()
+        row_nnz = np.diff(submatrix.indptr)
+        col_nnz = np.diff(submatrix.tocsc().indptr)
+        zero_rows = row_nnz == 0
+        zero_cols = col_nnz == 0
+        return np.any(zero_rows & zero_cols)
+
+    def _prune_truly_singular_dofs(self):
+        """Prune only DOFs with no structural participation (zero in both rows and columns)."""
+        submatrix = self.K_mod[self.active_dofs][:, self.active_dofs].tocsr()
+        row_nnz = np.diff(submatrix.indptr)
+        col_nnz = np.diff(submatrix.tocsc().indptr)
+        structurally_active = (row_nnz > 0) & (col_nnz > 0)
+
+        keep_indices = np.where(structurally_active)[0]
+        self.condensed_dofs = self.active_dofs[keep_indices]
+        self.inactive_dofs = np.setdiff1d(self.active_dofs, self.condensed_dofs)
+
+        if len(self.condensed_dofs) == 0:
+            raise ValueError("All DOFs removed — system appears fully disconnected. Check K_mod and BCs.")
+
+        self.logger.warning(
+            f"Pruned {len(self.inactive_dofs)} DOFs with no structural connectivity from the active set. "
+            f"{len(self.condensed_dofs)} DOFs retained for condensation."
         )

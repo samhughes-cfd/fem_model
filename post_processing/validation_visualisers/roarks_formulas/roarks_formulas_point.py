@@ -2,135 +2,98 @@
 
 import numpy as np
 
-def roark_point_load_intensity(x, L, P, a):
+class RoarksFormulaePointLoad:
     """
-    Defines the point load intensity q(x), which is zero everywhere except at x=a.
-    The function approximates the Dirac delta function by setting q(x) = P at the
-    closest discrete point to x=a.
+    Calculates beam responses for a cantilever with point load using Roark's formulas.
+    
+    Parameters:
+        L (float): Beam length
+        E (float): Young's modulus
+        I (float): Area moment of inertia
+        P (float): Point load magnitude (positive downward)
+        a (float, optional): Load position from fixed end (0 ≤ a ≤ L)
+        load_type (str, optional): Predefined load position ('end', 'mid', 'quarter')
     """
-    q = np.zeros_like(x)
-    idx_a = np.argmin(abs(x - a))  # Find index closest to x=a
-    q[idx_a] = -P  # Negative because load acts downward
-    return q
-
-def roark_point_load_shear(x, L, P, a):
-    """
-    Roark's shear V(x) for a cantilever of length L,
-    with a point load P at x=a.
-    Returns array of shear values for each x in input array.
-    """
-    V = np.zeros_like(x)
-    for i, xv in enumerate(x):
-        if xv < a:
-            V[i] = -P
+    def __init__(self, L, E, I, P, a=None, load_type=None):
+        self.L = L
+        self.E = E
+        self.I = I
+        self.P = P
+        
+        if a is not None:
+            self.a = a
+        elif load_type is not None:
+            self.set_load_type(load_type)
         else:
-            V[i] = 0
-    return V
+            raise ValueError("Must specify either 'a' or 'load_type'")
+            
+        self.validate_parameters()
+        
+    def validate_parameters(self):
+        """Check for valid physical parameters and load position"""
+        if self.L <= 0:
+            raise ValueError("Beam length L must be positive")
+        if self.E <= 0:
+            raise ValueError("Young's modulus E must be positive")
+        if self.I <= 0:
+            raise ValueError("Moment of inertia I must be positive")
+        if not (0 <= self.a <= self.L):
+            raise ValueError(f"Load position a={self.a} must be in [0, L={self.L}]")
 
-def roark_point_load_moment(x, L, P, a):
-    """
-    Roark's bending moment M(x) for a cantilever of length L,
-    with a point load P at x=a.
-    Piecewise:
-        M(x) = -P(a - x), for 0 <= x < a
-        M(x) = 0         for a <= x <= L
-    """
-    M = np.zeros_like(x)
-    for i, xv in enumerate(x):
-        if xv < a:
-            M[i] = -P * (a - xv)
+    def set_load_type(self, load_type):
+        """Set load position using predefined types"""
+        if load_type == "end":
+            self.a = self.L
+        elif load_type == "mid":
+            self.a = self.L / 2
+        elif load_type == "quarter":
+            self.a = self.L / 4
         else:
-            M[i] = 0
-    return M
-
-def roark_point_load_rotation(x, L, E, I, P, a):
-    """
-    Roark's slope (rotation) theta_z(x) for a cantilever with a point load at x=a.
-    Piecewise:
-      for 0 <= x < a:
-         theta_z(x) = - (P * x)/(2 E I) [2a - x]
-      for a <= x <= L:
-         constant = theta_z(a)
-    """
-    theta = np.zeros_like(x)
-
-    def slope_region1(xx):
-        return -(P * xx)/(2.0 * E * I) * (2.0*a - xx)
-
-    # Evaluate slope at x=a => constant for x>=a
-    theta_a = slope_region1(a)
-
-    for i, xv in enumerate(x):
-        if xv < a:
-            theta[i] = slope_region1(xv)
-        else:
-            theta[i] = theta_a
-    return theta
-
-def roark_point_load_deflection(x, L, E, I, P, a):
-    """
-    Roark's deflection u_y(x) for a cantilever with a point load P at x=a.
-    Piecewise:
-      for 0 <= x < a:
-         u_y(x) = - (P x^2)/(6 E I) [3a - x]
-      for a <= x <= L:
-         linear extension from x=a =>  u_y(a) + theta(a)*(x - a)
-    """
-    u = np.zeros_like(x)
-
-    def defl_region1(xx):
-        return -(P * xx**2)/(6.0 * E * I) * (3.0*a - xx)
-
-    u_a = defl_region1(a)
-
-    def slope_region1(xx):
-        return -(P * xx)/(2.0 * E * I) * (2.0*a - xx)
-    theta_a = slope_region1(a)
-
-    for i, xv in enumerate(x):
-        if xv < a:
-            u[i] = defl_region1(xv)
-        else:
-            u[i] = u_a + theta_a*(xv - a)
-    return u
-
-def roark_point_load_response(x, L, E, I, P, load_type):
-    """
-    Returns a dictionary of:
-      {
-        "intensity":  q(x),
-        "shear":      V(x),
-        "moment":     M(x),
-        "rotation":   theta_z(x),
-        "deflection": u_y(x)
-      }
-    for a single concentrated load at either:
-      load_type='end'     => a = L
-      load_type='mid'     => a = L/2
-      load_type='quarter' => a = L/4
-    """
-    if load_type not in ("end","mid","quarter"):
-        raise ValueError("Invalid load_type, must be 'end','mid','quarter'.")
-
-    # Determine the load location a
-    if load_type == "end":
-        a = L
-    elif load_type == "mid":
-        a = L / 2
-    else:  # "quarter"
-        a = L / 4
-
-    # Compute piecewise arrays
-    qvals = roark_point_load_intensity(x, L, P, a)
-    Vvals = roark_point_load_shear(x, L, P, a)
-    Mvals = roark_point_load_moment(x, L, P, a)
-    thetavals = roark_point_load_rotation(x, L, E, I, P, a)
-    uvals = roark_point_load_deflection(x, L, E, I, P, a)
-
-    return {
-        "intensity":  qvals,
-        "shear":      Vvals,
-        "moment":     Mvals,
-        "rotation":   thetavals,
-        "deflection": uvals,
-    }
+            raise ValueError("load_type must be 'end', 'mid', or 'quarter'")
+    
+    def intensity(self, x):
+        """Point load intensity (Dirac delta approximation)"""
+        q = np.zeros_like(x)
+        idx = np.argmin(np.abs(x - self.a))
+        q[idx] = -self.P  # Negative for downward load
+        return q
+    
+    def shear(self, x):
+        """Shear force distribution V(x)"""
+        return np.where(x < self.a, -self.P, 0.0)
+    
+    def moment(self, x):
+        """Bending moment distribution M(x)"""
+        return np.where(x < self.a, -self.P * (self.a - x), 0.0)
+    
+    def rotation(self, x):
+        """Slope/rotation distribution θ_z(x)"""
+        theta_a = -(self.P * self.a**2) / (2 * self.E * self.I)
+        region1 = (x < self.a)
+        theta = np.empty_like(x)
+        theta[region1] = -(self.P * x[region1]) * (2*self.a - x[region1]) / (2 * self.E * self.I)
+        theta[~region1] = theta_a
+        return theta
+    
+    def deflection(self, x):
+        """Deflection distribution u_y(x)"""
+        u_a = -(self.P * self.a**3) / (3 * self.E * self.I)
+        theta_a = -(self.P * self.a**2) / (2 * self.E * self.I)
+        region1 = (x < self.a)
+        u = np.empty_like(x)
+        u[region1] = -(self.P * x[region1]**2) * (3*self.a - x[region1]) / (6 * self.E * self.I)
+        u[~region1] = u_a + theta_a * (x[~region1] - self.a)
+        return u
+    
+    def response(self, x):
+        """
+        Compute complete beam response as a dictionary of:
+        {intensity, shear, moment, rotation, deflection}
+        """
+        return {
+            "intensity": self.intensity(x),
+            "shear": self.shear(x),
+            "moment": self.moment(x),
+            "rotation": self.rotation(x),
+            "deflection": self.deflection(x)
+        }
