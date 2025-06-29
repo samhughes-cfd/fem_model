@@ -1,121 +1,186 @@
-# post_processing\graphical_visualisers\load\load_visualisation.py
+# post_processing/graphical_visualisers/load/load_visualisation.py
+"""Load-case visualisation utility (June 2025).
 
-import os
-import sys
-import glob
+• Mirrors `VisualiseDeformation` structure and path discovery.
+• Generates six-component force/moment diagrams for every load file.
+• X-axis scaling: two black reference markers (x = 0, x = L) force the
+  natural padding without hard-clipping or manual margin fiddling.
+"""
+
+from __future__ import annotations
+
+import datetime as _dt
 import re
-import numpy as np
+import sys
+from pathlib import Path
+from typing import Callable, Final, Mapping, Optional
+
 import matplotlib.pyplot as plt
-import datetime
+import numpy as np
 
-# Set up paths for imports
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../../../"))
-sys.path.append(PROJECT_ROOT)
+# ---------------------------------------------------------------------------#
+#  Project paths
+# ---------------------------------------------------------------------------#
+SCRIPT_DIR: Final[Path] = Path(__file__).resolve().parent
+PROJECT_ROOT: Final[Path] = next(
+    (p for p in SCRIPT_DIR.parents if (p / "pre_processing").is_dir()),
+    SCRIPT_DIR.parents[4],
+)
+sys.path.append(str(PROJECT_ROOT))  # local imports
 
-# Use your custom parsers and mesh parser
-from pre_processing.parsing.mesh_parser import parse_mesh
-from pre_processing.parsing.point_load_parser import parse_point_load
-from pre_processing.parsing.distributed_load_parser import parse_distributed_load
+# Local parsers
+from pre_processing.parsing.distributed_load_parser import parse_distributed_load  # type: ignore
+from pre_processing.parsing.mesh_parser import parse_mesh  # type: ignore
+from pre_processing.parsing.point_load_parser import parse_point_load  # type: ignore
 
-# Set output directory for figures similar to deformation plots
-FIGURE_OUTPUT_DIR = os.path.join(SCRIPT_DIR, "load_plots")
-os.makedirs(FIGURE_OUTPUT_DIR, exist_ok=True)
 
-def plot_load_style(load_data, job_id, load_type, save_path):
-    if load_data is None or load_data.shape[1] != 9:
-        print(f"Invalid load data shape for job_{job_id}: {load_data.shape if load_data is not None else 'None'}")
-        return
+class VisualiseLoad:
+    """Produce force & moment diagrams for every load file in each job."""
 
-    x_vals = load_data[:, 0]
-    forces = load_data[:, 3:6]
-    moments = load_data[:, 6:9]
-    labels = [r"$F_x$", r"$F_y$", r"$F_z$", r"$M_x$", r"$M_y$", r"$M_z$"]
+    _BLUE: Final[str] = "#4F81BD"
 
-    fig, axes = plt.subplots(3, 2, figsize=(15, 10), sharex=True)
-    fig.suptitle(f"{load_type.capitalize()} Load - job_{job_id}", fontsize=16, fontweight='bold')
-    color = "blue"
+    def __init__(self) -> None:
+        self.figure_output_dir: Final[Path] = SCRIPT_DIR / "load_plots"
+        self.figure_output_dir.mkdir(exist_ok=True)
 
-    for i in range(3):
-        ax_f = axes[i, 0]
-        ax_m = axes[i, 1]
-
-        # Plot forces
-        if load_type == "distributed":
-            ax_f.plot(x_vals, forces[:, i], color=color, linewidth=2)
-            ax_f.fill_between(x_vals, forces[:, i], 0, color=color, alpha=0.25)
-        else:
-            # For point loads, draw vertical lines with an arrowhead marker where nonzero.
-            for x, y in zip(x_vals, forces[:, i]):
-                if y != 0:
-                    ax_f.plot([x, x], [0, y], color=color, linewidth=2)
-                    ax_f.plot(x, y, marker="v", color=color, markersize=8)
-        
-        # Plot moments
-        if load_type == "distributed":
-            ax_m.plot(x_vals, moments[:, i], color=color, linewidth=2)
-            ax_m.fill_between(x_vals, moments[:, i], 0, color=color, alpha=0.25)
-        else:
-            for x, y in zip(x_vals, moments[:, i]):
-                if y != 0:
-                    ax_m.plot([x, x], [0, y], color=color, linewidth=2)
-                    ax_m.plot(x, y, marker="v", color=color, markersize=8)
-
-        ax_f.set_ylabel(labels[i], fontsize=12)
-        ax_m.set_ylabel(labels[i + 3], fontsize=12)
-
-        ax_f.axhline(0, color='k', linestyle='--', linewidth=0.75)
-        ax_m.axhline(0, color='k', linestyle='--', linewidth=0.75)
-        ax_f.grid(True, linestyle='--', alpha=0.6)
-        ax_m.grid(True, linestyle='--', alpha=0.6)
-
-        if i == 0:
-            ax_f.set_title("Forces", fontsize=12, fontweight='bold')
-            ax_m.set_title("Moments", fontsize=12, fontweight='bold')
-
-    axes[-1, 0].set_xlabel(r"$x$ [m]", fontsize=12)
-    axes[-1, 1].set_xlabel(r"$x$ [m]", fontsize=12)
-
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.9)
-    plt.savefig(save_path, dpi=300)
-    plt.close(fig)
-
-def process_all_loads():
-    jobs_dir = os.path.join(PROJECT_ROOT, "jobs")
-    job_dirs = sorted(glob.glob(os.path.join(jobs_dir, "job_*")))
-
-    for job_path in job_dirs:
-        job_id_match = re.search(r"job_(\d+)", job_path)
-        if not job_id_match:
-            continue
-        job_id = job_id_match.group(1)
-
-        mesh_path = os.path.join(job_path, "mesh.txt")
-        if not os.path.exists(mesh_path):
-            continue
-
-        mesh_dict = parse_mesh(mesh_path)
-        if 'node_coordinates' not in mesh_dict:
-            continue
-
-        # Loop over both load types with their corresponding parser functions.
-        for load_type, parser_func in {
+        self.jobs_dir: Final[Path] = PROJECT_ROOT / "jobs"
+        self._parsers: Final[Mapping[str, Callable[[Path], np.ndarray]]] = {
             "point": parse_point_load,
-            "distributed": parse_distributed_load
-        }.items():
-            load_file = os.path.join(job_path, f"{load_type}_load.txt")
-            if os.path.exists(load_file):
-                print(f"Processing {load_type} load for job_{job_id}")
+            "distributed": parse_distributed_load,
+        }
+
+    # ------------------------------------------------------------------#
+    #  Plot helper
+    # ------------------------------------------------------------------#
+    def _plot(
+        self,
+        load: np.ndarray,
+        *,
+        load_type: str,
+        L: float,
+        title_suffix: str,
+        save_path: Path,
+    ) -> None:
+        """Plot 3 force + 3 moment profiles, anchoring x at 0 and L."""
+        if load.shape[1] != 9:
+            raise ValueError("load array must be (n, 9) [x,y,z,Fx,Fy,Fz,Mx,My,Mz]")
+
+        x = load[:, 0]
+        F = load[:, 3:6]
+        M = load[:, 6:9]
+
+        labels = [
+            r"$F_x\,[\mathrm{N}]$",
+            r"$F_y\,[\mathrm{N}]$",
+            r"$F_z\,[\mathrm{N}]$",
+            r"$M_x\,[\mathrm{N\,m}]$",
+            r"$M_y\,[\mathrm{N\,m}]$",
+            r"$M_z\,[\mathrm{N\,m}]$",
+        ]
+
+        fig, axes = plt.subplots(3, 2, figsize=(15, 10), sharex=True)
+        fig.suptitle(
+            f"{load_type.capitalize()} load – {title_suffix}",
+            fontsize=16,
+            fontweight="bold",
+        )
+
+        # iterate rows: Fx/Fy/Fz and Mx/My/Mz
+        for i, (ax_F, ax_M) in enumerate(zip(axes[:, 0], axes[:, 1])):
+            # --- Forces ---
+            if load_type == "distributed":
+                ax_F.plot(x, F[:, i], color=self._BLUE, linewidth=2)
+                ax_F.fill_between(x, F[:, i], 0, color=self._BLUE, alpha=0.25)
+            else:  # point loads
+                for xi, yi in zip(x, F[:, i]):
+                    if yi == 0:
+                        continue
+                    ax_F.plot([xi, xi], [0, yi], color=self._BLUE, linewidth=2)
+                    ax_F.plot(xi, yi, marker="v", color=self._BLUE, markersize=8)
+
+            # --- Moments ---
+            if load_type == "distributed":
+                ax_M.plot(x, M[:, i], color=self._BLUE, linewidth=2)
+                ax_M.fill_between(x, M[:, i], 0, color=self._BLUE, alpha=0.25)
+            else:
+                for xi, yi in zip(x, M[:, i]):
+                    if yi == 0:
+                        continue
+                    ax_M.plot([xi, xi], [0, yi], color=self._BLUE, linewidth=2)
+                    ax_M.plot(xi, yi, marker="v", color=self._BLUE, markersize=8)
+
+            # --- anchor beam ends (x = 0 & x = L) to drive axis scaling ---
+            for ax in (ax_F, ax_M):
+                ax.plot([0], [0], marker="o", color="k", markersize=3)
+                ax.plot([L], [0], marker="o", color="k", markersize=3)
+                ax.axhline(0, color="k", linestyle="--", linewidth=0.8)
+                ax.grid(ls="--", alpha=0.6)
+
+            # labels & titles
+            ax_F.set_ylabel(labels[i])
+            ax_M.set_ylabel(labels[i + 3])
+            if i == 0:
+                ax_F.set_title("Forces", fontweight="bold")
+                ax_M.set_title("Moments", fontweight="bold")
+
+        axes[-1, 0].set_xlabel(r"$x\,[\mathrm{m}]$")
+        axes[-1, 1].set_xlabel(r"$x\,[\mathrm{m}]$")
+
+        fig.tight_layout()
+        fig.subplots_adjust(top=0.88)
+        fig.savefig(save_path, dpi=300)
+        plt.close(fig)
+
+    # ------------------------------------------------------------------#
+    #  Driver
+    # ------------------------------------------------------------------#
+    def process_all(self) -> None:
+        """Scan each job_* folder and visualise its load files."""
+        for job_dir in sorted(self.jobs_dir.glob("job_*")):
+            m = re.match(r"job_(\d+)", job_dir.name)
+            if not m:
+                continue
+            job_id = m.group(1)
+
+            # --- Length L from mesh (preferred) or load x-span (fallback) ---
+            L: Optional[float] = None
+            mesh_file = job_dir / "mesh.txt"
+            if mesh_file.is_file():
                 try:
-                    load_data = parser_func(load_file)
-                    # Obtain a timestamp from the modification time of the load file
-                    timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(load_file)).strftime("%Y-%m-%d_%H-%M-%S")
-                    fig_name = f"load_job_{job_id}_{timestamp}.png"
-                    fig_path = os.path.join(FIGURE_OUTPUT_DIR, fig_name)
-                    plot_load_style(load_data, job_id, load_type, fig_path)
-                except Exception as e:
-                    print(f"Failed to parse {load_type} load for job_{job_id}: {e}")
+                    mesh = parse_mesh(mesh_file)
+                    xs = mesh["node_coordinates"][:, 0]
+                    L = float(xs.max() - xs.min())
+                except Exception:
+                    pass  # fall back later
+
+            for load_type, parser in self._parsers.items():
+                load_file = job_dir / f"{load_type}_load.txt"
+                if not load_file.is_file():
+                    continue
+
+                try:
+                    load_arr = parser(load_file)
+                except Exception as exc:
+                    print(f"⚠️  job_{job_id}: cannot parse {load_type} load – {exc}")
+                    continue
+
+                if L is None or L <= 0:
+                    xs = load_arr[:, 0]
+                    L = float(xs.max() - xs.min()) if xs.size else 1.0
+
+                ts = _dt.datetime.fromtimestamp(
+                    load_file.stat().st_mtime
+                ).strftime("%Y-%m-%d_%H-%M-%S")
+                fig_name = f"load_job_{job_id}_{ts}.png"
+
+                self._plot(
+                    load_arr,
+                    load_type=load_type,
+                    L=L,
+                    title_suffix=f"job_{job_id}_{ts}",
+                    save_path=self.figure_output_dir / fig_name,
+                )
+
 
 if __name__ == "__main__":
-    process_all_loads()
+    VisualiseLoad().process_all()

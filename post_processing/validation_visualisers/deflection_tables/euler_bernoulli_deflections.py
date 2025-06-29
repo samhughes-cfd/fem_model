@@ -267,6 +267,6 @@ def plot_jobs(jobs: list[str]) -> None:
 # ────────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     # Edit this list to choose which jobs to plot
-    JOBS = ["job_0011"]
+    JOBS = ["job_0001"]
 
     plot_jobs(JOBS)
