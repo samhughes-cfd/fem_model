@@ -1,0 +1,5 @@
+[Solver]
+[type]      
+Static             
+#Dynamic          
+#Modal
