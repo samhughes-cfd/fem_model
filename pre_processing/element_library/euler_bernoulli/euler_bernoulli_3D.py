@@ -2,7 +2,6 @@
 
 import numpy as np
 from typing import Tuple
-import os
 
 # Import Element1DBase class
 from pre_processing.element_library.element_1D_base import Element1DBase
@@ -27,14 +26,16 @@ class EulerBernoulliBeamElement3D(Element1DBase):
     - Integrated logging system for stiffness matrices and force vectors
     """
     
-    def __init__(self, 
-                 geometry_array: np.ndarray,
-                 material_array: np.ndarray,
-                 mesh_dictionary: dict,
+    def __init__(self,
+                 *, 
+                 element_id: int,
+                 element_dictionary: dict,
+                 grid_dictionary: dict,
+                 section_dictionary: dict,
+                 material_dictionary: dict,
                  point_load_array: np.ndarray,
                  distributed_load_array: np.ndarray,
                  job_results_dir: str,
-                 element_id: int,
                  quadrature_order: int = 3):
         
         """
@@ -51,25 +52,31 @@ class EulerBernoulliBeamElement3D(Element1DBase):
             logger_operator: Configured logger operator for element-specific logging
         """
 
-        element_id = int(element_id)
-
         super().__init__(
-            geometry_array=geometry_array,
-            material_array=material_array,
-            mesh_dictionary=mesh_dictionary,
+            element_id=element_id,
+            element_dictionary=element_dictionary,
+            grid_dictionary=grid_dictionary,
+            material_dictionary=material_dictionary,
+            section_dictionary=section_dictionary,
             point_load_array=point_load_array,
             distributed_load_array=distributed_load_array,
             job_results_dir=job_results_dir,
-            element_id=element_id,
             dof_per_node=6,
         )
-        
+
         self.quadrature_order = quadrature_order
 
+        # Geometry
+        self.node_coords = self.grid_array                         
+        self.L = np.linalg.norm(self.node_coords[1] - self.node_coords[0])
+        self.x_start, *_, self.x_end = self.node_coords[[0, 1], 0]
+
+        self.x_global_start = grid_dictionary["coordinates"][:, 0].min()
+        self.x_global_end = grid_dictionary["coordinates"][:, 0].max()
+
         # Initialize element properties and validate
-        self._init_element_geometry()
         self._validate_element_properties()
-        self._validate_logging_setup()
+        self._assert_logging_ready()
     
         # Initialize operator classes
         self.shape_function_operator = ShapeFunctionOperator(element_length=self.L)
@@ -83,92 +90,53 @@ class EulerBernoulliBeamElement3D(Element1DBase):
             torsion_constant=self.J_t,
         )
 
-    def _init_element_geometry(self) -> None:
-        """Initialize element-specific geometric properties with full validation"""
-        # Convert to numpy array for vectorized operations
-        element_ids = np.array(self.mesh_dictionary["element_ids"])
+    def _validate_element_properties(self) -> None:
+        """Validate critical element properties"""
+        if self.L <= 0:
+            raise ValueError(f"Invalid element length {self.L:.2e} for element {self.element_id}")
+        if self.material_array.size != 4 or self.section_array.size != 5:
+            raise ValueError("Material/section arrays not properly initialised")
     
-        # Find actual index position in the element_ids array
-        element_index = np.where(element_ids == self.element_id)[0]
-    
-        # Validate element existence
-        if len(element_index) == 0:
-            if len(element_ids) > 0:
-                valid_ids = f"Valid IDs: {element_ids.min()}–{element_ids.max()}"
-            else:
-                valid_ids = "Mesh contains no elements"
-            raise ValueError(f"Element ID {self.element_id} not found. {valid_ids}")
-    
-        # Get connectivity with validated index
-        conn = self.mesh_dictionary["connectivity"][element_index[0]]
-    
-        # Validate node indices
-        node_coords = self.mesh_dictionary["node_coordinates"]
-        max_node_idx = len(node_coords) - 1
-        invalid_nodes = [nid for nid in conn if nid < 0 or nid > max_node_idx]
-    
-        if invalid_nodes:
-            raise ValueError(
-                f"Element {self.element_id} contains invalid node indices: {invalid_nodes}. "
-                f"Valid node indices: 0–{max_node_idx}"
-            )
-    
-        # Set geometric properties
-        self.node_coords = node_coords[conn]
-        self.x_start = self.node_coords[0, 0]
-        self.x_end = self.node_coords[1, 0]
-        self.L = self.x_end - self.x_start
-    
-        # Cache global X maximum for boundary conditions
-        self.x_global_end = np.max(node_coords[:, 0])
-    
-        # Debug logging
-        self.logger.debug(
-            f"Element {self.element_id} geometry initialized\n"
+        # quick access to node-id pair (n1, n2) from the slice array
+        conn = tuple(self.element_array[1:3])
+
+        logger.debug(        # ← use the module-level logger
+            f"Element {self.element_id} geometry initialised\n"
             f"• Connectivity: {conn}\n"
             f"• Length: {self.L:.4e}\n"
             f"• Start/End X: {self.x_start:.4e} / {self.x_end:.4e}"
         )
 
-    def _validate_element_properties(self) -> None:
-        """Validate critical element properties"""
-        if self.L <= 0:
-            raise ValueError(f"Invalid element length {self.L:.2e} for element {self.element_id}")
-        if not hasattr(self, 'material_array') or self.material_array.size == 0:
-            raise ValueError("Material properties not properly initialized")
-        if self.geometry_array.shape != (1, 20):
-            raise ValueError("Geometry array must have shape (1, 20)")
-
     # Property definitions -----------------------------------------------------
     @property
     def A(self) -> float:
         """Cross-sectional area (m²)"""
-        return self.geometry_array[0, 1]
-    
-    @property
-    def E(self) -> float:
-        """Young's modulus (Pa)"""
-        return self.material_array[0, 0]
+        return self.section_array[0]
     
     @property
     def I_y(self) -> float:
         """Moment of inertia about y-axis (m⁴)"""
-        return self.geometry_array[0, 3]
+        return self.section_array[2]
     
     @property
     def I_z(self) -> float:
         """Moment of inertia about z-axis (m⁴)"""
-        return self.geometry_array[0, 4]
-    
-    @property
-    def G(self) -> float:
-        """Shear modulus (Pa)"""
-        return self.material_array[0, 1]
+        return self.section_array[3]
     
     @property
     def J_t(self) -> float:
-        """Torsional moment of inertia (m⁴)"""
-        return self.geometry_array[0, 6]
+        """Torsional constant (m⁴)"""
+        return self.section_array[4]
+    
+    @property
+    def E(self) -> float:
+        """Young's modulus (Pa)"""
+        return self.material_array[0]
+
+    @property
+    def G(self) -> float:
+        """Shear modulus (Pa)"""
+        return self.material_array[1]
 
     @property
     def jacobian_determinant(self) -> float:

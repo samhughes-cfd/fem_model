@@ -5,7 +5,6 @@ import numpy as np
 from collections import defaultdict
 from typing import Dict, Optional, ClassVar, Any
 from pathvalidate import sanitize_filename
-import errno
 
 class LoggingConfigurationError(RuntimeError):
     """Custom exception for logging configuration failures"""

@@ -1,0 +1,3 @@
+2025-07-06 14:21:26,561 - DEBUG - 🔧 Logging configured — output will be written to: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\workflow_orchestrator\run_job.log
+2025-07-06 14:21:26,562 - INFO - 🚀 Starting FEM Simulation Workflow
+2025-07-06 14:21:26,566 - INFO - 🟢 Running 6 jobs across 6 CPU cores.

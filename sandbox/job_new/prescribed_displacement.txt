@@ -1,0 +1,8 @@
+[Prescribed Displacement]
+[id]     [node_id]  [dof]   [value]     [type]          [comment]
+0        0          UX      0.0         displacement     # Fixed support - no x translation
+1        0          UY      0.0         displacement     # Fixed support - no y translation
+2        0          UZ      0.0         displacement     # Fixed support - no z translation
+3        0          RX      0.0         displacement     # Fixed support - no x rotation
+4        0          RY      0.0         displacement     # Fixed support - no y rotation
+5        0          RZ      0.0         displacement     # Fixed support - no z rotation

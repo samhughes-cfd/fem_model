@@ -1,0 +1,12 @@
+[Element]
+[element_id]  [node1]  [node2]  [element_type]               [axial_order]  [bending_y_order]  [bending_z_order]  [shear_y_order]  [shear_z_order]  [torsion_order]  [load_order]
+0             0        1        EulerBernoulliBeamElement3D  2              3                  3                  0                0                2                2
+1             1        2        EulerBernoulliBeamElement3D  2              3                  3                  0                0                2                2
+2             2        3        EulerBernoulliBeamElement3D  2              3                  3                  0                0                2                2
+3             3        4        EulerBernoulliBeamElement3D  2              3                  3                  0                0                2                2
+4             4        5        EulerBernoulliBeamElement3D  2              3                  3                  0                0                2                2
+5             5        6        EulerBernoulliBeamElement3D  2              3                  3                  0                0                2                2
+6             6        7        EulerBernoulliBeamElement3D  2              3                  3                  0                0                2                2
+7             7        8        EulerBernoulliBeamElement3D  2              3                  3                  0                0                2                2
+8             8        9        EulerBernoulliBeamElement3D  2              3                  3                  0                0                2                2
+9             9        10       EulerBernoulliBeamElement3D  2              3                  3                  0                0                2                2

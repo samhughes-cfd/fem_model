@@ -1,0 +1,5 @@
+[Solver]
+[simulation_type]
+Static         
+#Dynamic           
+#Modal

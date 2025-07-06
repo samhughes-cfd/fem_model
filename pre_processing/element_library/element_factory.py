@@ -1,214 +1,256 @@
 # pre_processing/element_library/element_factory.py
 
 import importlib
-import numpy as np
 import logging
 import os
-from pathvalidate import sanitize_filename
-from typing import List, Dict, Any, TYPE_CHECKING
-from pre_processing.element_library.base_logger_operator import BaseLoggerOperator, LoggingConfigurationError
+from typing import Any, Dict, List, TYPE_CHECKING
 
-if TYPE_CHECKING:
+import numpy as np
+
+if TYPE_CHECKING:  # avoid runtime circular import
     from pre_processing.element_library.element_1D_base import Element1DBase
 
-logger = logging.getLogger(__name__)
 
-ELEMENT_CLASS_MAP = {
-    "EulerBernoulliBeamElement3D": "pre_processing.element_library.euler_bernoulli.euler_bernoulli_3D"  
-}
+class ElementFactory:
+    """
+    Batch-builds 1-D element objects and validates their logging infrastructure.
 
-def create_elements_batch(mesh_dictionary: Dict[str, Any], params_list: List[Dict[str, Any]]) -> List['Element1DBase']:
-    logger.info("🔧 Starting element batch creation for %d elements", len(params_list))
-    from pre_processing.element_library.element_1D_base import Element1DBase
+    Notes
+    -----
+    * Concrete element classes (e.g. ``EulerBernoulliBeamElement3D``) **must**
+      inherit from
+      :class:`pre_processing.element_library.element_1D_base.Element1DBase`.
+    * Classes are discovered via :pyattr:`ELEMENT_CLASS_MAP`.
+    * Per-element logs are written to ``<job_results_dir>/logs``.
+    """
 
-    element_ids_array = _sanitize_element_ids(mesh_dictionary["element_ids"])
-
-    if len(element_ids_array) != len(params_list):
-        logger.error("❌ Element ID count mismatch: %d IDs vs %d parameter sets", len(element_ids_array), len(params_list))
-        raise ValueError("Element ID count mismatch")
-
-    for param, elem_id in zip(params_list, element_ids_array):
-        param["element_id"] = int(elem_id)
-
-    _validate_mesh_dictionary(mesh_dictionary)
-    _validate_params_structure(params_list)
-
-    element_types_array = np.asarray(mesh_dictionary["element_types"])
-
-    job_dir = _validate_job_environment(params_list)
-    modules = _load_element_modules(element_types_array)
-
-    elements = _instantiate_elements(
-        element_types_array,
-        element_ids_array,
-        params_list,
-        modules
-    )
-
-    _validate_logging_infrastructure(elements, job_dir)
-
-    logger.info("✅ Successfully created and validated %d elements", len(elements))
-    return elements
-
-def _validate_mesh_dictionary(mesh_dict: Dict[str, Any]) -> None:
-    required_keys = {"element_types", "element_ids", "connectivity", "node_coordinates"}
-    missing_keys = required_keys - mesh_dict.keys()
-    if missing_keys:
-        logger.critical("❌ Missing required mesh keys: %s", missing_keys)
-        raise KeyError(f"Missing required mesh keys: {missing_keys}")
-
-    if len(mesh_dict["element_ids"]) != len(mesh_dict["element_types"]):
-        logger.error("❌ Element IDs and types array size mismatch")
-        raise ValueError("Element IDs and types array size mismatch")
-
-def _validate_params_structure(params_list: List[Dict[str, Any]]) -> None:
-    required_params = {
-        "geometry_array", "material_array", "mesh_dictionary",
-        "point_load_array", "distributed_load_array",
-        "job_results_dir", "element_id"
+    ELEMENT_CLASS_MAP = {
+        "EulerBernoulliBeamElement3D":
+            "pre_processing.element_library.euler_bernoulli.euler_bernoulli_3D",
     }
-    for idx, params in enumerate(params_list):
-        missing = required_params - params.keys()
+
+    # ------------------------------------------------------------------ #
+    def __init__(self, job_results_dir: str) -> None:
+        """
+        Parameters
+        ----------
+        job_results_dir
+            Root directory where each element’s log files will be created.
+        """
+        self.job_results_dir = job_results_dir
+        self.logger = self._setup_logger()
+
+    # ------------------------------------------------------------------ #
+    def create_elements_batch(
+        self,
+        *,
+        element_ids: np.ndarray,
+        element_dictionary: Dict[str, Any],
+        grid_dictionary: Dict[str, Any],
+        material_dictionary: Dict[str, Any],
+        section_dictionary: Dict[str, Any],
+        point_load_array: np.ndarray,
+        distributed_load_array: np.ndarray,
+    ) -> List["Element1DBase"]:
+        """
+        Instantiate one element object for every ID in *element_ids*.
+
+        Parameters
+        ----------
+        element_ids
+            NumPy ``int64`` array of element IDs. Order must match
+            ``element_dictionary["types"]`` and ``["connectivity"]``.
+        element_dictionary
+            Parsed output from :class:`ElementParser`.
+            Required keys: ``"ids"``, ``"types"``, ``"connectivity"``.
+        grid_dictionary
+            Parsed output from :class:`GridParser`.
+        material_dictionary
+            Parsed output from :class:`MaterialParser`.
+        section_dictionary
+            Parsed output from :class:`SectionParser`.
+        point_load_array
+            ``(N, 4)`` array or empty array of point-load data.
+        distributed_load_array
+            ``(N, 5)`` array or empty array of distributed-load data.
+
+        Returns
+        -------
+        list[Element1DBase]
+            One instance per ID in *element_ids*.
+        """
+        self.logger.info("🚩 Starting batch element creation.")
+
+        element_ids_array = self._sanitize_element_ids(element_ids)
+        self._validate_element_dictionary(element_dictionary)
+
+        element_types_array = np.asarray(element_dictionary["types"])
+        if len(element_types_array) != len(element_ids_array):
+            self.logger.error(
+                "Element ID / type count mismatch: IDs=%d, types=%d",
+                len(element_ids_array), len(element_types_array),
+            )
+            raise ValueError("Mismatch between element IDs and types.")
+
+        modules = self._load_element_modules(element_types_array)
+
+        elements: List["Element1DBase"] = []
+        for etype, eid in zip(element_types_array, element_ids_array):
+            params = {
+                "element_id":             int(eid),
+                "element_dictionary":     element_dictionary,
+                "grid_dictionary":        grid_dictionary,
+                "material_dictionary":    material_dictionary,
+                "section_dictionary":     section_dictionary,
+                "point_load_array":       point_load_array,
+                "distributed_load_array": distributed_load_array,
+                "job_results_dir":        self.job_results_dir,
+            }
+            elem = self._instantiate_element(etype, eid, params, modules)
+            elements.append(elem)
+            self.logger.debug("✅ Element %s (%s) instantiated.", eid, etype)
+
+        self._validate_logging_infrastructure(elements)
+        self.logger.info("✅ Batch element creation complete.")
+        return elements
+
+    # ------------------------------------------------------------------ #
+    # PRIVATE HELPERS
+    # ------------------------------------------------------------------ #
+    def _setup_logger(self) -> logging.Logger:
+        """
+        Create a dedicated file logger ``ElementFactory.log`` under
+        ``<job_results_dir>/logs``. Duplicate handlers are purged to avoid
+        repeated messages in multi-process runs.
+        """
+        log_dir = os.path.join(self.job_results_dir, "logs")
+        os.makedirs(log_dir, exist_ok=True)
+
+        logger = logging.getLogger("ElementFactory")
+        logger.setLevel(logging.DEBUG)
+        if logger.handlers:
+            logger.handlers.clear()
+
+        fh = logging.FileHandler(
+            os.path.join(log_dir, "ElementFactory.log"), mode="w", encoding="utf-8"
+        )
+        fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s]: %(message)s"))
+        logger.addHandler(fh)
+        logger.propagate = False
+
+        logger.debug("🟢 ElementFactory logger initialised.")
+        return logger
+
+    # .................................................................. #
+    def _sanitize_element_ids(self, raw_ids) -> np.ndarray:
+        """
+        Convert *raw_ids* to ``int64`` NumPy array and verify positivity.
+
+        Raises
+        ------
+        ValueError
+            If any ID is negative or non-numeric.
+        """
+        try:
+            ids = np.asarray(raw_ids, dtype=np.int64)
+            if np.any(ids < 0):
+                raise ValueError("Negative element IDs detected.")
+            self.logger.debug("Element IDs sanitised: %s", ids.tolist())
+            return ids
+        except Exception as exc:
+            self.logger.error("Invalid element IDs.", exc_info=True)
+            raise ValueError("Invalid element IDs") from exc
+
+    # .................................................................. #
+    def _validate_element_dictionary(self, element_dict: Dict[str, Any]) -> None:
+        """
+        Ensure *element_dict* has the mandatory keys ``ids``, ``types``,
+        ``connectivity``.
+        """
+        required = {"types", "ids", "connectivity"}
+        missing = required - element_dict.keys()
         if missing:
-            logger.error("❌ Element %d missing required parameters: %s", idx, missing)
-            raise KeyError(f"Missing required parameters: {missing}")
+            self.logger.error("Missing keys in element dictionary: %s", missing)
+            raise KeyError(f"Missing keys: {missing}")
 
-        type_checks = [
-            ("geometry_array", np.ndarray),
-            ("material_array", np.ndarray),
-            ("mesh_dictionary", dict),
-            ("point_load_array", np.ndarray),
-            ("distributed_load_array", np.ndarray),
-            ("element_id", (int, np.integer)),
-            ("job_results_dir", str)
-        ]
+    # .................................................................. #
+    def _load_element_modules(self, element_types: np.ndarray) -> Dict[str, Any]:
+        """
+        Dynamically import every unique element module referenced in
+        *element_types*.
 
-        for param_name, param_type in type_checks:
-            if not isinstance(params[param_name], param_type):
-                logger.error("❌ Parameter '%s' in element %d is of incorrect type: expected %s, got %s", param_name, idx, param_type, type(params[param_name]))
-                raise TypeError(f"{param_name} must be {param_type}, got {type(params[param_name])}")
+        Returns
+        -------
+        dict
+            Mapping ``element_type → imported module``.
+        """
+        modules: Dict[str, Any] = {}
+        for etype in np.unique(element_types):
+            if etype not in self.ELEMENT_CLASS_MAP:
+                self.logger.error("Unregistered element type: %s", etype)
+                raise ValueError(f"Unregistered element type: {etype}")
 
-def _sanitize_element_ids(raw_ids: List[Any]) -> np.ndarray:
-    converted = []
-    for idx, raw_id in enumerate(raw_ids):
-        try:
-            if isinstance(raw_id, str):
-                clean_id = raw_id.strip()
-                if not clean_id.isdigit():
-                    logger.error("❌ Non-numeric element ID at index %d: '%s'", idx, raw_id)
-                    raise ValueError(f"Non-numeric ID at position {idx}: '{raw_id}'")
-                converted.append(int(clean_id))
-            else:
-                converted.append(int(raw_id))
-        except (ValueError, TypeError) as e:
-            logger.error("❌ Invalid element ID at index %d: %s", idx, raw_id, exc_info=True)
-            raise
+            module_path = self.ELEMENT_CLASS_MAP[etype]
+            try:
+                module = importlib.import_module(module_path)
+                if not hasattr(module, etype):
+                    raise AttributeError(
+                        f"Module {module_path} missing class {etype}"
+                    )
+                modules[etype] = module
+                self.logger.debug("Module for %s loaded.", etype)
+            except Exception as exc:
+                self.logger.error("Cannot load module %s", module_path, exc_info=True)
+                raise ImportError(f"Cannot load module {module_path}") from exc
+        return modules
 
-    ids_array = np.array(converted, dtype=np.int64)
-    logger.debug("✅ Sanitized element IDs: %s", ids_array.tolist())
-    if np.any(ids_array < 0):
-        raise ValueError("Negative element IDs found")
-    return ids_array
+    # .................................................................. #
+    def _instantiate_element(
+        self,
+        etype: str,
+        eid: int,
+        params: Dict[str, Any],
+        modules: Dict[str, Any],
+    ) -> "Element1DBase":
+        """
+        Instantiate a single element given its type *etype* and constructor
+        *params* pulled from the various dictionaries.
+        """
+        from pre_processing.element_library.element_1D_base import Element1DBase
 
-def _validate_job_environment(params_list: List[Dict[str, Any]]) -> str:
-    directories = {p["job_results_dir"] for p in params_list}
-    if len(directories) > 1:
-        logger.critical("❌ Multiple job directories found: %s", directories)
-        raise ValueError("All elements must share the same job_results_dir")
+        cls = getattr(modules[etype], etype)
+        if not issubclass(cls, Element1DBase):
+            raise TypeError(f"Class {etype} must inherit from Element1DBase.")
 
-    job_dir = directories.pop()
-    if not os.path.isdir(job_dir):
-        logger.critical("❌ Job directory missing: %s", job_dir)
-        raise FileNotFoundError(f"Job directory {job_dir} missing")
-    if not os.access(job_dir, os.W_OK):
-        logger.critical("❌ Write access denied to job directory: %s", job_dir)
-        raise PermissionError(f"Write access denied for {job_dir}")
+        return cls(**params)
 
-    logger.debug("📁 Job directory validated: %s", job_dir)
-    return job_dir
+    # .................................................................. #
+    def _validate_logging_infrastructure(self, elements: List["Element1DBase"]) -> None:
+        """
+        Smoke-test each element’s `logger_operator` by writing a dummy matrix
+        and confirming a non-empty file on disk.
 
-def _load_element_modules(element_types: np.ndarray) -> Dict[str, Any]:
-    modules = {}
-    for etype in np.unique(element_types):
-        if etype not in ELEMENT_CLASS_MAP:
-            logger.error("❌ Unregistered element type: %s", etype)
-            raise ValueError(f"Unregistered element type: {etype}")
+        Raises
+        ------
+        RuntimeError
+            If any element fails the logging check.
+        """
+        import numpy as np  # local to keep top-level deps minimal
 
-        try:
-            module = importlib.import_module(ELEMENT_CLASS_MAP[etype])
-            if not hasattr(module, etype):
-                raise AttributeError(f"Module missing class {etype}")
-            modules[etype] = module
-            logger.debug("✅ Loaded module for element type: %s", etype)
-        except ImportError as e:
-            logger.critical("❌ Import failed for element type '%s': %s", etype, e, exc_info=True)
-            raise RuntimeError(f"Critical dependency error: {etype}") from e
-
-    return modules
-
-def _instantiate_elements(
-    element_types: np.ndarray,
-    element_ids: np.ndarray,
-    params_list: List[Dict[str, Any]],
-    modules: Dict[str, Any]
-) -> List['Element1DBase']:
-    elements = []
-    for idx, (etype, eid, params) in enumerate(zip(element_types, element_ids, params_list)):
-        try:
-            cls = getattr(modules[etype], etype)
-            init_params = {
-                "geometry_array": params["geometry_array"],
-                "material_array": params["material_array"].astype(np.float64),
-                "mesh_dictionary": params["mesh_dictionary"],
-                "point_load_array": params["point_load_array"],
-                "distributed_load_array": params["distributed_load_array"],
-                "job_results_dir": str(params["job_results_dir"]),
-                "element_id": int(params["element_id"])
-            }
-            optional_params = {
-                "dof_per_node": params.get("dof_per_node"),
-                "quadrature_order": params.get("quadrature_order")
-            }
-            init_params.update({k: v for k, v in optional_params.items() if v is not None})
-
-            from pre_processing.element_library.element_1D_base import Element1DBase
-            if not issubclass(cls, Element1DBase):
-                raise TypeError(f"{cls.__name__} must inherit from Element1DBase")
-
-            element = cls(**init_params)
-            logger.info("🧱 Instantiated element %d (type %s)", eid, etype)
-            elements.append(element)
-
-        except Exception as e:
-            logger.error("❌ Failed to instantiate element ID %s (type %s): %s", eid, etype, e, exc_info=True)
-            logger.debug("💥 Params snapshot: %s", {k: str(v)[:100] for k, v in params.items()})
-            raise RuntimeError(f"Element {int(eid)} instantiation failed") from e
-
-    return elements
-
-def _validate_logging_infrastructure(elements: List['Element1DBase'], job_dir: str) -> None:
-    required_subdirs = ["element_stiffness_matrices", "element_force_vectors"]
-    for subdir in required_subdirs:
-        dir_path = os.path.join(job_dir, subdir)
-        if not os.path.isdir(dir_path):
-            logger.error("❌ Missing directory for logging: %s", dir_path)
-            raise FileNotFoundError(f"Missing directory: {dir_path}")
-        if not os.access(dir_path, os.W_OK):
-            logger.error("❌ Write protected log directory: %s", dir_path)
-            raise PermissionError(f"Write protected: {dir_path}")
-
-    for element in elements:
-        logger_operator = element.logger_operator
-        try:
-            test_matrix = np.zeros((2,2), dtype=np.float64)
-            logger_operator.log_matrix("stiffness", test_matrix, {"name": "Validation Matrix"})
-            logger_operator.flush_all()
-            log_path = logger_operator._get_log_path("stiffness")
-            if not os.path.isfile(log_path) or os.path.getsize(log_path) == 0:
-                raise IOError(f"Log file verification failed: {log_path}")
-            logger.debug("✅ Logging test passed for element %s", element.element_id)
-        except Exception as e:
-            logger.error("❌ Logging infrastructure invalid for element %s: %s", element.element_id, e, exc_info=True)
-            raise LoggingConfigurationError(
-                f"Logging validation failed for element {element.element_id}"
-            ) from e
+        for elem in elements:
+            try:
+                log_op = elem.logger_operator
+                log_op.log_matrix("stiffness", np.zeros((2, 2)), {"test": True})
+                log_op.flush_all()
+                path = log_op._get_log_path("stiffness")
+                if not os.path.isfile(path) or os.path.getsize(path) == 0:
+                    raise IOError(f"Logging failed for element {elem.element_id}")
+                self.logger.debug("Logging verified for element %s.", elem.element_id)
+            except Exception as exc:
+                self.logger.error(
+                    "Logging infrastructure invalid for element %s",
+                    elem.element_id, exc_info=True,
+                )
+                raise RuntimeError(
+                    f"Logging validation failed for element {elem.element_id}"
+                ) from exc

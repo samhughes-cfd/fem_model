@@ -30,8 +30,21 @@ class StaticSimulationRunner:
     Handles static finite element analysis.
     """
 
-    def __init__(self, settings, job_name, job_results_dir):
-        self.settings = settings
+    def __init__(
+        self,
+        elements,
+        element_dictionary,
+        grid_dictionary,
+        element_stiffness_matrices,
+        element_force_vectors,
+        job_name,
+        job_results_dir
+    ):
+        self.elements = elements
+        self.element_dictionary = element_dictionary
+        self.grid_dictionary = grid_dictionary
+        self.element_stiffness_matrices = element_stiffness_matrices
+        self.element_force_vectors = element_force_vectors
         self.job_name = job_name
 
         self.results_root = job_results_dir  # Use exact path passed from run_job.py
@@ -54,17 +67,12 @@ class StaticSimulationRunner:
         }
 
         # Validate mesh and element data
-        self.elements = self.settings.get("elements", [])
-        self.mesh_dictionary = self.settings.get("mesh_dictionary", {})
+        if len(self.elements) == 0 or not self.element_dictionary or not self.grid_dictionary:
+            logger.error("❌ Error: Missing elements or mesh data in constructor!")
+            raise ValueError("❌ Error: Missing elements or mesh data!")
 
-        if len(self.elements) == 0 or not self.mesh_dictionary:
-            logger.error("❌ Error: Missing elements or mesh data in settings!")
-            raise ValueError("❌ Error: Missing elements or mesh data in settings!")
-
-        # General simulation settings
-        self.solver_name = self.settings.get("solver_name", None)
-        self.element_stiffness_matrices = self.settings.get("element_stiffness_matrices", None)
-        self.element_force_vectors = self.settings.get("element_force_vectors", None)
+        # General simulation settings (optional or future expansion)
+        self.solver_name = None
 
         # Initialize intermediate system storage
         self.K_global = None
@@ -153,12 +161,15 @@ class StaticSimulationRunner:
         logger.info("🔧 Assembling global stiffness and force matrices...")
 
         # 1. Work out the total number of DOFs for the model
-        num_nodes = len(self.mesh_dictionary["node_ids"])
-        total_dof = num_nodes * 6        # -- assuming 6 DOFs per node
+        node_ids = self.grid_dictionary.get("nodes", {}).get("ids", None)
+        if node_ids is None:
+            raise KeyError("Missing 'nodes' → 'ids' in grid_dictionary.")
+        num_nodes = len(node_ids)
+        total_dof = num_nodes * 6
 
         # 2. Instantiate the high-performance assembler and run it
         assembler = AssembleGlobalSystem(
-            elements                    = self.elements,
+            elements                   = self.elements,
             element_stiffness_matrices = self.element_stiffness_matrices,
             element_force_vectors      = self.element_force_vectors,
             total_dof                  = total_dof,
@@ -275,7 +286,6 @@ class StaticSimulationRunner:
             base_tol        = base_tol
         )
 
-        
         # 2.  Execute the condensation pipeline
         
         try:
@@ -457,19 +467,19 @@ class StaticSimulationRunner:
     # -------------------------------------------------------------------------
     def compute_secondary_results(self):
         """Compute and save secondary results (stresses, strains, etc.)"""
-        if not self.primary_results:
-            logger.error("❌ Compute primary results first!")
-            raise RuntimeError("Primary results not available")
+        #if not self.primary_results:
+            #logger.error("❌ Compute primary results first!")
+            #raise RuntimeError("Primary results not available")
         
-        logger.info("📈 Computing secondary results...")
+        #logger.info("📈 Computing secondary results...")
         
         # 1. Compute secondary results
-        computer = ComputeSecondaryResults(
-            primary_results=self.primary_results["global"],
-            mesh_dict=self.mesh_dictionary,
-            elements=self.elements
-        )
-        secondary_set = computer.compute()
+        #computer = ComputeSecondaryResults(
+            #primary_results=self.primary_results["global"],
+            #mesh_dict=self.mesh_dictionary,
+            #elements=self.elements
+        #)
+        #secondary_set = computer.compute()
         
         # 2. Save results
         #SaveSecondaryResults(
@@ -480,8 +490,8 @@ class StaticSimulationRunner:
         #).write_all()
         
         # 3. Store in memory
-        self.secondary_results = secondary_set
-        logger.info("✅ Secondary results computed and saved")
+        #self.secondary_results = secondary_set
+        #logger.info("✅ Secondary results computed and saved")
 
     # -------------------------------------------------------------------------
     # TOP-LEVEL SIMULATION FLOW

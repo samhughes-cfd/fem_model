@@ -17,49 +17,61 @@ import cpuinfo
 import subprocess
 from typing import List
 
-
 # Adjust Python Path to include project root
 script_dir = os.path.dirname(os.path.abspath(__file__))
 fem_model_root = os.path.abspath(os.path.join(script_dir, '..'))
 if fem_model_root not in sys.path:
     sys.path.insert(0, fem_model_root)
 
-# Import required modules
-from pre_processing.parsing.geometry_parser import parse_geometry
-from pre_processing.parsing.mesh_parser import parse_mesh
-from pre_processing.parsing.material_parser import parse_material
+# Parsing class imports
+
+from pre_processing.parsing.element_parser import ElementParser
+from pre_processing.parsing.grid_parser import GridParser
+from pre_processing.parsing.material_parser import MaterialParser
+from pre_processing.parsing.section_parser import SectionParser
+
 from pre_processing.parsing.simulation_settings_parser import parse_simulation_settings
 from pre_processing.parsing.point_load_parser import parse_point_load
 from pre_processing.parsing.distributed_load_parser import parse_distributed_load
-from pre_processing.element_library.element_factory import create_elements_batch
+
+from pre_processing.element_library.element_factory import ElementFactory
 
 # Configure logging for the main process
 def configure_logging(log_file_path):
     """Configures logging for the application."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(log_file_path, mode="w", encoding="utf-8")
-        ]
-    )
-    logger = logging.getLogger(__name__)
-    logger.propagate = False
-    return logger
-
-def configure_child_logging(job_results_dir):
-    """Configures logging for a child process."""
-    log_file_path = os.path.join(job_results_dir, "logs", "process_job.log")
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
+    logger = logging.getLogger("run_job")
+    logger.setLevel(logging.DEBUG)
 
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
 
     file_handler = logging.FileHandler(log_file_path, mode="w", encoding="utf-8")
-    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    stream_handler = logging.StreamHandler(sys.stdout)
+
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    file_handler.setFormatter(formatter)
+    stream_handler.setFormatter(formatter)
+
     logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+
+    logger.debug(f"🔧 Logging configured — output will be written to: {log_file_path}")
+    return logger
+
+def configure_child_logging(job_results_dir):
+    """Configures logging for a child process."""
+    log_file_path = os.path.join(job_results_dir, "logs", "process_job.log")
+    logger = logging.getLogger(f"child_{os.getpid()}")
+    logger.setLevel(logging.DEBUG)
+
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+
+    file_handler = logging.FileHandler(log_file_path, mode="w", encoding="utf-8")
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+
     return logger
 
 def get_machine_specs():
@@ -171,14 +183,31 @@ def process_job(job_dir, job_results_dir, job_times, job_start_end_times):
     performance_data = [["Step", "Time (s)", "Memory (MB)", "Disk (GB)", "CPU (%)"]]
 
     try:
-        # --- Parsing Input Files ---
+        # --- PARSING INPUT FILES ---
         step_start = time.time()
 
-        geometry_array = parse_geometry(os.path.join(job_dir, "geometry.txt"))
-        material_array = parse_material(os.path.join(job_dir, "material.txt"))
-        simulation_settings = parse_simulation_settings(os.path.join(job_dir, "simulation_settings.txt"))
 
-        mesh_dictionary = parse_mesh(os.path.join(job_dir, "mesh.txt"))
+        element_dictionary = ElementParser(
+            filepath=os.path.join(job_dir, "element.txt"),
+            job_results_dir=job_results_dir
+        ).parse()["element_dictionary"]
+
+        grid_dictionary = GridParser(
+            filepath=os.path.join(job_dir, "grid.txt"),
+            job_results_dir=job_results_dir
+        ).parse()["grid_dictionary"]
+
+        material_dictionary = MaterialParser(
+            filepath=os.path.join(job_dir, "material.txt"),
+            job_results_dir=job_results_dir
+        ).parse()["material_dictionary"]
+
+        section_dictionary = SectionParser(
+            filepath=os.path.join(job_dir, "section.txt"),
+            job_results_dir=job_results_dir
+        ).parse()["section_dictionary"]
+
+        simulation_settings = parse_simulation_settings(os.path.join(job_dir, "simulation_settings.txt"))
         point_load_array = np.array([])
         distributed_load_array = np.array([])
 
@@ -193,28 +222,32 @@ def process_job(job_dir, job_results_dir, job_times, job_start_end_times):
         parsing_time = time.time() - step_start
         performance_data.append(["Parsing", parsing_time, *track_usage().values()])
 
-        # --- Element Instantiation ---
+        # --- ELEMENT INSTANTIATION -----------------------------------------------
         step_start = time.time()
-        element_ids = mesh_dictionary["element_ids"]
-        params_list = np.array([{
-            "geometry_array": geometry_array,
-            "material_array": material_array,
-            "mesh_dictionary": mesh_dictionary,
-            "point_load_array": point_load_array,
-            "distributed_load_array": distributed_load_array,
-            "element_id": int(elem_id),
-            "job_results_dir": job_results_dir
-        } for elem_id in element_ids], dtype=object)
 
-        all_elements = create_elements_batch(mesh_dictionary, params_list)
+        element_ids = element_dictionary["ids"]          # (Ne,) NumPy array
 
+        from pre_processing.element_library.element_factory import ElementFactory
+        factory = ElementFactory(job_results_dir=job_results_dir)
+
+        all_elements = factory.create_elements_batch(
+            element_ids            = element_ids,
+            element_dictionary     = element_dictionary,
+            grid_dictionary        = grid_dictionary,
+            material_dictionary    = material_dictionary,
+            section_dictionary     = section_dictionary,
+            point_load_array       = point_load_array,
+            distributed_load_array = distributed_load_array,
+        )
+
+        # -------------------------------------------------------------------------
         if any(elem is None for elem in all_elements):
             logger.error(f"❌ Error: Some elements failed to instantiate in {case_name}.")
             raise ValueError(f"❌ Invalid elements detected in {case_name}.")
 
         required_dirs = [
             os.path.join(job_results_dir, "element_stiffness_matrices"),
-            os.path.join(job_results_dir, "element_force_vectors")
+            os.path.join(job_results_dir, "element_force_vectors"),
         ]
         for d in required_dirs:
             if not os.path.exists(d):
@@ -222,9 +255,11 @@ def process_job(job_dir, job_results_dir, job_times, job_start_end_times):
                 raise FileNotFoundError(f"Directory not created: {d}")
 
         element_creation_time = time.time() - step_start
-        performance_data.append(["Element Instantiation", element_creation_time, *track_usage().values()])
+        performance_data.append(
+            ["Element Instantiation", element_creation_time, *track_usage().values()]
+        )
 
-        # --- Element Computations ---
+        # --- ELEMENT COMPUTATIONS ---
         step_start = time.time()
         vectorized_stiffness = np.vectorize(lambda elem: elem.element_stiffness_matrix() if elem else None, otypes=[object])
         element_stiffness_matrices = vectorized_stiffness(all_elements)
@@ -244,21 +279,33 @@ def process_job(job_dir, job_results_dir, job_times, job_start_end_times):
         if solver_type == "static":
             from simulation_runner.static.static_simulation import StaticSimulationRunner
             runner = StaticSimulationRunner(
-                elements=all_elements,
-                mesh_dictionary=mesh_dictionary,
-                element_stiffness_matrices=element_stiffness_matrices,
-                element_force_vectors=element_force_vectors,
-                job_name=case_name,
-                job_results_dir=job_results_dir
+                elements                   = all_elements,
+                grid_dictionary            = grid_dictionary,
+                element_dictionary         = element_dictionary,
+                material_dictionary        = material_dictionary,
+                section_dictionary         = section_dictionary,
+                point_load_array           = point_load_array,
+                distributed_load_array     = distributed_load_array,
+                element_stiffness_matrices = element_stiffness_matrices,
+                element_force_vectors      = element_force_vectors,
+                job_name                   = case_name,
+                job_results_dir            = job_results_dir
             )
 
         elif solver_type == "modal":
             from simulation_runner.modal.modal_simulation import ModalSimulationRunner
             runner = ModalSimulationRunner(
-                elements=all_elements,
-                mesh_dictionary=mesh_dictionary,
-                job_name=case_name,
-                job_results_dir=job_results_dir
+                elements                   = all_elements,
+                grid_dictionary            = grid_dictionary,
+                element_dictionary         = element_dictionary,
+                material_dictionary        = material_dictionary,
+                section_dictionary         = section_dictionary,
+                point_load_array           = point_load_array,
+                distributed_load_array     = distributed_load_array,
+                element_stiffness_matrices = element_stiffness_matrices,
+                element_force_vectors      = element_force_vectors,
+                job_name                   = case_name,
+                job_results_dir            = job_results_dir
             )
 
         #elif solver_type == "dynamic":
@@ -349,3 +396,6 @@ def main():
                 ))
 
             pool.starmap(process_job, job_info)
+
+if __name__ == "__main__":
+    main()
