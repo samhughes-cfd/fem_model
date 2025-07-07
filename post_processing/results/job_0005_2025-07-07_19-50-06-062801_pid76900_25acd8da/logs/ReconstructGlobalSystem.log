@@ -1,0 +1,13 @@
+2025-07-07 19:50:20,915 [DEBUG] 📁 Log file created at: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0005_2025-07-07_19-50-06-062801_pid76900_25acd8da\logs\ReconstructGlobalSystem.log (Module: reconstruction, Line: 84)
+2025-07-07 19:50:20,915 [DEBUG] ✅ Input validation passed (Module: reconstruction, Line: 138)
+2025-07-07 19:50:20,915 [INFO] 🚀 Starting displacement reconstruction (Module: reconstruction, Line: 149)
+2025-07-07 19:50:20,941 [INFO] 🗺️  Reconstruction map saved → \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0005_2025-07-07_19-50-06-062801_pid76900_25acd8da\maps\04_reconstruction_map.csv (Module: reconstruction, Line: 218)
+2025-07-07 19:50:20,942 [INFO] 📊 Reconstruction Statistics:
+  Total DOFs: 606
+  Active DOFs: 600
+  Fixed DOFs: 6
+  Min displacement: -1.845e-04
+  Max displacement: -0.000e+00
+  Mean absolute displacement: 1.243e-05 (Module: reconstruction, Line: 246)
+2025-07-07 19:50:20,953 [INFO] 💾 Global displacement saved → \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0005_2025-07-07_19-50-06-062801_pid76900_25acd8da\primary_results\08_U_global.csv (Module: reconstruction, Line: 255)
+2025-07-07 19:50:20,954 [INFO] ✅ Reconstruction completed in 0.04s (Module: reconstruction, Line: 162)

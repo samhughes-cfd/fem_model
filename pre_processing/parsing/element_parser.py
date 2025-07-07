@@ -1,15 +1,12 @@
 # pre_processing\parsing\element_parser.py
 
-import os
 from typing import Dict, List
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
-
 
 class ElementParser:
     """
-    Parses an [Elements] section and returns a dictionary whose structure is
+    Parses an [Element] section and returns a dictionary whose structure is
     identical to the other parsers in the suite:
 
         {
@@ -56,6 +53,19 @@ class ElementParser:
                 f"Sub-header must match (case-insensitive): {' '.join(expected)}"
             )
 
+    @staticmethod
+    def _preprocess_lines(filepath: str) -> List[str]:
+        """
+        Reads a file and returns a list of stripped lines, skipping empty lines
+        and those that start with '#' (comments).
+        """
+        with open(filepath, "r", encoding="utf-8") as fh:
+            return [
+                ln.strip()
+                for ln in fh
+                if ln.strip() and not ln.lstrip().startswith("#")
+            ]
+
     # --------------------------------------------------------------------- #
     # Public API
     # --------------------------------------------------------------------- #
@@ -77,19 +87,15 @@ class ElementParser:
         # ------------------------------------------------------------------ #
         # Read & pre-clean the file
         # ------------------------------------------------------------------ #
-        with open(self.filepath, "r", encoding="utf-8") as fh:
-            lines = [
-                ln.strip() for ln in fh
-                if ln.strip() and not ln.lstrip().startswith("#")
-            ]
+        lines = self._preprocess_lines(self.filepath)
 
-        # Locate [Elements] (case-insensitive)
+        # Locate [Element] (case-insensitive)
         try:
             start_idx = next(
-                i for i, ln in enumerate(lines) if ln.lower() == "[elements]"
+                i for i, ln in enumerate(lines) if ln.lower() == "[element]"
             )
         except StopIteration:
-            raise ValueError("Missing [Elements] section header.")
+            raise ValueError("Missing [Element] section header.")
 
         # Validate the sub-header
         self._assert_exact_subheader(lines[start_idx + 1], self.expected_subheader)

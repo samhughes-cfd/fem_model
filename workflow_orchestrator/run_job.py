@@ -34,7 +34,7 @@ from pre_processing.parsing.simulation_settings_parser import parse_simulation_s
 from pre_processing.parsing.point_load_parser import parse_point_load
 from pre_processing.parsing.distributed_load_parser import parse_distributed_load
 
-from pre_processing.element_library.element_factory import ElementFactory
+#from pre_processing.element_library.element_factory import ElementFactory # lazy import in process job
 
 # Configure logging for the main process
 def configure_logging(log_file_path):

@@ -3,7 +3,7 @@ import os
 
 # Beam parameters
 L = 2.0         # Beam length (m)
-w_max = 100000    # Maximum distributed load (N/m)
+w_max = 500    # Maximum distributed load (N/m)
 num_points = 30  # Number of discretized points
 
 # Generate x values along the beam

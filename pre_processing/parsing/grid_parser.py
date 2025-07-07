@@ -4,7 +4,6 @@ import os
 from typing import Dict, List
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
 
 
 class GridParser:
@@ -34,6 +33,19 @@ class GridParser:
                 f"Sub-header must match (case-insensitive): {' '.join(expected)}"
             )
 
+    @staticmethod
+    def _preprocess_lines(filepath: str) -> List[str]:
+        """
+        Reads a file and returns a list of stripped lines, skipping empty lines
+        and lines that start with '#' (comments).
+        """
+        with open(filepath, "r", encoding="utf-8") as fh:
+            return [
+                ln.strip()
+                for ln in fh
+                if ln.strip() and not ln.lstrip().startswith("#")
+            ]
+
     # ------------------------------------------------------------------ #
     def parse(self) -> Dict[str, Dict[str, npt.NDArray]]:
         node_ids: List[int] = []
@@ -41,12 +53,7 @@ class GridParser:
         seen_ids: set[int] = set()
 
         # ---- Read & clean ------------------------------------------------ #
-        with open(self.filepath, "r", encoding="utf-8") as fh:
-            lines = [
-                ln.strip()
-                for ln in fh
-                if ln.strip() and not ln.lstrip().startswith("#")
-            ]
+        lines = self._preprocess_lines(self.filepath)
 
         # Locate [Grid]
         try:
@@ -58,7 +65,7 @@ class GridParser:
         self._assert_exact_subheader(lines[start_idx + 1], self.expected_subheader)
 
         # ---- Parse rows --------------------------------------------------- #
-        for ln in lines[start_idx + 2 :]:
+        for ln in lines[start_idx + 2:]:
             parts = ln.split()
             if len(parts) != 4:
                 raise ValueError(f"Malformed grid row: {ln!r}")
@@ -77,13 +84,13 @@ class GridParser:
             node_coords.append([x, y, z])
 
         # ---- Convert to NumPy ------------------------------------------- #
-        ids_arr   = np.asarray(node_ids, dtype=np.int64)
+        ids_arr = np.asarray(node_ids, dtype=np.int64)
         coords_arr = np.asarray(node_coords, dtype=np.float64)
 
         # ---- Return uniform structure ------------------------------------ #
         return {
             "grid_dictionary": {
-                "ids":         ids_arr,
+                "ids": ids_arr,
                 "coordinates": coords_arr,
             }
         }

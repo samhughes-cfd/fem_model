@@ -4,7 +4,6 @@ import os
 from typing import Dict, List
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
 
 
 class MaterialParser:
@@ -39,6 +38,19 @@ class MaterialParser:
                 f"Sub-header must match (case-insensitive): {' '.join(expected)}"
             )
 
+    @staticmethod
+    def _preprocess_lines(filepath: str) -> List[str]:
+        """
+        Reads a file and returns a list of stripped lines, skipping empty lines
+        and lines that start with '#' (comments).
+        """
+        with open(filepath, "r", encoding="utf-8") as fh:
+            return [
+                ln.strip()
+                for ln in fh
+                if ln.strip() and not ln.lstrip().startswith("#")
+            ]
+
     # ------------------------------------------------------------------ #
     def parse(self) -> Dict[str, Dict[str, npt.NDArray]]:
         data_lists: Dict[str, List[float]] = {
@@ -51,12 +63,7 @@ class MaterialParser:
         seen_ids: set[int] = set()
 
         # ---- Read & clean ---------------------------------------------- #
-        with open(self.filepath, "r", encoding="utf-8") as fh:
-            lines = [
-                ln.strip()
-                for ln in fh
-                if ln.strip() and not ln.lstrip().startswith("#")
-            ]
+        lines = self._preprocess_lines(self.filepath)
 
         # Locate [Material]
         try:

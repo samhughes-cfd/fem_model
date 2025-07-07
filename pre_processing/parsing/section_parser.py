@@ -40,6 +40,19 @@ class SectionParser:
                 f"Sub-header must match (case-insensitive): {' '.join(expected)}"
             )
 
+    @staticmethod
+    def _preprocess_lines(filepath: str) -> List[str]:
+        """
+        Reads a file and returns a list of stripped lines, skipping empty lines
+        and those that start with '#' (comments).
+        """
+        with open(filepath, "r", encoding="utf-8") as fh:
+            return [
+                ln.strip()
+                for ln in fh
+                if ln.strip() and not ln.lstrip().startswith("#")
+            ]
+
     # ------------------------------------------------------------------ #
     def parse(self) -> Dict[str, Dict[str, npt.NDArray]]:
         lists: Dict[str, List[float]] = {
@@ -53,12 +66,7 @@ class SectionParser:
         seen_ids: set[int] = set()
 
         # ---- Read & clean ---------------------------------------------- #
-        with open(self.filepath, "r", encoding="utf-8") as fh:
-            lines = [
-                ln.strip()
-                for ln in fh
-                if ln.strip() and not ln.lstrip().startswith("#")
-            ]
+        lines = self._preprocess_lines(self.filepath)
 
         # Locate [Section]
         try:

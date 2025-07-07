@@ -172,7 +172,7 @@ class EulerBernoulliBeamElement3D(Element1DBase):
         """
         Compute stiffness matrix using operator classes with integrated logging
         """
-        self._validate_logging_setup()
+        self._assert_logging_ready()
 
         Ke = np.zeros((12, 12), dtype=np.float64)
         L = np.array([[self.L]], dtype=np.float64)
@@ -216,7 +216,7 @@ class EulerBernoulliBeamElement3D(Element1DBase):
         - Distributed loads: F_dist = ∫ N^T q dx
         - Point loads: F_point = N(x_p)^T P
         """
-        self._validate_logging_setup()
+        self._assert_logging_ready()
 
         Fe = np.zeros(12, dtype=np.float64)
         
@@ -260,7 +260,7 @@ class EulerBernoulliBeamElement3D(Element1DBase):
                 self._log_distributed_loads(xi_gauss, weights, N, q_gauss, Fe_dist)
 
         except Exception as e:
-            self.logger.error(f"Distributed load error: {str(e)}")
+            logger.error(f"Distributed load error: {str(e)}")
             raise
 
         return Fe_dist

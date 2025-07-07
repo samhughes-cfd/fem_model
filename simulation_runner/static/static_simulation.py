@@ -33,16 +33,24 @@ class StaticSimulationRunner:
     def __init__(
         self,
         elements,
-        element_dictionary,
         grid_dictionary,
+        element_dictionary,
+        material_dictionary,
+        section_dictionary,
+        point_load_array,
+        distributed_load_array,
         element_stiffness_matrices,
         element_force_vectors,
         job_name,
         job_results_dir
     ):
         self.elements = elements
-        self.element_dictionary = element_dictionary
         self.grid_dictionary = grid_dictionary
+        self.element_dictionary = element_dictionary
+        self.material_dictionary = material_dictionary
+        self.section_dictionary = section_dictionary
+        self.point_load_array = point_load_array
+        self.distributed_load_array = distributed_load_array
         self.element_stiffness_matrices = element_stiffness_matrices
         self.element_force_vectors = element_force_vectors
         self.job_name = job_name
@@ -70,6 +78,20 @@ class StaticSimulationRunner:
         if len(self.elements) == 0 or not self.element_dictionary or not self.grid_dictionary:
             logger.error("❌ Error: Missing elements or mesh data in constructor!")
             raise ValueError("❌ Error: Missing elements or mesh data!")
+        
+        # ---------------- total DOF initialisation ------------------
+        # GridParser outputs a flat key: grid_dictionary["ids"]
+        if "ids" in self.grid_dictionary:
+            self.node_ids = self.grid_dictionary["ids"]
+        elif "nodes" in self.grid_dictionary and "ids" in self.grid_dictionary["nodes"]:
+            # legacy nested layout still supported
+            self.node_ids = self.grid_dictionary["nodes"]["ids"]
+        else:
+            raise KeyError("grid_dictionary must contain an 'ids' array of node IDs")
+
+        self.total_dof = len(self.node_ids) * 6
+        logger.debug("Total DOFs initialised: %d (nodes %d × 6)", self.total_dof, len(self.node_ids))
+# -----------------------------------------------------------------------
 
         # General simulation settings (optional or future expansion)
         self.solver_name = None
@@ -160,12 +182,7 @@ class StaticSimulationRunner:
         """
         logger.info("🔧 Assembling global stiffness and force matrices...")
 
-        # 1. Work out the total number of DOFs for the model
-        node_ids = self.grid_dictionary.get("nodes", {}).get("ids", None)
-        if node_ids is None:
-            raise KeyError("Missing 'nodes' → 'ids' in grid_dictionary.")
-        num_nodes = len(node_ids)
-        total_dof = num_nodes * 6
+        total_dof = self.total_dof
 
         # 2. Instantiate the high-performance assembler and run it
         assembler = AssembleGlobalSystem(
@@ -183,7 +200,7 @@ class StaticSimulationRunner:
             raise
 
         # 3. Assemble global system diagnostics
-        F_global = np.asarray(F_global).ravel()
+        F_global = np.asarray(F_global, dtype=np.float64).ravel()
 
         logger.info("✅ Global stiffness matrix and force vector successfully assembled")
         return K_global, F_global, local_global_dof_map
@@ -585,7 +602,7 @@ class StaticSimulationRunner:
             # 5  Reconstruct full-length displacement vector
             # -----------------------------------------------------------------
             with self.monitor.stage("ReconstructGlobalSystem"):
-                total_dofs = len(self.mesh_dictionary["node_ids"]) * 6
+                total_dofs = self.total_dof
                 self.U_global = self.reconstruct_global_system(self.condensed_dofs,
                                                                self.U_cond,total_dofs,
                                                                self.primary_results_dir,

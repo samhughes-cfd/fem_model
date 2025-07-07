@@ -1,16 +1,18 @@
-# post_processing/graphical_visualisers/deformation/deformation_visualisation.py
-"""Deformation visualisation utility.
+"""
+Deformation visualisation utility – July 2025
+---------------------------------------------
 
-Updated June 2025 for new results directory layout, *_U_global.csv format,
-**and** corrected parent-folder detection (job folder now two levels above
-primary_results).
+Reads every *_U_global.csv under post_processing/results/**/primary_results
+and produces translation / rotation profiles.  Mesh geometry is supplied by
+``grid.txt`` files parsed with ``GridParser``; each parser result is expected
+to look like::
 
-2025-06-26 patch
-----------------
-• Adds two small black reference markers at x = 0 and x = L (beam length) on
-  every subplot.  
-  Matplotlib now auto-scales exactly like the load plots: full span plus its
-  usual whitespace.
+    {
+        "grid_dictionary": {
+            "ids":         ndarray[int64],
+            "coordinates": ndarray[float64]  # shape (N, 3)
+        }
+    }
 """
 
 from __future__ import annotations
@@ -36,14 +38,13 @@ PROJECT_ROOT: Final[Path] = next(
 )
 sys.path.append(str(PROJECT_ROOT))
 
-# Local import after sys.path tweak
-from pre_processing.parsing.mesh_parser import parse_mesh  # type: ignore
+# --- grid parser -----------------------------------------------------------#
+from pre_processing.parsing.grid_parser import GridParser  # type: ignore
+
 
 # ---------------------------------------------------------------------------#
 #  Visualiser
 # ---------------------------------------------------------------------------#
-
-
 class VisualiseDeformation:
     """Produce translation / rotation profiles from *_U_global.csv files."""
 
@@ -53,8 +54,40 @@ class VisualiseDeformation:
         self.figure_output_dir: Final[Path] = SCRIPT_DIR / "deformation_plots"
         self.figure_output_dir.mkdir(exist_ok=True)
 
-        self.base_dir: Final[Path] = PROJECT_ROOT / "post_processing" / "results"
-        self.mesh_dir: Final[Path] = PROJECT_ROOT / "jobs"
+        self.results_dir: Final[Path] = PROJECT_ROOT / "post_processing" / "results"
+        self.jobs_dir: Final[Path] = PROJECT_ROOT / "jobs"
+
+    # ------------------------------------------------------------------#
+    #  Internal helpers
+    # ------------------------------------------------------------------#
+    @staticmethod
+    def _get_node_coordinates(grid_obj: object) -> np.ndarray:
+        """
+        Extract the (N, 3) array of node coordinates from the object returned
+        by ``GridParser.parse()``.
+
+        Expected shape (dict only):
+
+            grid_obj["grid_dictionary"]["coordinates"]
+
+        Falls back to ``.node_coordinates`` or ``["node_coordinates"]`` if they
+        ever appear in a future refactor.
+        """
+        # 1️⃣ official / nested layout
+        if isinstance(grid_obj, dict) and "grid_dictionary" in grid_obj:
+            inner = grid_obj["grid_dictionary"]
+            if isinstance(inner, dict) and "coordinates" in inner:
+                return inner["coordinates"]  # type: ignore[index]
+
+        # 2️⃣ optional flat / attribute fall-backs
+        if isinstance(grid_obj, dict) and "node_coordinates" in grid_obj:
+            return grid_obj["node_coordinates"]  # type: ignore[index]
+        if hasattr(grid_obj, "node_coordinates"):
+            return getattr(grid_obj, "node_coordinates")  # type: ignore[arg-type]
+
+        raise KeyError(
+            "grid data does not contain 'grid_dictionary' → 'coordinates'"
+        )
 
     # ------------------------------------------------------------------#
     #  Plotting
@@ -70,12 +103,9 @@ class VisualiseDeformation:
     ) -> None:
         """Plot raw global displacement/rotation with beam-end anchors."""
         if U.shape[1] != 6:
-            raise ValueError("U must be (n_nodes, 6)")
+            raise ValueError("U must be shaped (n_nodes, 6)")
 
-        # Beam limits
-        x_min: float = float(node_positions.min())
-        x_max: float = float(node_positions.max())
-        L: float = x_max - x_min  # for clarity; not used elsewhere
+        x_min, x_max = float(node_positions.min()), float(node_positions.max())
 
         fig, axes = plt.subplots(3, 2, figsize=(15, 10), sharex=True)
         fig.suptitle(
@@ -108,14 +138,12 @@ class VisualiseDeformation:
         for i, (ax_l, ax_r, (disp, disp_lbl, rot, rot_lbl)) in enumerate(
             zip(axes[:, 0], axes[:, 1], pairs)
         ):
-            # --- translations ---
+            # translations
             ax_l.plot(node_positions, disp, color=self._BLUE, marker="o")
-            # --- rotations ---
-            ax_r.plot(
-                node_positions, np.degrees(rot) * scale, color=self._BLUE, marker="o"
-            )
+            # rotations
+            ax_r.plot(node_positions, np.degrees(rot) * scale, color=self._BLUE, marker="o")
 
-            # beam-end anchors → drive natural x-axis spanning 0…L + padding
+            # beam-end anchors + baseline
             for ax in (ax_l, ax_r):
                 ax.plot([x_min], [0], marker="o", color="k", ms=3, zorder=3)
                 ax.plot([x_max], [0], marker="o", color="k", ms=3, zorder=3)
@@ -158,37 +186,48 @@ class VisualiseDeformation:
     #  Driver
     # ------------------------------------------------------------------#
     def process_all(self) -> None:
-        pattern = self.base_dir / "job_*" / "primary_results" / "*_U_global.csv"
-        files = sorted(glob.glob(str(pattern)))
-        if not files:
+        pattern = self.results_dir / "job_*" / "primary_results" / "*_U_global.csv"
+        csv_files = sorted(glob.glob(str(pattern)))
+        if not csv_files:
             print("No deformation files found.")
             return
 
-        for file_path in files:
-            file = Path(file_path)
-            job_dir = file.parent.parent  # …/job_xxx/.../primary_results/
-            m = re.match(
-                r"job_(?P<id>\d+)_(?P<ts>\d{4}-\d{2}-\d{2}_[\d\-]+)", job_dir.name
-            )
+        for csv_path in csv_files:
+            csv_file = Path(csv_path)
+            # …/results/job_123_2025-06-30_14-52-01/primary_results/xyz_U_global.csv
+            job_dir = csv_file.parent.parent
+            m = re.match(r"job_(?P<id>\d+)_(?P<ts>[\d\-_]+)", job_dir.name)
             if not m:
                 print(f"Skipping unrecognised folder '{job_dir.name}'")
                 continue
 
             job_id, timestamp = m.group("id"), m.group("ts")
-            mesh_file = self.mesh_dir / f"job_{job_id}" / "mesh.txt"
+            grid_file = self.jobs_dir / f"job_{job_id}" / "grid.txt"
             print(f"→ Processing job {job_id} ({timestamp})")
 
-            U = self._read_U_global(file)
-            mesh = parse_mesh(mesh_file) if mesh_file.is_file() else None
-            if U is None or mesh is None or "node_coordinates" not in mesh:
-                print(f"⚠️  Missing data for job {job_id}, skipping.")
+            # ---- Displacements ------------------------------------------ #
+            U = self._read_U_global(csv_file)
+            if U is None:
+                print(f"⚠️  Could not read displacements for job {job_id}, skipping.")
                 continue
 
-            node_x = mesh["node_coordinates"][:, 0]
+            # ---- Geometry (grid) ---------------------------------------- #
+            if not grid_file.is_file():
+                print(f"⚠️  Grid file missing for job {job_id}, skipping.")
+                continue
+
+            grid = GridParser(str(grid_file), str(job_dir)).parse()
+            try:
+                node_coords = self._get_node_coordinates(grid)
+            except (AttributeError, KeyError) as exc:
+                print(f"⚠️  {exc} for job {job_id}, skipping.")
+                continue
+
+            # ---- Plot ---------------------------------------------------- #
             fig_name = f"deformation_job_{job_id}_{timestamp}.png"
             self._plot(
                 U,
-                node_x,
+                node_coords[:, 0],
                 title_suffix=f"job_{job_id}_{timestamp}",
                 save_path=self.figure_output_dir / fig_name,
             )

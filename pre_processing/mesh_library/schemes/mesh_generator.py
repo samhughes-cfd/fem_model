@@ -1,138 +1,193 @@
-# pre_processing\mesh_library\schemes\mesh_generator.py
+"""
+Mesh-generator for a cantilever-beam demo model.
 
-import numpy as np
+Change (2025-07-07)
+-------------------
+* save_element_file – ORD_W enlarged to 18 so square-bracket labels are
+  aligned, equally spaced, and never touch adjacent labels.
+"""
 import logging
 import os
 from datetime import datetime
+from typing import List, Tuple
 
-# Configuration Parameters (User-defined)
-L = 2.0                    # Beam length [m]
-growth_factor = 0         # Exponential distribution parameter (0 for uniform)
-num_uniform_nodes = 101   # Number of nodes if using uniform spacing
-max_num_nodes = 101       # Max nodes if using exponential spacing
+import numpy as np
+
+# --------------------------------------------------------------------------- #
+# User configuration
+# --------------------------------------------------------------------------- #
+L: float = 2.0            # Beam length [m]
+growth_factor: float = 0  # 0 = uniform; >0 = exponential tip clustering
+num_uniform_nodes: int = 101
+max_num_nodes: int = 101
+# --------------------------------------------------------------------------- #
 
 
-def generate_mesh(growth_factor, max_num_nodes, num_uniform_nodes):
-    """
-    Generate mesh nodes and elements for a cantilever beam.
-    Returns node_positions and element connectivity tuples (start, end).
-    """
-    if growth_factor == 0:
-        # Uniform mesh
-        node_positions = np.linspace(0, L, num_uniform_nodes)
+def generate_mesh(growth: float,
+                  max_nodes: int,
+                  uniform_nodes: int) -> Tuple[np.ndarray, List[Tuple[int, int]]]:
+    """Return node positions and element connectivity."""
+    if growth == 0:
+        node_positions = np.linspace(0.0, L, uniform_nodes)
     else:
-        # Exponential mesh using growth factor, with exactly max_num_nodes
-        i = np.linspace(0, 1, max_num_nodes)
-        normalized_positions = (np.exp(growth_factor * i) - 1) / (np.exp(growth_factor) - 1)
-        node_positions = (1 - normalized_positions) * L  # Tip clustering
+        i = np.linspace(0.0, 1.0, max_nodes)
+        norm = (np.exp(growth * i) - 1.0) / (np.exp(growth) - 1.0)
+        node_positions = (1.0 - norm) * L           # cluster toward tip
 
-    # Guarantee no trimming: don't apply rounding or unique()
     elements = [(idx, idx + 1) for idx in range(len(node_positions) - 1)]
 
-    logging.info(f"Mesh generation successful.")
-    logging.info(f"Growth Factor: {growth_factor}")
-    logging.info(f"Total Nodes Generated: {len(node_positions)}")
-    logging.info(f"Total Elements Generated: {len(elements)}")
-
+    logging.info("Mesh generation successful.")
+    logging.info("Growth factor: %s", growth)
+    logging.info("Total nodes:   %d", len(node_positions))
+    logging.info("Total elements:%d", len(elements))
     return node_positions, elements
 
-def save_grid_file(node_positions, save_directory):
-    os.makedirs(save_directory, exist_ok=True)
-    filepath = os.path.join(save_directory, 'grid.txt')
 
-    with open(filepath, 'w') as f:
+# --------------------------------------------------------------------------- #
+# File writers
+# --------------------------------------------------------------------------- #
+def save_grid_file(node_positions: np.ndarray, save_dir: str) -> None:
+    os.makedirs(save_dir, exist_ok=True)
+    path = os.path.join(save_dir, "grid.txt")
+
+    with open(path, "w") as f:
         f.write("[Grid]\n")
         f.write(f"{'[node_id]':<12}{'[x]':<12}{'[y]':<10}{'[z]':<10}\n")
-        for i, x in enumerate(node_positions):
-            f.write(f"{i:<12d}{x:<12.6f}{0.0:<10.1f}{0.0:<10.1f}\n")
+        for idx, x in enumerate(node_positions):
+            f.write(f"{idx:<12d}{x:<12.6f}{0.0:<10.1f}{0.0:<10.1f}\n")
 
-    logging.info(f"grid.txt saved to '{filepath}'.")
+    logging.info("grid.txt written → %s", path)
 
-def save_element_file(elements, save_directory, element_type="EulerBernoulliBeamElement3D"):
-    filepath = os.path.join(save_directory, 'element.txt')
-    os.makedirs(save_directory, exist_ok=True)
 
-    axial_order = 3
-    bending_y_order = 3
-    bending_z_order = 3
-    shear_y_order = 0
-    shear_z_order = 0
+def save_element_file(elements: List[Tuple[int, int]],
+                      save_dir: str,
+                      element_type: str = "EulerBernoulliBeamElement3D") -> None:
+    """Write element.txt with uniform, parser-friendly column spacing."""
+    os.makedirs(save_dir, exist_ok=True)
+    path = os.path.join(save_dir, "element.txt")
+
+    # Fixed column widths
+    ID_W, NODE_W, TYPE_W = 14, 9, 30   # identification columns
+    ORD_W = 18                         # ≥ len('[bending_z_order]') + 1
+
+    # Default quadrature orders
+    axial_order = bending_y_order = bending_z_order = 3
+    shear_y_order = shear_z_order = 0
     torsion_order = 3
     load_order = 2
 
-    with open(filepath, 'w') as f:
+    with open(path, "w") as f:
         f.write("[Element]\n")
-        f.write(f"{'[element_id]':<14}{'[node1]':<9}{'[node2]':<9}{'[element_type]':<30}"
-                f"{'[axial_order]':<15}{'[bending_y_order]':<18}{'[bending_z_order]':<18}"
-                f"{'[shear_y_order]':<17}{'[shear_z_order]':<16}{'[torsion_order]':<15}{'[load_order]'}\n")
+        # ---- header -------------------------------------------------------
+        f.write(
+            f"{'[element_id]':<{ID_W}}"
+            f"{'[node1]':<{NODE_W}}{'[node2]':<{NODE_W}}"
+            f"{'[element_type]':<{TYPE_W}}"
+            f"{'[axial_order]':<{ORD_W}}"
+            f"{'[bending_y_order]':<{ORD_W}}"
+            f"{'[bending_z_order]':<{ORD_W}}"
+            f"{'[shear_y_order]':<{ORD_W}}"
+            f"{'[shear_z_order]':<{ORD_W}}"
+            f"{'[torsion_order]':<{ORD_W}}"
+            f"{'[load_order]':<{ORD_W}}\n"
+        )
+        # ---- rows ---------------------------------------------------------
+        for idx, (n1, n2) in enumerate(elements):
+            f.write(
+                f"{idx:<{ID_W}d}"
+                f"{n1:<{NODE_W}d}{n2:<{NODE_W}d}"
+                f"{element_type:<{TYPE_W}}"
+                f"{axial_order:<{ORD_W}d}"
+                f"{bending_y_order:<{ORD_W}d}"
+                f"{bending_z_order:<{ORD_W}d}"
+                f"{shear_y_order:<{ORD_W}d}"
+                f"{shear_z_order:<{ORD_W}d}"
+                f"{torsion_order:<{ORD_W}d}"
+                f"{load_order:<{ORD_W}d}\n"
+            )
 
-        for i, (n1, n2) in enumerate(elements):
-            f.write(f"{i:<14d}{n1:<9d}{n2:<9d}{element_type:<30}"
-                    f"{axial_order:<15d}{bending_y_order:<18d}{bending_z_order:<18d}"
-                    f"{shear_y_order:<17d}{shear_z_order:<16d}{torsion_order:<15d}{load_order}\n")
+    logging.info("element.txt written → %s", path)
 
-    logging.info(f"element.txt saved to '{filepath}'.")
 
-def save_material_file(elements, save_directory):
-    filepath = os.path.join(save_directory, 'material.txt')
-    os.makedirs(save_directory, exist_ok=True)
+def save_material_file(elements: List[Tuple[int, int]], save_dir: str) -> None:
+    os.makedirs(save_dir, exist_ok=True)
+    path = os.path.join(save_dir, "material.txt")
 
-    E = 2e11
-    G = 7.6923e10
-    nu = 0.3
-    rho = 7850
+    E, G, nu, rho = 2.10e11, 8.10e10, 0.3, 7850
 
-    with open(filepath, 'w') as f:
+    with open(path, "w") as f:
         f.write("[Material]\n")
         f.write(f"{'[element_id]':<14}{'[E]':<12}{'[G]':<13}{'[nu]':<7}{'[rho]':<10}\n")
-        for i in range(len(elements)):
-            f.write(f"{i:<14d}{E:<12.1e}{G:<13.4e}{nu:<7.1f}{rho:<10d}\n")
+        for idx in range(len(elements)):
+            f.write(f"{idx:<14d}{E:<12.1e}{G:<13.4e}{nu:<7.1f}{rho:<10d}\n")
 
-    logging.info(f"material.txt saved to '{filepath}'.")
+    logging.info("material.txt written → %s", path)
 
-def save_section_file(elements, save_directory):
-    filepath = os.path.join(save_directory, 'section.txt')
-    os.makedirs(save_directory, exist_ok=True)
 
-    A = 0.02
+def save_section_file(elements: List[Tuple[int, int]], save_dir: str) -> None:
+    os.makedirs(save_dir, exist_ok=True)
+    path = os.path.join(save_dir, "section.txt")
+
+    A = 1307.5519589902397
     I_x = 0.0
-    I_y = 6.6667e-5
-    I_z = 1.6667e-5
-    J_t = 1.707e-5
+    I_y = 3.2340029e-7
+    I_z = 2.0876865e-6
+    J_t = 2.606727e-8
 
-    with open(filepath, 'w') as f:
+    # Field widths
+    ID_W = 14
+    A_W = 14
+    IX_W = 14
+    IY_W = 18
+    IZ_W = 18
+    JT_W = 14
+
+    with open(path, "w") as f:
         f.write("[Section]\n")
-        f.write(f"{'[element_id]':<14}{'[A]':<10}{'[I_x]':<10}{'[I_y]':<13}{'[I_z]':<13}{'[J_t]'}\n")
-        for i in range(len(elements)):
-            f.write(f"{i:<14d}{A:<10.5f}{I_x:<10.1f}{I_y:<13.5e}{I_z:<13.5e}{J_t:.5e}\n")
+        f.write(
+            f"{'[element_id]':<{ID_W}}"
+            f"{'[A]':<{A_W}}"
+            f"{'[I_x]':<{IX_W}}"
+            f"{'[I_y]':<{IY_W}}"
+            f"{'[I_z]':<{IZ_W}}"
+            f"{'[J_t]':<{JT_W}}\n"
+        )
+        for idx in range(len(elements)):
+            f.write(
+                f"{idx:<{ID_W}d}"
+                f"{A:<{A_W}.5f}"
+                f"{I_x:<{IX_W}.1f}"
+                f"{I_y:<{IY_W}.5e}"
+                f"{I_z:<{IZ_W}.5e}"
+                f"{J_t:<{JT_W}.5e}\n"
+            )
 
-    logging.info(f"section.txt saved to '{filepath}'.")
+    logging.info("section.txt written → %s", path)
 
-def main():
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+# --------------------------------------------------------------------------- #
+# CLI entry point
+# --------------------------------------------------------------------------- #
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     try:
-        # Generate the mesh
         nodes, elems = generate_mesh(growth_factor, max_num_nodes, num_uniform_nodes)
-        print(f"Number of nodes: {len(nodes)}")
-        print(f"Number of elements: {len(elems)}")
+        print("Nodes :", len(nodes))
+        print("Elems :", len(elems))
 
-        # Create timestamped output directory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_dir = r'pre_processing\mesh_library\meshes'
-        save_dir = os.path.join(base_dir, f"mesh_{timestamp}")
+        save_dir = os.path.join("pre_processing", "mesh_library", "meshes", f"mesh_{timestamp}")
         os.makedirs(save_dir, exist_ok=True)
 
-        # Save all mesh component files to the timestamped directory
-        save_grid_file(nodes, save_dir)
-        save_element_file(elems, save_dir)
-        save_material_file(elems, save_dir)
-        save_section_file(elems, save_dir)
+        save_grid_file(nodes,      save_dir)
+        save_element_file(elems,   save_dir)
+        save_material_file(elems,  save_dir)
+        save_section_file(elems,   save_dir)
 
-        logging.info(f"All mesh files saved to '{save_dir}'.")
+        logging.info("All mesh files saved to ‘%s’.", save_dir)
+    except Exception as exc:
+        logging.error("Mesh generation failed: %s", exc, exc_info=True)
 
-    except Exception as e:
-        logging.error(f"An error occurred during mesh generation: {e}")
 
 if __name__ == "__main__":
     main()
