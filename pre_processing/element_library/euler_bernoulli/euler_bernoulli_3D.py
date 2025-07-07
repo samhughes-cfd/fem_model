@@ -14,6 +14,12 @@ from pre_processing.element_library.euler_bernoulli.utilities.B_matrix import St
 # Import LoadInterpolationOperator class
 from pre_processing.element_library.euler_bernoulli.utilities.interpolate_loads import LoadInterpolationOperator
 
+# --- logging ----------------------------------------------
+import logging
+logger = logging.getLogger(__name__)
+# --- element-level logger ----------------------------------
+from pre_processing.element_library.base_logger_operator import BaseLoggerOperator
+
 class EulerBernoulliBeamElement3D(Element1DBase):
     """
     2-node 3D Euler-Bernoulli Beam Element with full matrix computation capabilities
