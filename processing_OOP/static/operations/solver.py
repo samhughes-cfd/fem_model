@@ -322,10 +322,10 @@ class SolveCondensedSystem:
         if self.U_cond is None:
             return
         path = self.job_results_dir / "07_U_cond.csv"
-        pd.DataFrame({"Condensed DOF": np.arange(self.U_cond.size, dtype=int),
-                      "U Value": self.U_cond}).to_csv(
-            path, index=False, float_format="%.17e")
-        self.logger.info(f"💾 Condensed displacement saved → {path}")
+        #pd.DataFrame({"Condensed DOF": np.arange(self.U_cond.size, dtype=int),
+                      #"U Value": self.U_cond}).to_csv(
+            #path, index=False, float_format="%.17e")
+        #self.logger.info(f"💾 Condensed displacement saved → {path}")
 
     # ───────── summary report (log only) ────────────────────────────
     def _write_report(self):

@@ -7,7 +7,7 @@ import pandas as pd
 from scipy.sparse import csr_matrix, coo_matrix, issparse   # add coo_matrix
 from typing import Sequence, Union, Tuple, Optional, Dict   # Dict gets used below
 from pathlib import Path
-import time
+from processing_OOP.static.results.containers.map_results import MapEntry
 
 class CondenseModifiedSystem:
     """Static condensation system with advanced validation and adaptive numerics."""
@@ -135,11 +135,15 @@ class CondenseModifiedSystem:
         self._validate_condensation()
         self._build_condensed_system()
         self._create_verified_mapping()
-        self._export_condensed_map()
+        self._export_condensed_map_legacy()
+        self._build_condensation_map()
         self._export_K_cond()
         self._export_F_cond()
         self._log_system_details()
-        return self.condensed_dofs, self.inactive_dofs, self.K_cond, self.F_cond
+
+        self.condensation_map = self._build_condensation_map()
+
+        return self.condensed_dofs, self.inactive_dofs, self.K_cond, self.F_cond, self.condensation_map
 
 
     def _compute_active_dofs(self):
@@ -257,22 +261,22 @@ class CondenseModifiedSystem:
         if self.job_results_dir is None or self.K_cond is None:
             return
         path = self.job_results_dir / "05_K_cond.csv"
-        df   = self._coo_to_dataframe(self.K_cond, value_label="K Value")
-        df.to_csv(path, index=False, float_format="%.17e")
-        self.logger.info(f"💾 Condensed stiffness matrix saved → {path}")
+        #df   = self._coo_to_dataframe(self.K_cond, value_label="K Value")
+        #df.to_csv(path, index=False, float_format="%.17e")
+        #self.logger.info(f"💾 Condensed stiffness matrix saved → {path}")
 
     def _export_F_cond(self):
         if self.job_results_dir is None or self.F_cond is None:
             return
         path = self.job_results_dir / "06_F_cond.csv"
-        df   = pd.DataFrame({
-                  "DOF":   np.arange(self.F_cond.size, dtype=int),
-                  "F Value": self.F_cond
-              })
-        df.to_csv(path, index=False, float_format="%.17e")
-        self.logger.info(f"💾 Condensed force vector   saved → {path}")
+        #df   = pd.DataFrame({
+                  #"DOF":   np.arange(self.F_cond.size, dtype=int),
+                  #"F Value": self.F_cond
+              #})
+        #df.to_csv(path, index=False, float_format="%.17e")
+        #self.logger.info(f"💾 Condensed force vector   saved → {path}")
 
-    def _export_condensed_map(self):
+    def _export_condensed_map_legacy(self):
         """
         Per-element condensation mapping:
         Element ID,Local DOF,Global DOF,
@@ -316,8 +320,8 @@ class CondenseModifiedSystem:
             })
 
         # ------------------------------------------------------------------ write
-        pd.DataFrame(rows).to_csv(path, index=False)
-        self.logger.info(f"🗺️  Structured condensation map saved → {path}")
+        #pd.DataFrame(rows).to_csv(path, index=False)
+        #self.logger.info(f"🗺️  Structured condensation map saved → {path}")
 
     def _log_system_details(self):
         """Comprehensive system logging with mapping integrity."""
@@ -372,6 +376,7 @@ class CondenseModifiedSystem:
     def _log_sparse_pattern(self):
         """Efficient sparse pattern logging for large systems."""
         coo = self.K_cond.tocoo()
+        
         sample = pd.DataFrame({
             'Row': coo.row,
             'Col': coo.col,
@@ -410,3 +415,34 @@ class CondenseModifiedSystem:
             f"Pruned {len(self.inactive_dofs)} DOFs with no structural connectivity from the active set. "
             f"{len(self.condensed_dofs)} DOFs retained for condensation."
         )
+    
+    def _build_condensation_map(self) -> list[MapEntry]:
+        """
+        Construct detailed DOF mapping after condensation.
+        Captures fixed, zeroed, active, and condensed indices.
+        """
+        condensation_map = []
+        for i, global_dofs in enumerate(self.local_global_dof_map):
+            entry = MapEntry(
+                element_id=i,
+                local_dof=np.arange(len(global_dofs), dtype=np.int32),
+                global_dof=global_dofs,
+                fixed_flag=np.array(
+                    [1 if d in self.fixed_dofs else 0 for d in global_dofs], dtype=np.int32
+                ),
+                zero_flag=np.array(
+                    [1 if (d not in self.fixed_dofs and d not in self.condensed_dofs) else 0 for d in global_dofs],
+                    dtype=np.int32
+                ),
+                active_flag=np.array(
+                    [1 if d in self.condensed_dofs else 0 for d in global_dofs], dtype=np.int32
+                ),
+                condensed_dof=np.array(
+                    [self.original_to_condensed.get(d, -1) for d in global_dofs], dtype=np.int32
+                )
+            )
+            condensation_map.append(entry)
+
+        self.condensation_map = condensation_map
+        return condensation_map
+

@@ -9,7 +9,7 @@ from typing import Optional, Tuple, Sequence
 import matplotlib.pyplot as plt
 import time
 from datetime import datetime
-
+from processing_OOP.static.results.containers.map_results import MapEntry
 
 class ReconstructGlobalSystem:
     """High-performance displacement reconstruction system with validation and diagnostics."""
@@ -20,7 +20,7 @@ class ReconstructGlobalSystem:
         U_cond: np.ndarray,
         total_dofs: int,
         job_results_dir: Path,
-        *,                           #  ← keep everything after this keyword-only
+        *,
         local_global_dof_map: Sequence[np.ndarray],   # NEW
         fixed_dofs: Optional[np.ndarray] = None,
         inactive_dofs: Optional[np.ndarray] = None):
@@ -51,7 +51,12 @@ class ReconstructGlobalSystem:
         self.U_global: np.ndarray = np.zeros(self.total_dofs, dtype=np.float64)
         self.reconstruction_time: Optional[float] = None
         self.logger: logging.Logger = self._init_logging()
+
+        # Add the lookup mapping here
+        self.original_to_condensed = {g: c for c, g in enumerate(self.active_dofs)}
+
         self._validate_inputs()
+
 
     def _init_logging(self) -> logging.Logger:
         """Initialize logging infrastructure for diagnostics."""
@@ -154,17 +159,25 @@ class ReconstructGlobalSystem:
             self._export_reconstruction_map()
             self._log_statistics()
             self._save_results()
+            self._build_reconstruction_map()
         except Exception as e:
             self.logger.critical(f"❌ Reconstruction failed: {str(e)}", exc_info=True)
             raise RuntimeError("Displacement reconstruction failed") from e
 
         self.reconstruction_time = time.perf_counter() - start_time
         self.logger.info(f"✅ Reconstruction completed in {self.reconstruction_time:.2f}s")
-        return self.U_global
+
+
+        self.reconstruction_map = self._build_reconstruction_map()
+        
+        return self.U_global, self.reconstruction_map
 
     def _perform_mapping(self) -> None:
         """Vectorized mapping of condensed displacements to global system."""
         self.U_global[self.active_dofs] = self.U_cond
+
+        # Add this line:
+        self.original_to_condensed = {g: c for c, g in enumerate(self.active_dofs)}
 
         if self.fixed_dofs.size > 0:
             fixed_nonzero = np.nonzero(self.U_global[self.fixed_dofs])[0]
@@ -172,6 +185,7 @@ class ReconstructGlobalSystem:
                 self.logger.warning(
                     f"Non-zero displacements at fixed DOFs: {self.fixed_dofs[fixed_nonzero]}"
                 )
+
 
     # --------------------------------------------------------------------- NEW
     def _export_reconstruction_map(self) -> None:
@@ -214,8 +228,8 @@ class ReconstructGlobalSystem:
                 "Reconstructed Global DOF": str(self.U_global[g_dofs].tolist())
             })
 
-        pd.DataFrame(rows).to_csv(path, index=False, float_format="%.17e")
-        self.logger.info(f"🗺️  Reconstruction map saved → {path}")
+        #pd.DataFrame(rows).to_csv(path, index=False, float_format="%.17e")
+        #self.logger.info(f"🗺️  Reconstruction map saved → {path}")
 
     def _validate_reconstruction(self) -> None:
         """Quality checks on reconstructed solution."""
@@ -248,11 +262,11 @@ class ReconstructGlobalSystem:
     def _save_results(self) -> None:
         """Write 08_U_global.csv in the same style as 07_U_cond.csv."""
         path = self.job_results_dir / "08_U_global.csv"
-        pd.DataFrame({
-            "Global DOF":    np.arange(self.U_global.size, dtype=int),
-            "U Value": self.U_global
-        }).to_csv(path, index=False, float_format="%.17e")
-        self.logger.info(f"💾 Global displacement saved → {path}")
+        #pd.DataFrame({
+            #"Global DOF":    np.arange(self.U_global.size, dtype=int),
+            #"U Value": self.U_global
+        #}).to_csv(path, index=False, float_format="%.17e")
+        #self.logger.info(f"💾 Global displacement saved → {path}")
 
     @property
     def solution(self) -> np.ndarray:
@@ -286,3 +300,37 @@ class ReconstructGlobalSystem:
         if not 0 <= dof < self.total_dofs:
             raise ValueError(f"Invalid DOF index: {dof}")
         return self.U_global[dof]
+
+    def _build_reconstruction_map(self) -> list[MapEntry]:
+        """
+        Construct detailed DOF mapping after reconstruction.
+        Includes fixed, zeroed, active, condensed, and reconstructed values.
+        """
+        return [
+            MapEntry(
+                element_id=i,
+                local_dof=np.arange(len(global_dofs), dtype=np.int32),
+                global_dof=global_dofs,
+                fixed_flag=np.array(
+                    [1 if d in self.fixed_dofs else 0 for d in global_dofs],
+                    dtype=np.int32
+                ),
+                zero_flag=np.array(
+                    [1 if (d not in self.fixed_dofs and d not in self.active_dofs) else 0 for d in global_dofs],
+                    dtype=np.int32
+                ),
+                active_flag=np.array(
+                    [1 if d in self.active_dofs else 0 for d in global_dofs],
+                    dtype=np.int32
+                ),
+                condensed_dof=np.array(
+                    [self.original_to_condensed.get(d, -1) for d in global_dofs],
+                    dtype=np.int32
+                ),
+                reconstructed_values=np.array(
+                    [self.U_global[d] for d in global_dofs],
+                    dtype=np.float64
+                )
+            )
+            for i, global_dofs in enumerate(self.local_global_dof_map)
+        ]
