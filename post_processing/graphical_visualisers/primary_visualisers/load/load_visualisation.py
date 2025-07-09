@@ -1,10 +1,10 @@
-# post_processing/graphical_visualisers/load/load_visualisation.py
-"""Load-case visualisation utility (June 2025).
+"""Load‑case visualisation utility (July 2025).
 
-• Mirrors `VisualiseDeformation` structure and path discovery.
-• Generates six-component force/moment diagrams for every load file.
-• X-axis scaling: two black reference markers (x = 0, x = L) force the
-  natural padding without hard-clipping or manual margin fiddling.
+• **Updated** to use the new ``GridParser`` instead of the legacy mesh parser.
+• Mirrors ``VisualiseDeformation`` structure and path discovery.
+• Generates six‑component force/moment diagrams for every load file.
+• X‑axis scaling: two black reference markers (x = 0, x = L) force the
+  natural padding without hard‑clipping or manual margin fiddling.
 """
 
 from __future__ import annotations
@@ -28,9 +28,11 @@ PROJECT_ROOT: Final[Path] = next(
 )
 sys.path.append(str(PROJECT_ROOT))  # local imports
 
-# Local parsers
-from pre_processing.parsing.distributed_load_parser import parse_distributed_load  # type: ignore
-from pre_processing.parsing.mesh_parser import parse_mesh  # type: ignore
+# --- External parsers ------------------------------------------------------#
+from pre_processing.parsing.grid_parser import GridParser  # type: ignore
+from pre_processing.parsing.distributed_load_parser import (  # type: ignore
+    parse_distributed_load,
+)
 from pre_processing.parsing.point_load_parser import parse_point_load  # type: ignore
 
 
@@ -48,6 +50,26 @@ class VisualiseLoad:
             "point": parse_point_load,
             "distributed": parse_distributed_load,
         }
+
+    # ------------------------------------------------------------------#
+    #  Grid‑helper (shared with deformation visualiser)
+    # ------------------------------------------------------------------#
+    @staticmethod
+    def _get_node_coordinates(grid_obj: object) -> np.ndarray:
+        """Return the (N, 3) array of node coordinates from a GridParser result."""
+        # 1️⃣ Official nested layout
+        if isinstance(grid_obj, dict) and "grid_dictionary" in grid_obj:
+            inner = grid_obj["grid_dictionary"]
+            if isinstance(inner, dict) and "coordinates" in inner:
+                return inner["coordinates"]  # type: ignore[index]
+
+        # 2️⃣ Optional flat / attribute fall‑backs
+        if isinstance(grid_obj, dict) and "node_coordinates" in grid_obj:
+            return grid_obj["node_coordinates"]  # type: ignore[index]
+        if hasattr(grid_obj, "node_coordinates"):
+            return getattr(grid_obj, "node_coordinates")  # type: ignore[arg-type]
+
+        raise KeyError("grid data does not contain 'grid_dictionary' → 'coordinates'")
 
     # ------------------------------------------------------------------#
     #  Plot helper
@@ -142,13 +164,14 @@ class VisualiseLoad:
                 continue
             job_id = m.group(1)
 
-            # --- Length L from mesh (preferred) or load x-span (fallback) ---
+            # --- Beam length L from grid (preferred) or load x‑span (fallback) ---
             L: Optional[float] = None
-            mesh_file = job_dir / "mesh.txt"
-            if mesh_file.is_file():
+            grid_file = job_dir / "grid.txt"
+            if grid_file.is_file():
                 try:
-                    mesh = parse_mesh(mesh_file)
-                    xs = mesh["node_coordinates"][:, 0]
+                    grid = GridParser(str(grid_file), str(job_dir)).parse()
+                    node_coords = self._get_node_coordinates(grid)
+                    xs = node_coords[:, 0]
                     L = float(xs.max() - xs.min())
                 except Exception:
                     pass  # fall back later
