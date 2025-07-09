@@ -6,20 +6,33 @@ import os
 from pathlib import Path
 import datetime
 
+# Diagnostics 
 from processing_OOP.static.diagnostics.linear_static_diagnostic import DiagnoseLinearStaticSystem
 from processing_OOP.static.diagnostics.runtime_monitor_telemetry import RuntimeMonitorTelemetry
 
+# Operations
 from processing_OOP.static.operations.preparation import PrepareLocalSystem
 from processing_OOP.static.operations.assembly import AssembleGlobalSystem
 from processing_OOP.static.operations.modification import ModifyGlobalSystem
 from processing_OOP.static.operations.condensation import CondenseModifiedSystem
-
 from processing_OOP.static.operations.solver import SolveCondensedSystem
-
 from processing_OOP.static.operations.reconstruction import ReconstructGlobalSystem
-from processing_OOP.static.primary_results.compute_primary_results import ComputePrimaryResults
-from processing_OOP.static.secondary_results.compute_secondary_results import ComputeSecondaryResults
 from processing_OOP.static.operations.disassembly import DisassembleGlobalSystem
+
+# Results containers
+
+from processing_OOP.static.results.containers.global_results import GlobalResults
+from processing_OOP.static.results.containers.elemental_results import ElementalResults
+from processing_OOP.static.results.containers.nodal_results import NodalResults
+from processing_OOP.static.results.containers.gaussian_results import GaussianResults
+
+
+from processing_OOP.static.results.compute_primary.element_formulation_processor import ElementFormulationProcessor
+from processing_OOP.static.results.compute_primary.primary_results_orchestrator import PrimaryResultsOrchestrator
+from processing_OOP.static.results.containers.container_hopper import PrimaryResultSet, SecondaryResultSet, IndexMapSet
+
+from processing_OOP.static.results.save_primary_container import SavePrimaryResults
+from processing_OOP.static.results.save_index_map_container import SaveIndexMaps
 
 # Configure module-level logger
 logger = logging.getLogger(__name__)
@@ -65,14 +78,24 @@ class StaticSimulationRunner:
         self.monitor = RuntimeMonitorTelemetry(job_results_dir=self.primary_results_dir)
 
         # Initialize results storage
-        self.primary_results = {
-            "global": {},           # Global primary_results etc.
-            "element": {}           # Element primary_results etc.
-        }
-        self.secondary_results = {
-            "global": {},           # Global secondary_results etc.
-            "element": {}           # Element secondary_results etc.
-        }
+        self.primary_results_set = PrimaryResultSet(
+            gaussian_results = GaussianResults(),
+            nodal_results    = NodalResults(),
+            elemental_results  = ElementalResults(),
+            global_results   = GlobalResults(),
+        )
+
+        # Initialize results storage
+        self.secondary_results_set = SecondaryResultSet(
+            gaussian_results = GaussianResults(),
+            nodal_results    = NodalResults(),
+            elemental_results  = ElementalResults(),
+            global_results   = GlobalResults(),
+        )
+
+        # Initialise mapping storage
+        self.maps = IndexMapSet()
+
 
         # Validate mesh and element data
         if len(self.elements) == 0 or not self.element_dictionary or not self.grid_dictionary:
@@ -126,7 +149,7 @@ class StaticSimulationRunner:
     def prepare_local_system(self, job_results_dir: str):
         """
         Validate and format local element stiffness matrices (Ke) and force vectors (Fe)
-        using the PrepareLocalSystem helper.
+        using the PrepareLocalSystem helper to format the data structures ready for assembly.
 
         Parameters
         ----------
@@ -155,7 +178,7 @@ class StaticSimulationRunner:
         self.element_stiffness_matrices = Ke_formatted
         self.element_force_vectors = Fe_formatted
 
-        logger.info("✅ Local element systems validated and formatted")
+        logger.info("✅ Local element systems validated and formatted for assembly")
         return Ke_formatted, Fe_formatted
 
     # -------------------------------------------------------------------------
@@ -164,45 +187,40 @@ class StaticSimulationRunner:
 
     def assemble_global_system(self, job_results_dir: str):
         """
-        Assemble the global stiffness matrix (K_global) and force vector (F_global)
-        using the high-performance AssembleGlobalSystem helper.
-
-        Parameters
-        ----------
-        job_results_dir : str
-            Directory where log files and any diagnostics should be written.
-
-        Returns
-        -------
-        K_global : scipy.sparse.csr_matrix
-        F_global : numpy.ndarray
-            Flattened 1-D force vector.
-        local_global_dof_map : list of np.ndarray
-            Per-element mapping from local to global DOFs.
+        Assemble the global stiffness matrix (K_global) and force vector (F_global),
+        and cache them immediately in self.global_results.
         """
+
         logger.info("🔧 Assembling global stiffness and force matrices...")
 
-        total_dof = self.total_dof
-
-        # 2. Instantiate the high-performance assembler and run it
         assembler = AssembleGlobalSystem(
-            elements                   = self.elements,
-            element_stiffness_matrices = self.element_stiffness_matrices,
-            element_force_vectors      = self.element_force_vectors,
-            total_dof                  = total_dof,
-            job_results_dir            = job_results_dir
+            elements=self.elements,
+            element_stiffness_matrices=self.element_stiffness_matrices,
+            element_force_vectors=self.element_force_vectors,
+            total_dof=self.total_dof,
+            job_results_dir=job_results_dir
         )
 
         try:
-            K_global, F_global, local_global_dof_map = assembler.assemble()
+            K_global, F_global, local_global_dof_map, assembly_map = assembler.assemble()
         except Exception as exc:
             logger.error("❌ Assembly failed – see assembly.log for details")
             raise
 
-        # 3. Assemble global system diagnostics
         F_global = np.asarray(F_global, dtype=np.float64).ravel()
 
+        # Cache to self
+        self.K_global = K_global
+        self.F_global = F_global
+        self.local_global_dof_map = local_global_dof_map
+
+        # Cache map and results to simulation runner results container
+        self.maps.assembly_map = assembly_map
+        self.primary_results_set.global_results.F_global = self.F_global
+        self.primary_results_set.global_results.K_global = self.K_global
+
         logger.info("✅ Global stiffness matrix and force vector successfully assembled")
+
         return K_global, F_global, local_global_dof_map
 
     # -------------------------------------------------------------------------
@@ -223,25 +241,35 @@ class StaticSimulationRunner:
         -------
         K_mod : csr_matrix
         F_mod : np.ndarray
-        bc_dofs : np.ndarray
+        fixed_dofs : np.ndarray
         """
         logger.info("🔒 Applying boundary conditions to global matrices…")
 
         # 1. Instantiate the boundary-condition helper
         modifier = ModifyGlobalSystem(
-            K_global         = K_global,
-            F_global         = np.asarray(F_global).ravel(),
-            job_results_dir  = job_results_dir,
-            fixed_dofs       = fixed_dofs,
-            local_global_dof_map = local_global_dof_map   # ← pass map once
+            K_global=K_global,
+            F_global=np.asarray(F_global).ravel(),
+            job_results_dir=job_results_dir,
+            fixed_dofs=fixed_dofs,
+            local_global_dof_map=local_global_dof_map  # ← pass map once
         )
 
-        # 2. Run the BC pipeline (no args now)
+        # 2. Run the BC pipeline
         try:
-            K_mod, F_mod, fixed_dofs = modifier.apply_boundary_conditions()
+            K_mod, F_mod, fixed_dofs, modification_map = modifier.apply_boundary_conditions()
         except Exception:
             logger.error("❌ Boundary-condition step failed – see ModifyGlobalSystem.log")
             raise
+
+        # Cache into self
+        self.K_mod = K_mod
+        self.F_mod = F_mod
+        self.fixed_dofs = fixed_dofs
+
+        # Cache map and results to simulation runner results container
+        self.maps.modification_map = modification_map
+        self.primary_results_set.global_results.K_mod = K_mod
+        self.primary_results_set.global_results.F_mod = F_mod
 
         logger.info("✅ Boundary conditions successfully applied")
         return K_mod, F_mod, fixed_dofs
@@ -306,7 +334,7 @@ class StaticSimulationRunner:
         # 2.  Execute the condensation pipeline
         
         try:
-            condensed_dofs, inactive_dofs, K_cond, F_cond = (
+            condensed_dofs, inactive_dofs, K_cond, F_cond, condensation_map = (
                 condenser.apply_condensation()
             )
         except Exception as exc:                       # helper already logs detail
@@ -314,6 +342,17 @@ class StaticSimulationRunner:
             raise                                       # propagate to caller
 
         
+        # Cache into self
+        self.K_cond = K_cond
+        self.F_cond = F_cond
+        self.inactive_dofs = inactive_dofs
+        self.condensed_dofs = condensed_dofs
+
+        # Cache map and results to simulation runner results container
+        self.maps.condensation_map = condensation_map
+        self.primary_results_set.global_results.K_cond = K_cond
+        self.primary_results_set.global_results.F_cond = F_cond
+
         # 3.  High-level diagnostics (optional, keeps your existing style)
 
         logger.info(
@@ -367,6 +406,12 @@ class StaticSimulationRunner:
         if U_cond is None:
             raise RuntimeError(
                 "Condensed solver failed — see SolveCondensedSystem.log")
+        
+        # Cache into self
+        self.U_cond = U_cond
+
+        # Cache map and results to simulation runner results container
+        self.primary_results_set.global_results.U_cond = U_cond
 
         logger.info("✅ Condensed system successfully solved")
         return U_cond
@@ -421,94 +466,133 @@ class StaticSimulationRunner:
         )
 
         try:
-            U_global = reconstructor.reconstruct()
+            U_global, reconstruction_map = reconstructor.reconstruct()
         except Exception:
-            logger.error("❌ Reconstruction failed – see ReconstructModifiedSystem.log")
+            logger.error("❌ Reconstruction failed – see ReconstructGlobalSystem.log")
             raise
+
+        # Cache into self
+        self.U_global = U_global
+
+        # Cache map and results to simulation runner results container
+        self.primary_results_set.global_results.U_global = U_global
+        self.maps.reconstruction_map = reconstruction_map
 
         logger.info(
             f"✅ Displacement reconstruction complete "
             f"(min={U_global.min():.3e}, max={U_global.max():.3e})"
         )
         return U_global
-    
-    # ──────────────────────────────────────────────────────────────────────────
+
+    # ─────────────────────────────────────────────────────────────────────────────
     # 6) PRIMARY RESULTS PIPELINE
-    # ──────────────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────────────
     def compute_primary_results(self) -> None:
         """
-        1. Build *all* global-level first-order outputs (incl. reactions).
+        1. Build all global-level first-order outputs (incl. reactions).
         2. Disassemble U_global & R_global back onto each element.
         3. Cache the two result sets in-memory.
         (All CSVs are persisted by the helpers themselves.)
         """
         logger.info("📊 Computing primary results …")
 
-        # 1 ── global-level ----------------------------------------------------
-        global_set = ComputePrimaryResults(
-            K_global             = self.K_global,
-            F_global             = self.F_global,
-            K_mod                = self.K_mod,
-            F_mod                = self.F_mod,
-            K_cond               = self.K_cond,
-            F_cond               = self.F_cond,
-            U_cond               = self.U_cond,
-            U_global             = self.U_global,
-            local_global_dof_map = self.local_global_dof_map,
-            fixed_dofs           = self.fixed_dofs,
-            job_results_dir      = self.primary_results_dir,
+        # Step 1: Validate and standardize element matrices from COO to CSR (in-place)
+        self.element_stiffness_matrices, self.element_force_vectors = ElementFormulationProcessor(
+            F_e=self.element_force_vectors,
+            K_e=self.element_stiffness_matrices,
+        ).process()
+
+        # Step 2: Compute reactions and residuals
+        self.R_global, self.R_residual = PrimaryResultsOrchestrator(
+            K_global=self.K_global,
+            F_global=self.F_global,
+            U_global=self.U_global,
+            fixed_dofs=self.fixed_dofs,
+            job_results_dir=self.primary_results_dir
         ).compute()
 
-        # 2 ── element-level ---------------------------------------------------
-        U_e, R_e = DisassembleGlobalSystem(
-            elements             = self.elements,
-            K_mod                = self.K_mod,                 # shape check only
-            F_mod                = self.F_mod,
-            U_global             = self.U_global,
-            R_global             = global_set.R_global,
-            local_global_dof_map = self.local_global_dof_map,
-            element_K_raw        = self.element_stiffness_matrices,
-            element_F_raw        = self.element_force_vectors,
-            job_results_dir      = self.primary_results_dir,
+        # Step 3: Disassemble element-level primary results
+        self.R_e, self.R_residual_e, self.U_e = DisassembleGlobalSystem(
+            U_global=self.U_global,
+            R_global=self.R_global,
+            R_residual=self.R_residual,
+            F_e = self.element_force_vectors,
+            local_global_dof_map=self.local_global_dof_map,
+            job_results_dir=self.primary_results_dir,
         ).disassemble()
 
-        # 3 ── keep results in RAM --------------------------------------------
-        self.primary_results = {
-            "global":  global_set,          # PrimaryResultSet object
-            "element": (U_e, R_e),          # two lists from disassembly
-        }
-        logger.info("✅ Primary results computed and written")
+        # Step 4: Construct global results
+        global_results = GlobalResults(
+            F_global=self.F_global,
+            K_global=self.K_global,
+            F_mod=self.F_mod,
+            K_mod=self.K_mod,
+            F_cond=self.F_cond,
+            K_cond=self.K_cond,
+            U_cond=self.U_cond,
+            U_global=self.U_global,
+            R_global=self.R_global,
+            R_residual=self.R_residual
+        )
+
+        # Step 5: Construct element results
+        elemental_results = ElementalResults(
+            K_e=self.element_stiffness_matrices,
+            F_e=self.element_force_vectors,
+            U_e=self.U_e,
+            R_e=self.R_e,
+            R_residual_e=self.R_residual_e,
+        )
+
+        # Step 6: Cache results
+        self.primary_results = PrimaryResultSet(
+            global_results=global_results,
+            elemental_results=elemental_results
+        )
+
+        
+        # Step 7: Save .csv files to "NEW/" subdirectory to avoid overwriting existing exports
+        SavePrimaryResults(
+            primary_results_set=self.primary_results,
+            index_map_set=self.maps,
+            save_dir= self.primary_results_dir,            # os.path.join(self.primary_results_dir, "NEW")
+        ).run()
+
+        SaveIndexMaps(
+            index_map_set = self.maps,
+            save_dir = self.maps_dir                                      #os.path.join(self.maps_dir, "NEW")
+        ).run()
+
+        logger.info("✅ Primary results computed, written and saved")
 
     # -------------------------------------------------------------------------
     # 7) SECONDARY RESULTS PIPELINE
     # -------------------------------------------------------------------------
-    def compute_secondary_results(self):
-        """Compute and save secondary results (stresses, strains, etc.)"""
-        #if not self.primary_results:
-            #logger.error("❌ Compute primary results first!")
-            #raise RuntimeError("Primary results not available")
-        
-        #logger.info("📈 Computing secondary results...")
-        
-        # 1. Compute secondary results
-        #computer = ComputeSecondaryResults(
-            #primary_results=self.primary_results["global"],
-            #mesh_dict=self.mesh_dictionary,
-            #elements=self.elements
+    def compute_secondary_results(self) -> None:
+        """Compute and save secondary results (stresses, strains, etc.)."""
+        logger.info("📈 Computing secondary results…")
+
+        # computer = ComputeSecondaryResults(
+            #element_dictionary    = self.element_dictionary,
+            #grid_dictionary       = self.grid_dictionary,
+            #material_dictionary   = self.material_dictionary,
+            #section_dictionary    = self.section_dictionary,
+            #job_results_dir       = self.secondary_results_dir,
         #)
-        #secondary_set = computer.compute()
-        
-        # 2. Save results
+
+        # from reading the element type, the code needs to reach into the appropriate MaterialStiffnessOperator, 
+        # StrainDisplacementOperator, ShapeFunctionOperators and gauss points in an element etc.
+
+        #GaussianResults()
+
+        #NodalResults()
+
+        #ElementalResults()
+
+        #SecondaryResultSet()
+
         #SaveSecondaryResults(
-            #job_name=self.job_name,
-            #start_timestamp=self.start_time,
-            #output_root=self.secondary_results_dir,
-            #secondary_set=secondary_set
-        #).write_all()
-        
-        # 3. Store in memory
-        #self.secondary_results = secondary_set
-        #logger.info("✅ Secondary results computed and saved")
+    
 
     # -------------------------------------------------------------------------
     # TOP-LEVEL SIMULATION FLOW

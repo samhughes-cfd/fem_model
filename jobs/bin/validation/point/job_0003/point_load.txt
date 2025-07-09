@@ -1,5 +1,0 @@
-# Load Type: Quarter-span load
-# Load Formula: P(x=L/4)
-[Point load]
-         [x]          [y]          [z]        [F_x]        [F_y]        [F_z]        [M_x]        [M_y]        [M_z]
-    0.500000     0.000000     0.000000     0.000000 -100000.000000     0.000000     0.000000     0.000000     0.000000

@@ -1,13 +1,14 @@
 import numpy as np
 import pandas as pd
 from scipy.sparse import coo_matrix, csr_matrix
-from typing import List, Tuple, Optional, Sequence, Dict, Callable
+from typing import List, Tuple, Optional
 import logging
 import os
 import time
-from multiprocessing import Pool, cpu_count
 from functools import partial
 from pathlib import Path
+
+from processing_OOP.static.results.containers.map_results import MapEntry
 
 FLOAT_FORMAT = "%.17e"
 
@@ -110,6 +111,7 @@ class AssembleGlobalSystem:
         try:
             self._validate_inputs()
             self._compute_local_global_dof_map()
+            self._build_assembly_map()
             self._log_system_info()
             self._assemble_stiffness_matrix()
             self._assemble_force_vector()
@@ -123,7 +125,10 @@ class AssembleGlobalSystem:
         self.assembly_time = time.perf_counter() - start_time
         self._log_performance_metrics()
         self.logger.info("✅ Assembly complete.")
-        return self.K_global, self.F_global, self.local_global_dof_map
+
+        self.assembly_map = self._build_assembly_map()
+
+        return self.K_global, self.F_global, self.local_global_dof_map, self.assembly_map
 
     def _validate_inputs(self):
         """Validate elements, stiffness matrices, and force vectors."""
@@ -204,11 +209,13 @@ class AssembleGlobalSystem:
             maps_dir = self.job_results_dir.parent / "maps"
             maps_dir.mkdir(parents=True, exist_ok=True)
             maps_path = maps_dir / "01_assembly_map.csv"
-            try:
-                df_dof.to_csv(maps_path, index=False)
-                self.logger.info(f"🗂️ DOF mapping saved to: {maps_path}")
-            except Exception as e:
-                self.logger.warning(f"⚠️ Failed to save DOF mapping CSV: {e}")
+            #try:
+                #df_dof.to_csv(maps_path, index=False)
+                #self.logger.info(f"🗂️ DOF mapping saved to: {maps_path}")
+            #except Exception as e:
+                #self.logger.warning(f"⚠️ Failed to save DOF mapping CSV: {e}")
+
+        self.mapping_records = mapping_records
 
     def _coo_to_dataframe(self, matrix: coo_matrix, value_label: str = "Value") -> pd.DataFrame:
         """Return a DataFrame from a COO matrix with human-readable labels."""
@@ -313,9 +320,9 @@ class AssembleGlobalSystem:
         K_coo  = self.K_global.tocoo()
 
         
-        df_K = self._coo_to_dataframe(K_coo, value_label="K Value")
-        df_K.to_csv(K_path, index=False, float_format=self.float_format)
-        self.logger.info(f"💾 Global stiffness matrix saved to: {K_path}")
+        #df_K = self._coo_to_dataframe(K_coo, value_label="K Value")
+        #df_K.to_csv(K_path, index=False, float_format=self.float_format)
+        #self.logger.info(f"💾 Global stiffness matrix saved to: {K_path}")
 
     def _export_F_global(self):
         """Export F_global to <primary_results>/F_global.csv with full precision."""
@@ -325,12 +332,12 @@ class AssembleGlobalSystem:
         F_path = self.job_results_dir / "02_F_global.csv"
 
         # Again, Python ints for DOF indices
-        df_F = pd.DataFrame({
-            "DOF":   list(range(self.total_dof)),
-            "F Value": self.F_global           # float64
-        })
-        df_F.to_csv(F_path, index=False, float_format=self.float_format)
-        self.logger.info(f"💾 Global force vector saved to: {F_path}")
+        #df_F = pd.DataFrame({
+            #"DOF":   list(range(self.total_dof)),
+            #"F Value": self.F_global           # float64
+        #})
+        #df_F.to_csv(F_path, index=False, float_format=self.float_format)
+        #self.logger.info(f"💾 Global force vector saved to: {F_path}")
 
     def _log_system_info(self):
         """Log basic information about the system before assembly."""
@@ -375,3 +382,21 @@ class AssembleGlobalSystem:
             sample_size = min(1000, coo.nnz)
             sample_df = self._coo_to_dataframe(coo, value_label="K Value").sample(n=sample_size, random_state=0)
             self.logger.debug("\nStiffness Matrix Sample (COO):\n" + sample_df.to_string(index=False))
+    
+    def _build_assembly_map(self) -> list[MapEntry]:
+        """
+        Construct initial map from element local DOFs to global DOFs.
+        All DOFs assumed free and active at this stage.
+        """
+        return [
+            MapEntry(
+                element_id=i,
+                local_dof=np.arange(len(global_dofs), dtype=np.int32),
+                global_dof=global_dofs,
+                fixed_flag=np.zeros(len(global_dofs), dtype=np.int32),
+                zero_flag=np.zeros(len(global_dofs), dtype=np.int32),
+                active_flag=np.ones(len(global_dofs), dtype=np.int32),
+                condensed_dof=np.full(len(global_dofs), "", dtype=object)
+            )
+            for i, global_dofs in enumerate(self.local_global_dof_map)
+        ]

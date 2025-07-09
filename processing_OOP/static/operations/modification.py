@@ -7,6 +7,7 @@ from pathlib import Path
 import time
 from scipy.sparse import csr_matrix, coo_matrix, lil_matrix, diags
 from typing import Sequence, Tuple, Optional, Union
+from processing_OOP.static.results.containers.map_results import MapEntry
 
 FLOAT_FORMAT = "%.17e"        # keep full float64 precision
 
@@ -124,13 +125,17 @@ class ModifyGlobalSystem:
             self._export_K_mod()
             self._export_F_mod()
             self._export_modify_local_global_dof_map()
+            self._build_modification_map()
         except Exception as e:
             self.logger.critical(f"❌ Boundary condition application failed: {str(e)}", exc_info=True)
             raise RuntimeError("Boundary condition application failed") from e
         
         exec_time = time.perf_counter() - start_time
         self.logger.info(f"✅ Boundary conditions applied in {exec_time:.2f}s")
-        return self.K_mod, self.F_mod, self.fixed_dofs
+
+        self.modification_map = self._build_modification_map()
+
+        return self.K_mod, self.F_mod, self.fixed_dofs, self.modification_map
     
     def _export_modify_local_global_dof_map(self):
         """Exports per-element local/global DOF map and fixed/free flags."""
@@ -154,9 +159,9 @@ class ModifyGlobalSystem:
                 "Fixed(1)/Free(0) Flag": fixed_flags.tolist()
             })
 
-        df = pd.DataFrame(rows)
-        df.to_csv(path, index=False)
-        self.logger.info(f"📎 Element DOF fixed/free map saved to: {path}")
+        #df = pd.DataFrame(rows)
+        #df.to_csv(path, index=False)
+        #self.logger.info(f"📎 Element DOF fixed/free map saved to: {path}")
 
     def _convert_matrices(self):
         """Convert matrices to working formats with precision control."""
@@ -236,21 +241,21 @@ class ModifyGlobalSystem:
             return
 
         path = self.job_results_dir / "03_K_mod.csv"
-        df   = self._coo_to_dataframe(self.K_mod, value_label="K Value")
-        df.to_csv(path, index=False, float_format=FLOAT_FORMAT)
-        self.logger.info(f"💾 Modified stiffness matrix saved to: {path}")
+        #df   = self._coo_to_dataframe(self.K_mod, value_label="K Value")
+        #df.to_csv(path, index=False, float_format=FLOAT_FORMAT)
+        #self.logger.info(f"💾 Modified stiffness matrix saved to: {path}")
 
     def _export_F_mod(self):
         """Write F_mod to <primary_results>/F_mod.csv."""
         if self.job_results_dir is None or self.F_mod is None:
             return
         path = self.job_results_dir / "04_F_mod.csv"
-        df   = pd.DataFrame({
-            "DOF":   list(range(self.F_mod.size)),   # python int
-            "F Value": self.F_mod                    # float64
-        })
-        df.to_csv(path, index=False, float_format=FLOAT_FORMAT)
-        self.logger.info(f"💾 Modified force vector saved to: {path}")
+        #df   = pd.DataFrame({
+            #"DOF":   list(range(self.F_mod.size)),   # python int
+            #"F Value": self.F_mod                    # float64
+        #})
+        #df.to_csv(path, index=False, float_format=FLOAT_FORMAT)
+        #self.logger.info(f"💾 Modified force vector saved to: {path}")
 
     def _log_diagnostics(self):
         """Log detailed system diagnostics."""
@@ -285,3 +290,24 @@ class ModifyGlobalSystem:
         if np.any(diag_vals > 0):
             cond_estimate = diag_vals.max() / diag_vals[diag_vals > 0].min()
             self.logger.debug(f"\nCondition Estimate: {cond_estimate:.1e}")
+
+    def _build_modification_map(self) -> list[MapEntry]:
+        """
+        Construct map of DOFs after boundary condition application.
+        Flags:
+        - Fixed DOFs marked with fixed_flag = 1
+        - Remaining DOFs marked active (active_flag = 1)
+        - Zero and condensed_dof not yet determined.
+        """
+        return [
+            MapEntry(
+                element_id=i,
+                local_dof=np.arange(len(global_dof), dtype=np.int32),
+                global_dof=global_dof,
+                fixed_flag=np.isin(global_dof, self.fixed_dofs).astype(np.int32),
+                zero_flag=np.zeros(len(global_dof), dtype=np.int32),
+                active_flag=~np.isin(global_dof, self.fixed_dofs).astype(np.int32),
+                condensed_dof=np.full(len(global_dof), "", dtype=object)
+            )
+            for i, global_dof in enumerate(self.local_global_dof_map)
+        ]
