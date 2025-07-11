@@ -1,0 +1,27 @@
+--------------------------------------------------------------------------
+Machine specifications – written 2025-07-09 05:45:03.509752
+OS          : Windows 10 (10.0.19045)
+CPU         : Intel64 Family 6 Model 94 Stepping 3, GenuineIntel
+   logical  : 4
+   physical : 4
+RAM         : 15.96 GB
+Disk        : 465.18 GB total  /  130.63 GB free
+Python      : 3.11.0  (C:\Users\samea\AppData\Local\Programs\Python\Python311\python.exe)
+GPU(s)      : NVIDIA GeForce GTX 780 Ti
+--------------------------------------------------------------------------
+
+Runtime telemetry header written → C:\Users\samea\Desktop\fem_model\post_processing\results\job_0002_2025-07-09_05-44-56-121700_pid18496_ef275335\diagnostics\RuntimeMonitorTelemetry.log
+2025-07-09 05:45:03 │ PrepareLocalSystem BEGIN   │ Δt  0.00 s │ RAM   122.0 MB │ CPU  96.2 % │ Disk  334.5 GB
+2025-07-09 05:45:04 │ PrepareLocalSystem END     │ Δt  0.30 s │ RAM   122.3 MB │ CPU  75.0 % │ Disk  334.5 GB
+2025-07-09 05:45:04 │ AssembleGlobalSystem BEGIN │ Δt  0.20 s │ RAM   122.3 MB │ CPU  57.7 % │ Disk  334.5 GB
+2025-07-09 05:45:04 │ AssembleGlobalSystem END   │ Δt  0.42 s │ RAM   124.8 MB │ CPU  82.7 % │ Disk  334.5 GB
+2025-07-09 05:45:14 │ ModifyGlobalSystem BEGIN   │ Δt  9.43 s │ RAM   126.9 MB │ CPU 100.0 % │ Disk  336.1 GB
+2025-07-09 05:45:14 │ ModifyGlobalSystem END     │ Δt  0.44 s │ RAM   128.0 MB │ CPU  90.4 % │ Disk  336.1 GB
+2025-07-09 05:45:24 │ CondenseModifiedSystem BEGIN │ Δt  9.67 s │ RAM   128.0 MB │ CPU  87.5 % │ Disk  335.6 GB
+2025-07-09 05:45:25 │ CondenseModifiedSystem END │ Δt  0.71 s │ RAM   128.8 MB │ CPU  98.1 % │ Disk  335.6 GB
+2025-07-09 05:45:34 │ SolveCondensedSystem BEGIN │ Δt  9.04 s │ RAM   129.6 MB │ CPU  82.7 % │ Disk  335.6 GB
+2025-07-09 05:45:47 │ SolveCondensedSystem END   │ Δt 13.20 s │ RAM   129.7 MB │ CPU  94.2 % │ Disk  335.6 GB
+2025-07-09 05:45:47 │ ReconstructGlobalSystem BEGIN │ Δt  0.20 s │ RAM   129.7 MB │ CPU  96.2 % │ Disk  335.6 GB
+2025-07-09 05:45:47 │ ReconstructGlobalSystem END │ Δt  0.53 s │ RAM   129.7 MB │ CPU  94.2 % │ Disk  335.6 GB
+2025-07-09 05:45:48 │ ComputePrimaryResults BEGIN │ Δt  0.20 s │ RAM   129.7 MB │ CPU  80.8 % │ Disk  335.6 GB
+2025-07-09 05:45:51 │ ComputePrimaryResults END  │ Δt  3.60 s │ RAM   130.9 MB │ CPU 100.0 % │ Disk  335.6 GB

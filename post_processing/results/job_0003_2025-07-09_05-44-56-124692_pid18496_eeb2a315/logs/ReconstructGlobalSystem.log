@@ -1,0 +1,11 @@
+2025-07-09 05:47:08,669 [DEBUG] 📁 Log file created at: c:\Users\samea\Desktop\fem_model\post_processing\results\job_0003_2025-07-09_05-44-56-124692_pid18496_eeb2a315\logs\ReconstructGlobalSystem.log (Module: reconstruction, Line: 89)
+2025-07-09 05:47:08,670 [DEBUG] ✅ Input validation passed (Module: reconstruction, Line: 143)
+2025-07-09 05:47:08,670 [INFO] 🚀 Starting displacement reconstruction (Module: reconstruction, Line: 154)
+2025-07-09 05:47:08,683 [INFO] 📊 Reconstruction Statistics:
+  Total DOFs: 3006
+  Active DOFs: 3000
+  Fixed DOFs: 6
+  Min displacement: -3.325e-04
+  Max displacement: -0.000e+00
+  Mean absolute displacement: 2.090e-05 (Module: reconstruction, Line: 260)
+2025-07-09 05:47:08,796 [INFO] ✅ Reconstruction completed in 0.13s (Module: reconstruction, Line: 168)

@@ -147,7 +147,7 @@ class EulerBernoulliBeamElement3D(Element1DBase):
     @property
     def jacobian_determinant(self) -> float:
         """Shortcut to strain operator's Jacobian"""
-        return self.strain_displacement_operator.jacobian
+        return self.L/2
 
     @property
     def integration_points(self) -> Tuple[np.ndarray, np.ndarray]:

@@ -13,7 +13,7 @@ import platform
 import datetime
 import uuid
 from tabulate import tabulate
-import cpuinfo
+#import cpuinfo
 import subprocess
 from typing import List
 
@@ -76,8 +76,8 @@ def configure_child_logging(job_results_dir):
 
 def get_machine_specs():
     """Returns extended system specifications as a formatted string."""
-    cpu_info = cpuinfo.get_cpu_info()
-    cpu_name = cpu_info.get('brand_raw', platform.processor())
+    #cpu_info = cpuinfo.get_cpu_info()
+    #cpu_name = cpu_info.get('brand_raw', platform.processor())
     logical_cores = psutil.cpu_count(logical=True)
     physical_cores = psutil.cpu_count(logical=False)
     total_ram = psutil.virtual_memory().total / (1024 ** 3)
@@ -86,7 +86,7 @@ def get_machine_specs():
     specs = (
         f"Machine Specifications:\n"
         f"   - OS: {platform.system()} {platform.release()} ({platform.version()})\n"
-        f"   - CPU: {cpu_name}\n"
+        #f"   - CPU: {cpu_name}\n"
         f"       • Logical cores: {logical_cores}\n"
         f"       • Physical cores: {physical_cores}\n"
         f"   - RAM: {total_ram:.2f} GB\n"

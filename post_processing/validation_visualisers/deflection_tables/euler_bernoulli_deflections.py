@@ -41,7 +41,7 @@ SCRIPT_DIR   = Path(__file__).resolve().parent
 ROOT         = find_project_root(SCRIPT_DIR)
 sys.path.insert(0, str(ROOT))   # ensure project root is importable
 
-from pre_processing.parsing.mesh_parser import parse_mesh  # noqa: E402
+from pre_processing.parsing.grid_parser import GridParser  # noqa: E402
 
 SETTINGS_ROOT   = ROOT / "jobs"
 RESULTS_ROOT    = ROOT / "post_processing" / "results"
@@ -50,10 +50,10 @@ PRIMARY_RESULTS = "primary_results"
 # ────────────────────────────────────────────────────────────────────────────────
 # Material / beam constants
 # ────────────────────────────────────────────────────────────────────────────────
-E   = 2.0e11        # Pa
-I_z = 6.6667e-5     # m⁴
-F   = 1.0e5         # N
-q_0 = 1.0e5         # N/m
+E   = 2.1e+11       # Pa
+I_z = 2.08769e-06     # m⁴
+F   = 500         # N
+q_0 = 500         # N/m
 
 # job → load description
 job_to_loadtype = {
@@ -100,20 +100,32 @@ def results_dir(job: str) -> Path:
 
 def displacement_file(job: str) -> Path:
     rd = results_dir(job)
-    pattern = rd / PRIMARY_RESULTS / "*_U_global.*"
-    files = [Path(p) for p in glob.glob(str(pattern))]
-    if not files:
-        raise FileNotFoundError(f"No *_U_global.* file in {rd/PRIMARY_RESULTS}")
-    return newest(files)
+    file = rd / PRIMARY_RESULTS / "global" / "U_global.csv"
+    if not file.is_file():
+        raise FileNotFoundError(f"No U_global.csv file in {file.parent}")
+    return file
+
 
 # ────────────────────────────────────────────────────────────────────────────────
 # File readers
 # ────────────────────────────────────────────────────────────────────────────────
-def read_mesh_nodes_x(mesh_path: Path) -> np.ndarray:
-    """Use mesh_parser to get node X-coordinates, sorted ascending."""
-    mesh_dict = parse_mesh(str(mesh_path))
-    x_coords = mesh_dict["node_coordinates"][:, 0]   # column 0 = x
-    return np.sort(np.unique(x_coords))
+def read_grid_nodes_x(job: str) -> np.ndarray:
+    """Parse grid.txt using GridParser and extract sorted unique X-coordinates."""
+    settings = settings_dir(job)
+    grid_file = settings / "grid.txt"
+    if not grid_file.is_file():
+        raise FileNotFoundError(f"No grid.txt found in {settings}")
+
+    grid = GridParser(str(grid_file), str(settings)).parse()
+
+    # Extract coordinates from grid["grid_dictionary"]["coordinates"]
+    try:
+        coords = grid["grid_dictionary"]["coordinates"]
+    except (KeyError, TypeError):
+        raise ValueError(f"Malformed grid dictionary for {job}")
+
+    return np.sort(np.unique(coords[:, 0]))  # X-coordinate
+
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Robust displacement-file reader  (handles 2-column DOF list, table, or 1-D vector)
@@ -212,7 +224,7 @@ def plot_jobs(jobs: list[str]) -> None:
     artefacts: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray, str]] = {}
     for job in jobs:
         try:
-            x_coords       = read_mesh_nodes_x(mesh_file(job))
+            x_coords       = read_grid_nodes_x(job)
             uy_mm, rz_deg  = read_dofs(displacement_file(job))
             load           = job_to_loadtype.get(job, "Unknown")
             artefacts[job] = (x_coords, uy_mm, rz_deg, load)

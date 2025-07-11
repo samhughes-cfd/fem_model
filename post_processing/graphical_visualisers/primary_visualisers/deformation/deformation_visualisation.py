@@ -116,19 +116,19 @@ class VisualiseDeformation:
 
         pairs = [
             (
-                U[:, 0] * 1_000 * scale,
+                U[:, 0] * 1000 * scale,
                 r"$u_x(x)\ \mathrm{[mm]}$",
                 U[:, 3],
                 r"$\theta_x(x)\ [^\circ]$",
             ),
             (
-                U[:, 1] * 1_000 * scale,
+                U[:, 1] * 1000 * scale,
                 r"$u_y(x)\ \mathrm{[mm]}$",
                 U[:, 5],
                 r"$\theta_z(x)\ [^\circ]$",
             ),
             (
-                U[:, 2] * 1_000 * scale,
+                U[:, 2] * 1000 * scale,
                 r"$u_z(x)\ \mathrm{[mm]}$",
                 U[:, 4],
                 r"$\theta_y(x)\ [^\circ]$",
@@ -186,23 +186,23 @@ class VisualiseDeformation:
     #  Driver
     # ------------------------------------------------------------------#
     def process_all(self) -> None:
-        pattern = self.results_dir / "job_*" / "primary_results" / "*_U_global.csv"
-        csv_files = sorted(glob.glob(str(pattern)))
+        pattern = str(self.results_dir / "job_*" / "primary_results" / "global" / "U_global.csv")
+        csv_files = sorted(glob.glob(pattern))
         if not csv_files:
             print("No deformation files found.")
             return
 
         for csv_path in csv_files:
             csv_file = Path(csv_path)
-            # …/results/job_123_2025-06-30_14-52-01/primary_results/xyz_U_global.csv
-            job_dir = csv_file.parent.parent
-            m = re.match(r"job_(?P<id>\d+)_(?P<ts>[\d\-_]+)", job_dir.name)
+            job_dir = csv_file.parent.parent.parent
+            m = re.match(r"job_(?P<id>\d+)_(?P<ts>[\d\-_]+_pid\d+_[a-f0-9]+)", job_dir.name)
             if not m:
                 print(f"Skipping unrecognised folder '{job_dir.name}'")
                 continue
 
             job_id, timestamp = m.group("id"), m.group("ts")
             grid_file = self.jobs_dir / f"job_{job_id}" / "grid.txt"
+
             print(f"→ Processing job {job_id} ({timestamp})")
 
             # ---- Displacements ------------------------------------------ #

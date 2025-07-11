@@ -18,8 +18,8 @@ import numpy as np
 # --------------------------------------------------------------------------- #
 L: float = 2.0            # Beam length [m]
 growth_factor: float = 0  # 0 = uniform; >0 = exponential tip clustering
-num_uniform_nodes: int = 101
-max_num_nodes: int = 101
+num_uniform_nodes: int = 501
+max_num_nodes: int = 501
 # --------------------------------------------------------------------------- #
 
 
@@ -128,7 +128,7 @@ def save_section_file(elements: List[Tuple[int, int]], save_dir: str) -> None:
     os.makedirs(save_dir, exist_ok=True)
     path = os.path.join(save_dir, "section.txt")
 
-    A = 1307.5519589902397
+    A = 1.3075519589902397e-3  # Cross-sectional area [m²]
     I_x = 0.0
     I_y = 3.2340029e-7
     I_z = 2.0876865e-6
