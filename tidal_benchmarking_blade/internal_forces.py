@@ -9,7 +9,7 @@ Blade internal-action diagrams for flapwise, edgewise and torsion
       │ flapwise │ edgewise │ torsion  │
       ├──────────┼──────────┼──────────┤
       │  Fₙy     │  Fₙz     │   Mₓ     │  ← distributed loads
-      │  Vᵧ      │  Vz      │   T(x)   │  ← internal resultants
+      │  Vᵧ      │  Vz      │  T(x)   │  ← internal resultants
       │  Mz      │  My      │   —      │  ← bending moments
       └──────────┴──────────┴──────────┘
 
@@ -28,7 +28,9 @@ import matplotlib.pyplot as plt
 from labellines import labelLines
 
 # ───────── configuration ─────────
-R          = 0.70
+R          = 0.80  # full rotor radius in meters
+L          = 0.70  # blade span length (from root to tip) in meters
+offset     = R - L  # accounts for physical offset of blade root (0.10 m)
 TSR_NAMES  = ["TSR4", "TSR5", "TSR6", "TSR7", "TSR8"]
 
 COLORS = {
@@ -68,9 +70,9 @@ for tsr in TSR_NAMES:
     df = pd.read_csv(csv_path)
     df.columns = df.columns.str.strip("[]")
 
-    x   = df["x"].to_numpy()
+    x   = df["x"].to_numpy()  # physical x along blade span (in meters)
     dx  = float(np.mean(np.diff(x)))
-    rR  = x / R
+    rR  = (x + offset) / R    # correct r/R offset
 
     # distributed loads  (signs per your convention)
     qy  =  df["F_y"].to_numpy()          # N/m
@@ -122,6 +124,7 @@ for r in range(3):
             continue
         axs[r, c].set_ylabel(label)
         axs[r, c].grid(True, zorder=0)
+        axs[r, c].set_xlim(-0.02, 1.02)
         if (r < 2) and not (r == 1 and c == 2):   # keep ticks for T(x) pane
             axs[r, c].tick_params(labelbottom=False)
 
@@ -131,11 +134,19 @@ axs[2, 1].set_xlabel("r / R")
 axs[1, 2].set_xlabel("r / R")
 axs[1, 2].tick_params(labelbottom=True)
 
-# label every visible subplot
+# ───── vertical lines & labels ─────
 for ax in axs.flat:
-    if ax.get_visible() and ax.lines:
-        labelLines(ax.get_lines(), zorder=3)
+    if ax.get_visible():
+        # Skip bottom-right panel [2, 2]
+        if ax == axs[2, 2]:
+            continue
+        ax.axvline(x=0.0, linestyle='--', color='black', linewidth=1.0, zorder=2)
+        ax.axvline(x=0.125, linestyle='--', color='black', linewidth=1.0, zorder=2)
+        ax.axvline(x=1.0, linestyle='--', color='black', linewidth=1.0, zorder=2)
+        if ax.lines:
+            labelLines(ax.get_lines(), zorder=3)
 
+# ───── finalize and save ─────
 fig.suptitle("Internal Force Equilibrium Diagram – TSR4 – TSR8", fontsize=15)
 fig.tight_layout(rect=[0, 0, 1, 0.95])
 

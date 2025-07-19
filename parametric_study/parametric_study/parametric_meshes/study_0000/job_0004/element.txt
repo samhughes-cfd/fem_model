@@ -1,0 +1,11 @@
+[Element]
+[element_id]      [node1]           [node2]           [element_type]    [axial_order]     [bending_y_order] [bending_z_order] [shear_y_order]   [shear_z_order]   [torsion_order]   [load_order]      
+0                 0                 1                 EBBeam3D2                     2                 2                 2                 2                 2                 2                 2                 
+1                 1                 2                 EBBeam3D2                     2                 2                 2                 2                 2                 2                 2                 
+2                 2                 3                 EBBeam3D2                     2                 2                 2                 2                 2                 2                 2                 
+3                 3                 4                 EBBeam3D2                     2                 2                 2                 2                 2                 2                 2                 
+4                 4                 5                 EBBeam3D2                     2                 2                 2                 2                 2                 2                 2                 
+5                 5                 6                 EBBeam3D2                     2                 2                 2                 2                 2                 2                 2                 
+6                 6                 7                 EBBeam3D2                     2                 2                 2                 2                 2                 2                 2                 
+7                 7                 8                 EBBeam3D2                     2                 2                 2                 2                 2                 2                 2                 
+8                 8                 9                 EBBeam3D2                     2                 2                 2                 2                 2                 2                 2                 
