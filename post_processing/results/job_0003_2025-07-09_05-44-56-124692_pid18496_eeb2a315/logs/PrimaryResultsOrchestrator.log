@@ -1,3 +1,0 @@
-2025-07-09 05:47:09,322 [DEBUG] 📁 Log file created at: c:\Users\samea\Desktop\fem_model\post_processing\results\job_0003_2025-07-09_05-44-56-124692_pid18496_eeb2a315\logs\PrimaryResultsOrchestrator.log (Module: primary_results_orchestrator, Line: 91)
-2025-07-09 05:47:09,323 [INFO] ✅ Reactions evaluated & masked (Module: primary_results_orchestrator, Line: 45)
-2025-07-09 05:47:09,323 [INFO] ✅ Residual computed (Module: primary_results_orchestrator, Line: 46)

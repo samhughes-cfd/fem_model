@@ -1,0 +1,27 @@
+--------------------------------------------------------------------------
+Machine specifications – written 2025-07-21 19:09:08.603528
+OS          : Windows 11 (10.0.22631)
+CPU         : 12th Gen Intel(R) Core(TM) i7-12700
+   logical  : 20
+   physical : 12
+RAM         : 31.24 GB
+Disk        : 3071.87 GB total  /  2256.84 GB free
+Python      : 3.12.5  (C:\Users\s1834431\AppData\Local\Programs\Python\Python312\python.exe)
+GPU(s)      : Intel(R) UHD Graphics 770
+--------------------------------------------------------------------------
+
+Runtime telemetry header written → \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0003_2025-07-21_19-08-42-549386_pid31584_e7777a0e\diagnostics\RuntimeMonitorTelemetry.log
+2025-07-21 19:09:08 │ PrepareLocalSystem BEGIN   │ Δt  0.00 s │ RAM   126.1 MB │ CPU   9.0 % │ Disk  815.0 GB
+2025-07-21 19:09:09 │ PrepareLocalSystem END     │ Δt  0.49 s │ RAM   126.5 MB │ CPU   7.8 % │ Disk  815.0 GB
+2025-07-21 19:09:09 │ AssembleGlobalSystem BEGIN │ Δt  0.20 s │ RAM   126.5 MB │ CPU   8.7 % │ Disk  815.0 GB
+2025-07-21 19:09:10 │ AssembleGlobalSystem END   │ Δt  0.59 s │ RAM   130.8 MB │ CPU   7.8 % │ Disk  815.0 GB
+2025-07-21 19:09:29 │ ModifyGlobalSystem BEGIN   │ Δt 18.85 s │ RAM   135.6 MB │ CPU   6.4 % │ Disk  815.0 GB
+2025-07-21 19:09:29 │ ModifyGlobalSystem END     │ Δt  0.27 s │ RAM   138.1 MB │ CPU  12.9 % │ Disk  815.0 GB
+2025-07-21 19:09:47 │ CondenseModifiedSystem BEGIN │ Δt 18.22 s │ RAM   138.0 MB │ CPU   8.2 % │ Disk  815.0 GB
+2025-07-21 19:09:48 │ CondenseModifiedSystem END │ Δt  0.49 s │ RAM   139.3 MB │ CPU   7.7 % │ Disk  815.0 GB
+2025-07-21 19:10:05 │ SolveCondensedSystem BEGIN │ Δt 17.88 s │ RAM   139.3 MB │ CPU   8.8 % │ Disk  815.0 GB
+2025-07-21 19:10:06 │ SolveCondensedSystem END   │ Δt  0.52 s │ RAM   140.7 MB │ CPU   8.1 % │ Disk  815.0 GB
+2025-07-21 19:10:06 │ ReconstructGlobalSystem BEGIN │ Δt  0.20 s │ RAM   140.7 MB │ CPU   7.3 % │ Disk  815.0 GB
+2025-07-21 19:10:06 │ ReconstructGlobalSystem END │ Δt  0.34 s │ RAM   140.7 MB │ CPU  10.1 % │ Disk  815.0 GB
+2025-07-21 19:10:07 │ ComputePrimaryResults BEGIN │ Δt  0.20 s │ RAM   140.7 MB │ CPU   6.6 % │ Disk  815.0 GB
+2025-07-21 19:10:31 │ ComputePrimaryResults END  │ Δt 24.48 s │ RAM   141.5 MB │ CPU   9.2 % │ Disk  815.0 GB

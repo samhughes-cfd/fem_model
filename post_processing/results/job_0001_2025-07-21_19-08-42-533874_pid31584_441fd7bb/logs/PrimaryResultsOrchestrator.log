@@ -1,0 +1,3 @@
+2025-07-21 19:08:56,394 [DEBUG] 📁 Log file created at: \\mull.sms.ed.ac.uk\home\s1834431\Win7\Desktop\fem_model\post_processing\results\job_0001_2025-07-21_19-08-42-533874_pid31584_441fd7bb\logs\PrimaryResultsOrchestrator.log (Module: primary_results_orchestrator, Line: 91)
+2025-07-21 19:08:56,404 [INFO] ✅ Reactions evaluated & masked (Module: primary_results_orchestrator, Line: 45)
+2025-07-21 19:08:56,404 [INFO] ✅ Residual computed (Module: primary_results_orchestrator, Line: 46)
