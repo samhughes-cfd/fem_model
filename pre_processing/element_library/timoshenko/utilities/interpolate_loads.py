@@ -1,4 +1,4 @@
-# pre_processing\element_library\timoshenko\utilities\interpolate_loads.py
+# pre_processing\element_library\euler_bernoulli\utilities\interpolate_loads.py
 
 import numpy as np
 from scipy import interpolate

@@ -437,5 +437,5 @@ class EulerBernoulliBeamElement3D(Element1DBase):
         return (self.x_start - tol <= x < self.x_end + tol)
 
     def __repr__(self) -> str:
-        return (f"EulerBernoulliBeam6DOF(id={self.element_id}, L={self.L:.2e}m, "
+        return (f"EulerBernoulliBeamElement3D(id={self.element_id}, L={self.L:.2e}m, "
                 f"E={self.E:.1e}Pa, quad={self.quadrature_order})")
