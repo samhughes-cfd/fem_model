@@ -1,165 +1,203 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import csv
+from matplotlib.ticker import LogLocator
 
 # --- Ensure plots directory exists ---
 os.makedirs("parametric_study/plots", exist_ok=True)
 
 # --- Beam theory functions ---
 def uy_tip_eb(F, E, I, L):
+    """Euler-Bernoulli tip deflection"""
     return F * L**3 / (3 * E * I)
 
 def theta_tip_eb(F, E, I, L):
+    """Euler-Bernoulli tip rotation"""
     return F * L**2 / (2 * E * I)
 
 def uy_tip_timoshenko(F, E, I, L, G, A, kappa):
+    """Timoshenko tip deflection (includes shear deformation)"""
     return uy_tip_eb(F, E, I, L) + F * L / (kappa * A * G)
 
 def theta_tip_timoshenko(F, E, I, L):
+    """Timoshenko tip rotation (same as Euler-Bernoulli)"""
     return theta_tip_eb(F, E, I, L)
 
 def uy_tip_levinson(F, E, I, L, G, A):
+    """Levinson tip deflection (includes shear deformation)"""
     return uy_tip_eb(F, E, I, L) + F * L / (G * A)
 
 def theta_tip_levinson(F, E, I, L):
+    """Levinson tip rotation (same as Euler-Bernoulli)"""
     return theta_tip_eb(F, E, I, L)
 
 # --- Base parameters ---
-F_base = 500               # N
-E_base = 2.1e11            # Pa
-G_base = 8.1e10            # Pa
-I_base = 2.08769e-6        # m^4
-A_base = 0.00131           # m^2
-L_base = 1.0               # m
-kappa = 5 / 6
+F_base = 500         # Load [N]
+E_base = 2.1e11      # Young's modulus [Pa]
+G_base = 8.1e10      # Shear modulus [Pa]
+I_base = 2.08769e-6  # Second moment of area [m⁴]
+A_base = 0.00131     # Cross-sectional area [m²]
+L_base = 1.0         # Beam length [m]
+kappa = 5 / 6        # Shear correction factor
 
-# --- C-section dimensions (for context, not used in calc yet) ---
-# Web depth (external):      100 mm
-# Web thickness:             5 mm
-# Flange width (external):   50 mm
-# Flange thickness:          8.5 mm
-# Internal corner radius:    10 mm
+# --- Parameter space ---
+scales = np.logspace(-1, 1, 10)  # Logarithmic scaling from 0.1 to 10
+params = ['F', 'E', 'I', 'L']    # Parameters to vary
+theories = ['eb', 'tim', 'lev']   # Beam theories (Euler-Bernoulli, Timoshenko, Levinson)
 
-# --- Parameter scales ---
-scales = np.logspace(-1, 1, 10)
-params = ['F', 'E', 'I', 'L']
-theories = ['eb', 'tim', 'lev']
-
-# --- Containers ---
+# --- Data containers ---
 deflection_data = {t: {p: [] for p in params} for t in theories}
 rotation_data = {t: {p: [] for p in params} for t in theories}
 pi_deflection = {t: {p: [] for p in params} for t in theories}
 pi_rotation = {t: {p: [] for p in params} for t in theories}
 
-# --- Populate data ---
+# --- Populate data arrays ---
 for scale in scales:
-    for t in theories:
-        for p in params:
-            F = F_base * scale if p == 'F' else F_base
-            E = E_base * scale if p == 'E' else E_base
-            I = I_base * scale if p == 'I' else I_base
-            L = L_base * scale if p == 'L' else L_base
+    for theory in theories:
+        for param in params:
+            # Scale current parameter while keeping others at base values
+            F = F_base * scale if param == 'F' else F_base
+            E = E_base * scale if param == 'E' else E_base
+            I = I_base * scale if param == 'I' else I_base
+            L = L_base * scale if param == 'L' else L_base
 
-            if t == 'eb':
+            # Calculate deflection and rotation based on theory
+            if theory == 'eb':
                 uy = uy_tip_eb(F, E, I, L)
-                th = theta_tip_eb(F, E, I, L)
-            elif t == 'tim':
+                theta = theta_tip_eb(F, E, I, L)
+            elif theory == 'tim':
                 uy = uy_tip_timoshenko(F, E, I, L, G_base, A_base, kappa)
-                th = theta_tip_timoshenko(F, E, I, L)
-            elif t == 'lev':
+                theta = theta_tip_timoshenko(F, E, I, L)
+            elif theory == 'lev':
                 uy = uy_tip_levinson(F, E, I, L, G_base, A_base)
-                th = theta_tip_levinson(F, E, I, L)
+                theta = theta_tip_levinson(F, E, I, L)
 
-            deflection_data[t][p].append(uy)
-            rotation_data[t][p].append(th)
+            deflection_data[theory][param].append(uy)
+            rotation_data[theory][param].append(theta)
 
-            # Nondimensional groups
+            # Calculate non-dimensional Pi groups
             pi_y = (F * L**3) / (E * I * uy)
-            pi_th = (F * L**2 * th) / (E * I)
-            pi_deflection[t][p].append(pi_y)
-            pi_rotation[t][p].append(pi_th)
+            pi_theta = (F * L**2 * theta) / (E * I)
+            
+            pi_deflection[theory][param].append(pi_y)
+            pi_rotation[theory][param].append(pi_theta)
 
-# Convert to arrays
-for t in theories:
-    for p in params:
-        deflection_data[t][p] = np.array(deflection_data[t][p])
-        rotation_data[t][p] = np.array(rotation_data[t][p])
-        pi_deflection[t][p] = np.array(pi_deflection[t][p])
-        pi_rotation[t][p] = np.array(pi_rotation[t][p])
+# Convert to numpy arrays for analysis
+for theory in theories:
+    for param in params:
+        deflection_data[theory][param] = np.array(deflection_data[theory][param])
+        rotation_data[theory][param] = np.array(rotation_data[theory][param])
+        pi_deflection[theory][param] = np.array(pi_deflection[theory][param])
+        pi_rotation[theory][param] = np.array(pi_rotation[theory][param])
 
-# --- Log-log slope ---
-def loglog_slope(y_vals):
-    log_x = np.log10(scales)
-    log_y = np.log10(y_vals)
+# --- Slope calculation for log-log plots ---
+def loglog_slope(x, y):
+    """Calculate slope of log-log data using linear regression"""
+    log_x = np.log10(x)
+    log_y = np.log10(y)
     slope, _ = np.polyfit(log_x, log_y, 1)
     return slope
 
-slopes_def = {t: {p: loglog_slope(deflection_data[t][p]) for p in params} for t in theories}
-slopes_rot = {t: {p: loglog_slope(rotation_data[t][p]) for p in params} for t in theories}
+# Compute slopes for all data
+slopes_def = {t: {p: loglog_slope(scales, deflection_data[t][p]) for p in params} for t in theories}
+slopes_rot = {t: {p: loglog_slope(scales, rotation_data[t][p]) for p in params} for t in theories}
+slopes_pi_def = {t: {p: loglog_slope(scales, pi_deflection[t][p]) for p in params} for t in theories}
+slopes_pi_rot = {t: {p: loglog_slope(scales, pi_rotation[t][p]) for p in params} for t in theories}
 
-# --- Plotting helper ---
-def plot_response(data, slopes, ylabel, title, filename):
-    fig, axs = plt.subplots(3, 2, figsize=(14, 10), sharex='col', sharey='row')
-    theory_names = {'eb': 'Euler-Bernoulli', 'tim': 'Timoshenko', 'lev': 'Levinson'}
-    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
+# --- Generate CSV reports ---
+for theory in theories:
+    csv_path = f"parametric_study/plots/deformation_summary_{theory}.csv"
+    with open(csv_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([
+            "Theory", "Parameter", "Scale",
+            "uy [m]", "theta_z [rad]",
+            "Pi_uy", "Pi_theta",
+            "Order_uy", "Order_theta",
+            "Order_Pi_uy", "Order_Pi_theta"
+        ])
+        
+        for param in params:
+            for i, scale in enumerate(scales):
+                writer.writerow([
+                    theory, param, scale,
+                    deflection_data[theory][param][i],
+                    rotation_data[theory][param][i],
+                    pi_deflection[theory][param][i],
+                    pi_rotation[theory][param][i],
+                    slopes_def[theory][param],
+                    slopes_rot[theory][param],
+                    slopes_pi_def[theory][param],
+                    slopes_pi_rot[theory][param]
+                ])
+    print(f"✅ CSV written: {csv_path}")
 
-    for i, t in enumerate(theories):
-        for j, p in enumerate(params):
-            axs[i, 0].plot(scales, data[t][p], marker='o', color=colors[j],
-                           label=f"{p} (order ≈ {slopes[t][p]:.2f})", linewidth=2)
-        axs[i, 0].set_xscale('log')
-        axs[i, 0].set_ylabel(f"{theory_names[t]}\n{ylabel}")
-        axs[i, 0].grid(True, linestyle='--', alpha=0.5)
-        if i == 0: axs[i, 0].set_title("Raw")
+# --- Generate log-log plots ---
+for theory in theories:
+    for param in params:
+        fig, axs = plt.subplots(4, 1, figsize=(10, 12), sharex=True)
+        fig.suptitle(f"Theory: {theory.upper()}, Parameter: {param}", fontsize=14)
+        
+        # Plot configuration
+        titles = [
+            "Tip Deflection (uy)",
+            "Tip Rotation (θ)",
+            "Non-dimensional Deflection (Π_uy)",
+            "Non-dimensional Rotation (Π_θ)"
+        ]
+        ylabels = ["uy [m]", "θ [rad]", "Π_uy", "Π_θ"]
+        data_sets = [
+            deflection_data[theory][param],
+            rotation_data[theory][param],
+            pi_deflection[theory][param],
+            pi_rotation[theory][param]
+        ]
+        slopes = [
+            slopes_def[theory][param],
+            slopes_rot[theory][param],
+            slopes_pi_def[theory][param],
+            slopes_pi_rot[theory][param]
+        ]
+        colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:purple']
+        
+        for i, ax in enumerate(axs):
+            # Plot data points and line
+            ax.loglog(scales, data_sets[i], 'o-', color=colors[i], 
+                     markersize=6, linewidth=2, label='Data')
+            
+            # Add slope information
+            slope_text = f'Slope: {slopes[i]:.3f}'
+            ax.text(0.05, 0.95, slope_text, transform=ax.transAxes,
+                    verticalalignment='top', bbox=dict(facecolor='white', alpha=0.8))
+            
+            # Formatting
+            ax.set_title(titles[i], fontsize=12)
+            ax.set_ylabel(ylabels[i], fontsize=10)
+            ax.grid(True, which='both', linestyle='--', alpha=0.7)
+            ax.legend(loc='lower right')
+            
+            # Set custom x-ticks for better readability
+            ax.set_xticks([0.1, 0.2, 0.5, 1, 2, 5, 10])
+            ax.get_xaxis().set_major_formatter(plt.ScalarFormatter())
+        
+        axs[-1].set_xlabel("Scale Factor", fontsize=10)
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        plt.savefig(f"parametric_study/plots/{theory}_{param}_deformation.png", dpi=300)
+        plt.close()
 
-        for j, p in enumerate(params):
-            axs[i, 1].plot(scales, data[t][p], marker='o', color=colors[j],
-                           label=f"{p} (order ≈ {slopes[t][p]:.2f})", linewidth=2)
-        axs[i, 1].set_xscale('log')
-        axs[i, 1].set_yscale('log')
-        axs[i, 1].grid(True, linestyle='--', alpha=0.5)
-        if i == 0: axs[i, 1].set_title("Log-Log Scaling")
+# --- Non-dimensional Characterization ---
+print("\n=== Key Non-dimensional Parameters ===")
 
-    axs[-1, 0].set_xlabel("Parameter scale (log10)")
-    axs[-1, 1].set_xlabel("Parameter scale (log10)")
-    axs[0, 1].legend(loc='upper right', fontsize=9)
-    fig.suptitle(title, fontsize=14, y=1.02)
-    fig.tight_layout()
-    plt.savefig(f"parametric_study/plots/{filename}", dpi=300)
-    plt.close()
+# 1. Slenderness Ratio
+h_web = 0.1  # Web height [m]
+slenderness = L_base / h_web
+print(f"\n1. Slenderness ratio (L/h): {slenderness:.1f}")
 
-# --- Generate plots ---
-plot_response(deflection_data, slopes_def, r"$u_y(L)$ [m]", "Tip Deflection Comparison", "tip_deflection.png")
-plot_response(rotation_data, slopes_rot, r"$\theta_z(L)$ [rad]", "Tip Rotation Comparison", "tip_rotation.png")
-plot_response(pi_deflection, slopes_def, r"$\Pi = \dfrac{F L^3}{EI u_y}$", "ND Tip Deflection", "pi_deflection.png")
-plot_response(pi_rotation, slopes_rot, r"$\Pi_\theta = \dfrac{F L^2 \theta_z}{EI}$", "ND Tip Rotation", "pi_rotation.png")
+# 2. Shear Influence Factor
+shear_influence = (A_base * G_base * L_base**2) / (E_base * I_base)
+print(f"2. Shear influence factor: {shear_influence:.3f}")
 
-# --- Slenderness and shear influence ---
-h_web = 0.1       # m
-L = L_base
-slenderness = L / h_web
-shear_influence = (A_base * G_base * L**2) / (E_base * I_base)
-rigidity_ratio = 1 / shear_influence
-
-print("\n=== Nondimensional Beam Characterisation ===")
-print(f"Slenderness ratio (L/h):")
-print(f"    Formula: L / h = {L:.3f} / {h_web:.3f} = {slenderness:.2f}")
-
-print(f"\nShear influence factor:")
-print("    Formula: (A·G·L²) / (E·I)")
-print(f"    = ({A_base:.4e}·{G_base:.4e}·{L**2:.4e}) / ({E_base:.4e}·{I_base:.4e})")
-print(f"    = {shear_influence:.2f}")
-
-print(f"\nFlexural to shear rigidity ratio:")
-print("    Formula: (E·I) / (A·G·L²)")
-print(f"    = 1 / {shear_influence:.2f} = {rigidity_ratio:.5f}")
-
-print("\nPlots saved to 'parametric_study/plots'")
-
-# --- Future nondimensional parameters (not yet implemented) ---
-# - Torsional stiffness group:             Π_T = T·L / G·J
-# - Warping stiffness group:               Π_W = T·L / E·Cw
-# - Dynamic scaling (1st freq):            Π_ω = ω·L² / sqrt(E·I / ρ·A)
-# - Cross-section shape parameters:        warping constant (Cw), torsion constant (J)
-# - Composite beam influence factors
-# - Beam-column coupling (axial+flexural)
+# 3. Flexural-to-Shear Rigidity Ratio
+rigidity_ratio = (E_base * I_base) / (G_base * A_base * L_base**2)
+print(f"3. Flexural-to-shear rigidity ratio: {rigidity_ratio:.5f}")
